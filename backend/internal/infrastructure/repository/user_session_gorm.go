@@ -39,3 +39,33 @@ func (r *userSessionGormRepository) Create(session *domain.UserSession) error {
 
 	return r.db.Create(&model).Error
 }
+
+func (r *userSessionGormRepository) FindByUserID(userID string) (*domain.UserSession, error) {
+	var model UserSessionModel
+
+	err := r.db.
+		Where("user_id = ? AND revoked = ?", userID, false).
+		Order("created_at DESC").
+		First(&model).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.UserSession{
+		ID:               model.ID,
+		UserID:           model.UserID,
+		RefreshTokenHash: model.RefreshTokenHash,
+		UserAgent:        model.UserAgent,
+		IPAddress:        model.IPAddress,
+		ExpiresAt:        model.ExpiresAt,
+		Revoked:          model.Revoked,
+		CreatedAt:        model.CreatedAt,
+	}, nil
+}
+
+func (r *userSessionGormRepository) Revoke(sessionID string) error {
+	return r.db.Model(&UserSessionModel{}).
+		Where("id = ?", sessionID).
+		Update("revoked", true).Error
+}
