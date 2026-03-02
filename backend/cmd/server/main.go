@@ -19,6 +19,7 @@ func main() {
 	// Auto migrate (temporary for development)
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
+	db.AutoMigrate(&repoImpl.UserSessionModel{})
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	_ = usecase.NewUserUsecase(userRepo)
@@ -30,11 +31,12 @@ func main() {
 	})
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo)
+	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	router.POST("/auth/otp/request", authHandler.RequestOTP)
-
+	router.POST("/auth/otp/verify", authHandler.VerifyOTP)
 	log.Println("Server running on :8080")
 	router.Run(":8080")
 }
