@@ -62,6 +62,13 @@ func main() {
 	userGroup.GET("/me", userHandler.GetProfile)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 
+	adminGroup := router.Group("/admin")
+	adminGroup.Use(middleware.JWTAuthMiddleware())
+	adminGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleAdmin))
+
+	adminGroup.GET("/users", userHandler.AdminListUsers)
+	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+
 	log.Println("Server running on :8080")
 	router.Run(":8080")
 }

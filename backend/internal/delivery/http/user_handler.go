@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -48,6 +49,67 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	if err := h.userUsecase.UpdateProfile(userID, req.Name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *UserHandler) AdminListUsers(c *gin.Context) {
+
+	search := c.Query("search")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	users, total, err := h.userUsecase.AdminSearchUsers(search, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		return
+	}
+
+	response := make([]gin.H, 0)
+	for _, u := range users {
+		response = append(response, gin.H{
+			"id":         u.ID,
+			"name":       u.Name,
+			"email":      u.Email,
+			"is_active":  u.IsActive,
+			"created_at": u.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"users": response,
+			"pagination": gin.H{
+				"page":  page,
+				"limit": limit,
+				"total": total,
+			},
+		},
+	})
+}
+
+type updateStatusRequest struct {
+	IsActive bool `json:"is_active"`
+}
+
+func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
+
+	userID := c.Param("id")
+
+	var req updateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		return
+	}
+
+	if err := h.userUsecase.AdminUpdateUserStatus(userID, req.IsActive); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 		return
 	}

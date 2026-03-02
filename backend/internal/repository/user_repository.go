@@ -7,4 +7,11 @@ type UserRepository interface {
 	FindByEmail(email string) (*domain.User, error)
 	FindByID(id string) (*domain.User, error)
 	Update(user *domain.User) error
+	Search(
+		search string,
+		page int,
+		limit int,
+	) ([]domain.User, int64, error)
+
+	UpdateStatus(userID string, isActive bool) error
 }

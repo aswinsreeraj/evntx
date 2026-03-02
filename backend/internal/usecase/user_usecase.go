@@ -44,3 +44,15 @@ func (u *UserUsecase) UpdateProfile(userID, name string) error {
 
 	return u.repo.Update(user)
 }
+
+func (u *UserUsecase) AdminSearchUsers(
+	search string,
+	page int,
+	limit int,
+) ([]domain.User, int64, error) {
+	return u.repo.Search(search, page, limit)
+}
+
+func (u *UserUsecase) AdminUpdateUserStatus(userID string, isActive bool) error {
+	return u.repo.UpdateStatus(userID, isActive)
+}
