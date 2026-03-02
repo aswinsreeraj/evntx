@@ -143,3 +143,18 @@ func (u *AuthUsecase) RefreshToken(refreshToken string) (string, error) {
 
 	return jwtutil.GenerateAccessToken(userID)
 }
+
+func (u *AuthUsecase) Logout(refreshToken string) error {
+
+	userID, err := jwtutil.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return err
+	}
+
+	session, err := u.sessionRepo.FindByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	return u.sessionRepo.Revoke(session.ID)
+}
