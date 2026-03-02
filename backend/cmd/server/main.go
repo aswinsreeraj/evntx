@@ -10,9 +10,11 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
 	db, err := database.NewPostgresConnection()
 	if err != nil {
 		log.Fatal("failed to connect to database:", err)
