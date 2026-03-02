@@ -86,3 +86,58 @@ func (r *userGormRepository) Update(user *domain.User) error {
 			"updated_at":     time.Now(),
 		}).Error
 }
+
+func (r *userGormRepository) Search(
+	search string,
+	page int,
+	limit int,
+) ([]domain.User, int64, error) {
+
+	var models []UserModel
+	var total int64
+
+	query := r.db.Model(&UserModel{})
+
+	if search != "" {
+		query = query.Where(
+			"name ILIKE ? OR email ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	query.Count(&total)
+
+	offset := (page - 1) * limit
+
+	err := query.
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&models).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]domain.User, 0)
+	for _, m := range models {
+		users = append(users, domain.User{
+			ID:            m.ID,
+			Name:          m.Name,
+			Email:         m.Email,
+			IsActive:      m.IsActive,
+			EmailVerified: m.EmailVerified,
+			CreatedAt:     m.CreatedAt,
+			UpdatedAt:     m.UpdatedAt,
+		})
+	}
+
+	return users, total, nil
+}
+
+func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {
+	return r.db.Model(&UserModel{}).
+		Where("id = ?", userID).
+		Update("is_active", isActive).Error
+}
