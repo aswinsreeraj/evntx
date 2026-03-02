@@ -83,5 +83,6 @@ func (r *userGormRepository) Update(user *domain.User) error {
 			"email":          user.Email,
 			"is_active":      user.IsActive,
 			"email_verified": user.EmailVerified,
+			"updated_at":     time.Now(),
 		}).Error
 }

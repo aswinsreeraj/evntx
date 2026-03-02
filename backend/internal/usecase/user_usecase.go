@@ -29,3 +29,18 @@ func (u *UserUsecase) Register(email string) (*domain.User, error) {
 
 	return user, nil
 }
+
+func (u *UserUsecase) GetProfile(userID string) (*domain.User, error) {
+	return u.repo.FindByID(userID)
+}
+
+func (u *UserUsecase) UpdateProfile(userID, name string) error {
+	user, err := u.repo.FindByID(userID)
+	if err != nil {
+		return err
+	}
+
+	user.Name = name
+
+	return u.repo.Update(user)
+}

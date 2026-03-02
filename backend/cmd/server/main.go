@@ -25,7 +25,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.UserRoleModel{})
 
 	userRepo := repoImpl.NewUserGormRepository(db)
-	_ = usecase.NewUserUsecase(userRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo)
 
 	router := gin.Default()
 
@@ -53,6 +53,14 @@ func main() {
 	protected.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})
 	})
+
+	userHandler := httpDelivery.NewUserHandler(userUsecase)
+
+	userGroup := router.Group("/users")
+	userGroup.Use(middleware.JWTAuthMiddleware())
+
+	userGroup.GET("/me", userHandler.GetProfile)
+	userGroup.PUT("/me", userHandler.UpdateProfile)
 
 	log.Println("Server running on :8080")
 	router.Run(":8080")
