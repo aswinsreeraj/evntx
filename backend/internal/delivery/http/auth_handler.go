@@ -77,3 +77,43 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		"refresh_token": refresh,
 	})
 }
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var req refreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		return
+	}
+
+	access, err := h.authUsecase.RefreshToken(req.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":      true,
+		"access_token": access,
+	})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req refreshRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		return
+	}
+
+	if err := h.authUsecase.Logout(req.RefreshToken); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

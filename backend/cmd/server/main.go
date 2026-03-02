@@ -37,6 +37,10 @@ func main() {
 
 	router.POST("/auth/otp/request", authHandler.RequestOTP)
 	router.POST("/auth/otp/verify", authHandler.VerifyOTP)
+
+	router.POST("/auth/refresh", authHandler.Refresh)
+	router.POST("/auth/logout", authHandler.Logout)
+
 	log.Println("Server running on :8080")
 	router.Run(":8080")
 }
