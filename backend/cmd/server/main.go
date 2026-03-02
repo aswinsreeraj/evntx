@@ -4,8 +4,10 @@ import (
 	"log"
 
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
+	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
 	repoImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/repository"
+	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +22,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
+	db.AutoMigrate(&repoImpl.UserRoleModel{})
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	_ = usecase.NewUserUsecase(userRepo)
@@ -29,6 +32,8 @@ func main() {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
@@ -40,6 +45,14 @@ func main() {
 
 	router.POST("/auth/refresh", authHandler.Refresh)
 	router.POST("/auth/logout", authHandler.Logout)
+
+	protected := router.Group("/admin")
+	protected.Use(middleware.JWTAuthMiddleware())
+	protected.Use(middleware.RBACMiddleware(roleRepo, domain.RoleAdmin))
+
+	protected.GET("/dashboard", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "admin access granted"})
+	})
 
 	log.Println("Server running on :8080")
 	router.Run(":8080")
