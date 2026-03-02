@@ -120,3 +120,26 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 
 	return accessToken, refreshToken, nil
 }
+
+func (u *AuthUsecase) RefreshToken(refreshToken string) (string, error) {
+
+	userID, err := jwtutil.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return "", err
+	}
+
+	session, err := u.sessionRepo.FindByUserID(userID)
+	if err != nil {
+		return "", err
+	}
+
+	if session.Revoked || session.ExpiresAt.Before(time.Now()) {
+		return "", err
+	}
+
+	if err := otp.CompareOTP(session.RefreshTokenHash, refreshToken); err != nil {
+		return "", err
+	}
+
+	return jwtutil.GenerateAccessToken(userID)
+}
