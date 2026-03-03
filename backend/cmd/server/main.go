@@ -50,6 +50,7 @@ func main() {
 
 	router.POST("/auth/refresh", authHandler.Refresh)
 	router.POST("/auth/logout", authHandler.Logout)
+	router.POST("/auth/oauth/google", authHandler.GoogleLogin)
 
 	protected := router.Group("/admin")
 	protected.Use(middleware.JWTAuthMiddleware())

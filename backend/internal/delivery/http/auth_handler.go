@@ -109,3 +109,32 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	response.Success(c, "Logged out successfully", nil)
 }
+
+type googleLoginRequest struct {
+	IDToken string `json:"id_token" binding:"required"`
+}
+
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	var req googleLoginRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		return
+	}
+
+	access, refresh, err := h.authUsecase.GoogleLogin(
+		req.IDToken,
+		c.Request.UserAgent(),
+		c.ClientIP(),
+	)
+
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, apiErrors.UnauthorizedAccess, "Invalid Google token")
+		return
+	}
+
+	response.Success(c, "Login successful", gin.H{
+		"access_token":  access,
+		"refresh_token": refresh,
+	})
+}

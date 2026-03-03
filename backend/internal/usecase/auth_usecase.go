@@ -9,6 +9,7 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/repository"
 	"github.com/aswinsreeraj/evntx/pkg/hash"
 	jwtutil "github.com/aswinsreeraj/evntx/pkg/jwt"
+	oauthutil "github.com/aswinsreeraj/evntx/pkg/oauth"
 	"github.com/aswinsreeraj/evntx/pkg/otp"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -171,4 +172,58 @@ func (u *AuthUsecase) Logout(refreshToken string) error {
 	}
 
 	return u.sessionRepo.Revoke(session.ID)
+}
+
+func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string, error) {
+
+	googleUser, err := oauthutil.VerifyGoogleIDToken(idToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := u.userRepo.FindByEmail(googleUser.Email)
+	if err != nil {
+		// create new user
+		user = &domain.User{
+			ID:            uuid.NewString(),
+			Email:         googleUser.Email,
+			Name:          googleUser.Name,
+			IsActive:      true,
+			EmailVerified: true,
+		}
+		if err := u.userRepo.Create(user); err != nil {
+			return "", "", err
+		}
+	}
+
+	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshHash, err := otp.HashOTP(refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	session := &domain.UserSession{
+		ID:               uuid.NewString(),
+		UserID:           user.ID,
+		RefreshTokenHash: refreshHash,
+		UserAgent:        userAgent,
+		IPAddress:        ip,
+		ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+		Revoked:          false,
+	}
+
+	if err := u.sessionRepo.Create(session); err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
