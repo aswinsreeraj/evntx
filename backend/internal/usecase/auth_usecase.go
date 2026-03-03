@@ -206,10 +206,7 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 		return "", "", err
 	}
 
-	refreshHash, err := otp.HashOTP(refreshToken)
-	if err != nil {
-		return "", "", err
-	}
+	refreshHash := hash.HashToken(refreshToken)
 
 	session := &domain.UserSession{
 		ID:               uuid.NewString(),

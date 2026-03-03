@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -129,6 +130,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	)
 
 	if err != nil {
+		log.Printf("AuthUsecase.GoogleLogin failed: %v", err)
 		response.Error(c, http.StatusUnauthorized, apiErrors.UnauthorizedAccess, "Invalid Google token")
 		return
 	}
