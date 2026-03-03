@@ -46,8 +46,16 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	router.POST("/auth/otp/request", authHandler.RequestOTP)
-	router.POST("/auth/otp/verify", authHandler.VerifyOTP)
+	router.POST(
+		"/auth/otp/request",
+		middleware.RateLimitMiddleware(5, 5), // 5 req/sec burst 5
+		authHandler.RequestOTP,
+	)
+	router.POST(
+		"/auth/otp/verify",
+		middleware.RateLimitMiddleware(5, 5),
+		authHandler.VerifyOTP,
+	)
 
 	router.POST("/auth/refresh", authHandler.Refresh)
 	router.POST("/auth/logout", authHandler.Logout)
