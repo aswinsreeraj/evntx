@@ -2,8 +2,9 @@ package oauth
 
 import (
 	"context"
-	"log"
 	"os"
+
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 
 	"google.golang.org/api/idtoken"
 )
@@ -17,7 +18,7 @@ type GoogleUser struct {
 func VerifyGoogleIDToken(idToken string) (*GoogleUser, error) {
 	payload, err := idtoken.Validate(context.Background(), idToken, os.Getenv("GOOGLE_CLIENT_ID"))
 	if err != nil {
-		log.Printf("Google ID token validation failed: %v", err)
+		logger.Log.Error().Msgf("Google ID token validation failed: %v", err)
 		return nil, err
 	}
 
