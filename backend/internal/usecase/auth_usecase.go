@@ -1,13 +1,17 @@
 package usecase
 
 import (
+	"errors"
+	"log"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	"github.com/aswinsreeraj/evntx/pkg/hash"
 	jwtutil "github.com/aswinsreeraj/evntx/pkg/jwt"
 	"github.com/aswinsreeraj/evntx/pkg/otp"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type AuthUsecase struct {
@@ -62,12 +66,19 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
 
 func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (string, string, error) {
 
+	log.Println("Verifying email:", email)
+
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
+		log.Println("FindValidOTP failed:", err)
 		return "", "", err
 	}
 
+	log.Println("Stored OTP hash:", storedOTP.OTPHash)
+	log.Println("Raw OTP received:", rawOTP)
+
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
+		log.Println("Compare failed:", err)
 		return "", "", err
 	}
 
@@ -77,14 +88,20 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 
 	// find or create user
 	user, err := u.userRepo.FindByEmail(email)
+
 	if err != nil {
-		user = &domain.User{
-			ID:            uuid.NewString(),
-			Email:         email,
-			IsActive:      true,
-			EmailVerified: true,
-		}
-		if err := u.userRepo.Create(user); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			user = &domain.User{
+				ID:            uuid.NewString(),
+				Email:         email,
+				IsActive:      true,
+				EmailVerified: true,
+			}
+
+			if err := u.userRepo.Create(user); err != nil {
+				return "", "", err
+			}
+		} else {
 			return "", "", err
 		}
 	}
@@ -99,10 +116,7 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 		return "", "", err
 	}
 
-	refreshHash, err := otp.HashOTP(refreshToken)
-	if err != nil {
-		return "", "", err
-	}
+	refreshHash := hash.HashToken(refreshToken)
 
 	session := &domain.UserSession{
 		ID:               uuid.NewString(),
@@ -137,8 +151,8 @@ func (u *AuthUsecase) RefreshToken(refreshToken string) (string, error) {
 		return "", err
 	}
 
-	if err := otp.CompareOTP(session.RefreshTokenHash, refreshToken); err != nil {
-		return "", err
+	if session.RefreshTokenHash != hash.HashToken(refreshToken) {
+		return "", errors.New("invalid refresh token")
 	}
 
 	return jwtutil.GenerateAccessToken(userID)

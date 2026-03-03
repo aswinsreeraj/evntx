@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
@@ -14,7 +15,9 @@ import (
 )
 
 func main() {
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("failed to load env")
+	}
 	db, err := database.NewPostgresConnection()
 	if err != nil {
 		log.Fatal("failed to connect to database:", err)
