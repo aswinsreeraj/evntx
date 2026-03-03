@@ -9,6 +9,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/rs/zerolog v1.34.0
 	golang.org/x/crypto v0.48.0
+	golang.org/x/time v0.14.0
 	google.golang.org/api v0.269.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
