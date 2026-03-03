@@ -20,17 +20,20 @@ type AuthUsecase struct {
 	otpRepo     repository.EmailOTPRepository
 	userRepo    repository.UserRepository
 	sessionRepo repository.UserSessionRepository
+	emailSender repository.EmailSender
 }
 
 func NewAuthUsecase(
 	otpRepo repository.EmailOTPRepository,
 	userRepo repository.UserRepository,
 	sessionRepo repository.UserSessionRepository,
+	emailSender repository.EmailSender,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		otpRepo:     otpRepo,
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
+		emailSender: emailSender,
 	}
 }
 func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
@@ -62,8 +65,11 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
 		return "", err
 	}
 
-	// return raw OTP (for now, for testing)
-	return rawOTP, nil
+	if err := u.emailSender.SendOTP(email, rawOTP); err != nil {
+		return "", err
+	}
+
+	return "", nil
 }
 
 func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (string, string, error) {
