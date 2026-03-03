@@ -4,6 +4,7 @@ import (
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
+	emailImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/email"
 	repoImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/repository"
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -40,10 +41,11 @@ func main() {
 	})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
+	emailSender := emailImpl.NewSMTPSender()
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	router.POST(
