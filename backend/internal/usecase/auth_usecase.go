@@ -2,8 +2,9 @@ package usecase
 
 import (
 	"errors"
-	"log"
 	"time"
+
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
@@ -67,19 +68,19 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
 
 func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (string, string, error) {
 
-	log.Println("Verifying email:", email)
+	logger.Log.Info().Msgf("Verifying email: %s", email)
 
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
-		log.Println("FindValidOTP failed:", err)
+		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
 		return "", "", err
 	}
 
-	log.Println("Stored OTP hash:", storedOTP.OTPHash)
-	log.Println("Raw OTP received:", rawOTP)
+	logger.Log.Info().Msgf("Stored OTP hash: %s", storedOTP.OTPHash)
+	logger.Log.Info().Msgf("Raw OTP received: %s", rawOTP)
 
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
-		log.Println("Compare failed:", err)
+		logger.Log.Warn().Msgf("Compare failed: %v", err)
 		return "", "", err
 	}
 

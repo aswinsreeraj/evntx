@@ -1,26 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
 	repoImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/repository"
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 func main() {
+	logger.Init()
 	if err := godotenv.Load(); err != nil {
-		fmt.Println("failed to load env")
+		logger.Log.Warn().Msg("failed to load env")
 	}
 	db, err := database.NewPostgresConnection()
 	if err != nil {
-		log.Fatal("failed to connect to database:", err)
+		logger.Log.Fatal().Msgf("failed to connect to database: %v", err)
 	}
 
 	// Auto migrate (temporary for development)
@@ -32,7 +31,9 @@ func main() {
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(middleware.LoggingMiddleware())
+	router.Use(gin.Recovery())
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -45,8 +46,16 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	router.POST("/auth/otp/request", authHandler.RequestOTP)
-	router.POST("/auth/otp/verify", authHandler.VerifyOTP)
+	router.POST(
+		"/auth/otp/request",
+		middleware.RateLimitMiddleware(5, 5), // 5 req/sec burst 5
+		authHandler.RequestOTP,
+	)
+	router.POST(
+		"/auth/otp/verify",
+		middleware.RateLimitMiddleware(5, 5),
+		authHandler.VerifyOTP,
+	)
 
 	router.POST("/auth/refresh", authHandler.Refresh)
 	router.POST("/auth/logout", authHandler.Logout)
@@ -75,6 +84,6 @@ func main() {
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
 
-	log.Println("Server running on :8080")
+	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")
 }
