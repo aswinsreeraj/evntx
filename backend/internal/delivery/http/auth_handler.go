@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -67,7 +68,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false})
+		log.Println("VerifyEmailOTP error:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
 		return
 	}
 
