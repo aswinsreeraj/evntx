@@ -14,4 +14,5 @@ const (
 	InvalidOTP             = "EVT_011"
 	EventNotLive           = "EVT_012"
 	RateLimitExceeded      = "EVT_013"
+	InternalServerError    = "EVT_999"
 )
