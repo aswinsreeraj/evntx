@@ -1,21 +1,15 @@
-import { createBrowserRouter } from "react-router-dom";
+import Layout from "../shared/components/Layout";
 import HomePage from "../modules/auth/pages/HomePage";
 import LoginPage from "../modules/auth/pages/LoginPage";
-import Layout from "../shared/Layout";
+import VerifyOtpPage from "../modules/auth/pages/VerifyOtpPage";
 
 export const router = createBrowserRouter([
     {
-        path: "/",
         element: <Layout />,
         children: [
-            {
-                index: true,
-                element: <HomePage />,
-            },
-            {
-                path: "login",
-                element: <LoginPage />,
-            },
+            { path: "/", element: <HomePage /> },
+            { path: "/login", element: <LoginPage /> },
+            { path: "/verify-otp", element: <VerifyOtpPage /> },
         ],
     },
 ]);
