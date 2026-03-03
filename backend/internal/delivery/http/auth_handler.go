@@ -31,15 +31,13 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 		return
 	}
 
-	otp, err := h.authUsecase.RequestEmailOTP(req.Email)
+	_, err := h.authUsecase.RequestEmailOTP(req.Email)
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, apiErrors.InvalidRequestBody, "Failed to generate OTP")
 		return
 	}
 
-	response.Success(c, "OTP sent successfully", gin.H{
-		"otp": otp, // remove later - only for testing
-	})
+	response.Success(c, "OTP sent successfully", nil)
 }
 
 type otpVerifyRequest struct {
