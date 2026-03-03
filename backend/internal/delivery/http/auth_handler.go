@@ -1,10 +1,11 @@
 package http
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,26 +25,18 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	var req otpRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid email format")
 		return
 	}
 
 	otp, err := h.authUsecase.RequestEmailOTP(req.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to generate OTP",
-		})
+		response.Error(c, http.StatusInternalServerError, apiErrors.InvalidRequestBody, "Failed to generate OTP")
 		return
 	}
 
-	// temporary: return OTP for testing
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"otp":     otp,
+	response.Success(c, "OTP sent successfully", gin.H{
+		"otp": otp, // remove later - only for testing
 	})
 }
 
@@ -56,7 +49,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req otpVerifyRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
 		return
 	}
 
@@ -68,16 +61,11 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	)
 
 	if err != nil {
-		log.Println("VerifyEmailOTP error:", err)
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"error":   err.Error(),
-		})
+		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Invalid or expired OTP")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":       true,
+	response.Success(c, "Login successful", gin.H{
 		"access_token":  access,
 		"refresh_token": refresh,
 	})
@@ -91,18 +79,17 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req refreshRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
 		return
 	}
 
 	access, err := h.authUsecase.RefreshToken(req.RefreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false})
+		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Invalid refresh token")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
+	response.Success(c, "Token refreshed successfully", gin.H{
 		"access_token": access,
 	})
 }
@@ -111,14 +98,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	var req refreshRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
 		return
 	}
 
 	if err := h.authUsecase.Logout(req.RefreshToken); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false})
+		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Failed to logout")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	response.Success(c, "Logged out successfully", nil)
 }

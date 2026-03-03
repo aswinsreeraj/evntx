@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	apiResponse "github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,17 +23,14 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	user, err := h.userUsecase.GetProfile(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusNotFound, apiErrors.ResourceNotFound, "User not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"id":    user.ID,
-			"name":  user.Name,
-			"email": user.Email,
-		},
+	apiResponse.Success(c, "Profile retrieved successfully", gin.H{
+		"id":    user.ID,
+		"name":  user.Name,
+		"email": user.Email,
 	})
 }
 
@@ -44,16 +43,16 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	var req updateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
 		return
 	}
 
 	if err := h.userUsecase.UpdateProfile(userID, req.Name); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	apiResponse.Success(c, "Profile updated successfully", nil)
 }
 
 func (h *UserHandler) AdminListUsers(c *gin.Context) {
@@ -67,7 +66,7 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 
 	users, total, err := h.userUsecase.AdminSearchUsers(search, page, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to retrieve users")
 		return
 	}
 
@@ -82,15 +81,12 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"users": response,
-			"pagination": gin.H{
-				"page":  page,
-				"limit": limit,
-				"total": total,
-			},
+	apiResponse.Success(c, "Users retrieved successfully", gin.H{
+		"users": response,
+		"pagination": gin.H{
+			"page":  page,
+			"limit": limit,
+			"total": total,
 		},
 	})
 }
@@ -105,14 +101,14 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 
 	var req updateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
 		return
 	}
 
 	if err := h.userUsecase.AdminUpdateUserStatus(userID, req.IsActive); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false})
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update user status")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	apiResponse.Success(c, "User status updated successfully", nil)
 }
