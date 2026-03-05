@@ -86,6 +86,13 @@ func main() {
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
 
+	eventRepo := repoImpl.NewEventGormRepository(db)
+	eventUsecase := usecase.NewEventUsecase(eventRepo)
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
+
+	router.GET("/events", eventHandler.ListEvents)
+	router.GET("/events/:slug", eventHandler.GetEvent)
+
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")
 }
