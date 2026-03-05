@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/aswin/evntx/internal/domain"
+	"github.com/aswinsreeraj/evntx/internal/domain"
 	"gorm.io/gorm"
 )
 
