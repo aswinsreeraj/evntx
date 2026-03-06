@@ -1,9 +1,11 @@
 import Button from "../ui/Button"
 import AuthModal from "../../modules/auth/components/AuthModal"
 import { useState } from "react"
+import { useAuthStore } from "../../modules/auth/store/authStore"
 
 function Navbar() {
     const [open, setOpen] = useState(false)
+    const { isAuthenticated, logout } = useAuthStore()
 
 
   return (
@@ -16,9 +18,15 @@ function Navbar() {
             + Create Event
           </button>
 
-        <Button onClick={() => setOpen(true)}>
-            Login
-        </Button>
+        {isAuthenticated ? (
+          <Button onClick={logout}>
+              Logout
+          </Button>
+        ) : (
+          <Button onClick={() => setOpen(true)}>
+              Login
+          </Button>
+        )}
 
         <AuthModal open={open} onClose={() => setOpen(false)} />
         </div>

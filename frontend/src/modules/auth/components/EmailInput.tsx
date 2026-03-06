@@ -3,8 +3,13 @@ import { authApi } from "../api"
 function EmailInput({ email, setEmail, setView }: any) {
 
   const requestOtp = async () => {
-    await authApi.requestOtp(email)
-    setView("otp-verify")
+    try {
+      await authApi.requestOtp(email)
+      setView("otp-verify")
+    } catch (error) {
+      console.error("Failed to send OTP", error)
+      alert("Failed to send OTP. Is your backend running and configured in .env?")
+    }
   }
 
   return (
@@ -26,7 +31,7 @@ function EmailInput({ email, setEmail, setView }: any) {
         onClick={requestOtp}
         className="w-full bg-black text-white py-3 rounded-lg"
       >
-        Send OTP
+        Send OTP +
       </button>
 
     </div>
