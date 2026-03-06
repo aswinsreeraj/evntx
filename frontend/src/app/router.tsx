@@ -1,4 +1,4 @@
-import Layout from "../shared/Layout";
+import Layout from "../shared/components/Layout";
 import HomePage from "../modules/auth/pages/HomePage";
 import LoginPage from "../modules/auth/pages/LoginPage";
 import VerifyOtpPage from "../modules/auth/pages/VerifyOtpPage";
