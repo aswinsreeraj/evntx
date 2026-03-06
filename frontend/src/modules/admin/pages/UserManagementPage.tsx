@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useUsers, useToggleUserStatus } from "../hooks";
 
 function UserManagementPage() {
-  const [page, setPage] = useState(1);
+  const [page] = useState(1);
 
   const { data, isLoading } = useUsers({ page, limit: 10 });
 
