@@ -1,44 +1,67 @@
 import { Link } from "react-router-dom"
+import { MapPin } from "lucide-react"
 
 type Props = {
   event: any
 }
 
-function EventCard({ event }: Props) {
+export default function EventCard({ event }: Props) {
+  // Format date correctly based on Figma (e.g., 21 Feb 2026)
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-GB', options);
+  };
+
+  // Format time (e.g., 12:00 PM)
+  const formatTime = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleTimeString('en-US', options);
+  };
+
   return (
     <Link to={`/events/${event.id}`}>
-      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col border border-gray-100">
 
-        <div className="relative">
+        <div className="relative h-48 w-full shrink-0">
           <img
             src={event.cover_image_url}
             alt={event.title}
-            className="h-48 w-full object-cover"
+            className="h-full w-full object-cover"
           />
-
-          <span className="absolute top-3 right-3 bg-red-500 text-white text-xs px-3 py-1 rounded-full">
-            {new Date(event.start_time).toLocaleDateString()}
+          <span className="absolute top-3 right-3 bg-[#e53e5d]/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-md shadow-sm">
+            {formatDate(event.start_time)}
           </span>
         </div>
 
-        <div className="p-4">
-          <h3 className="font-semibold">{event.title}</h3>
+        <div className="p-5 flex flex-col flex-grow">
+          <h3 className="font-bold text-gray-900 text-lg mb-1 line-clamp-1">{event.title}</h3>
 
-          <p className="text-sm text-gray-500">
-            {new Date(event.start_time).toLocaleTimeString()}
+          <p className="text-sm font-medium text-gray-700 mb-1">
+            {formatTime(event.start_time)}
           </p>
 
-          <p className="text-sm text-red-500 mt-1">
+          <div className="flex items-center text-sm text-[#e53e5d] font-medium mb-3">
+            <MapPin className="w-3.5 h-3.5 mr-1" />
             {event.city}
+          </div>
+
+          <p className="text-xs text-gray-500 mb-4 line-clamp-2 leading-relaxed flex-grow">
+            {event.description}
           </p>
 
-          <p className="text-xs text-gray-400 mt-2">
-            {event.description?.slice(0, 80)}
-          </p>
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2 mt-auto">
+            {event.tags?.map((tag: string, index: number) => (
+              <span 
+                key={index} 
+                className="bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </Link>
   )
 }
-
-export default EventCard
