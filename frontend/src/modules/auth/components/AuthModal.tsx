@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from "framer-motion"
 
 import Modal from "../../../shared/ui/Modal"
 import LoginChoice from "./LoginChoice"
-import EmailInput from "./EmailInput"
 import OTPVerify from "./OTPVerify"
 import RegisterForm from "./RegisterForm"
 
 type AuthView =
   | "login-choice"
-  | "email-input"
   | "otp-verify"
   | "register"
 
@@ -32,7 +30,7 @@ function AuthModal({ open, onClose }: any) {
         </div>
 
         {/* Animated content */}
-        <div className="relative w-full md:w-1/2 p-10 flex flex-col justify-center overflow-x-hidden">
+        <div className="relative w-full md:w-1/2 p-10 flex flex-col overflow-y-auto scrollbar-hide">
 
           <AnimatePresence mode="wait">
 
@@ -51,21 +49,7 @@ function AuthModal({ open, onClose }: any) {
               </motion.div>
             )}
 
-            {view === "email-input" && (
-              <motion.div
-                key="email-input"
-                initial={{ x: 50, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: -50, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <EmailInput
-                  email={email}
-                  setEmail={setEmail}
-                  setView={setView}
-                />
-              </motion.div>
-            )}
+
 
             {view === "otp-verify" && (
               <motion.div
@@ -90,7 +74,7 @@ function AuthModal({ open, onClose }: any) {
                 exit={{ x: -50, opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <RegisterForm email={email} />
+                <RegisterForm email={email} onClose={onClose} />
               </motion.div>
             )}
 

@@ -1,14 +1,52 @@
-import { handleGoogleLogin } from "../googleAuth"
+import { useState } from "react"
+import { useGoogleLogin } from "@react-oauth/google"
+import { authApi } from "../api"
 
 export default function LoginChoice({ setView, setEmail }: any) {
+  const [localEmail, setLocalEmail] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleGoogle = async () => {
-    // later integrate Google SDK
-    console.log("Google login")
-  }
+  const handleGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        await authApi.googleLogin(tokenResponse.access_token);
+        window.location.href = "/profile";
+      } catch (error) {
+        console.error("Google login failed", error);
+        alert("Google login failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      console.error("Google Login Failed");
+      alert("Google Login Failed");
+    }
+  });
+
+  const handleContinue = async () => {
+    if (!localEmail) return;
+    setLoading(true);
+    try {
+      const res = await authApi.requestOtp(localEmail);
+      setEmail(localEmail);
+      
+      if (res.data?.is_new_user) {
+        setView("register");
+      } else {
+        setView("otp-verify");
+      }
+    } catch (error) {
+      console.error("Failed to send OTP", error);
+      alert("Failed to send OTP. Is your backend running?");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+    <div className="flex flex-col items-center w-full max-w-sm m-auto">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center">
         Welcome to the world of events
       </h2>
@@ -19,7 +57,7 @@ export default function LoginChoice({ setView, setEmail }: any) {
       </p>
 
       <button
-        onClick={handleGoogle}
+        onClick={() => handleGoogle()}
         className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-3 mb-8 hover:bg-gray-50 transition-colors"
       >
         <img 
@@ -37,16 +75,18 @@ export default function LoginChoice({ setView, setEmail }: any) {
       </div>
 
       <input
+        value={localEmail}
         placeholder="Enter your email here"
         className="w-full border border-gray-300 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) => setLocalEmail(e.target.value)}
       />
 
       <button
-        onClick={() => setView("email-input")}
-        className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors mb-8"
+        onClick={handleContinue}
+        disabled={!localEmail || loading}
+        className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors mb-8 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        Continue
+        {loading ? "Sending OTP..." : "Continue"}
       </button>
 
       <p className="text-xs text-center text-gray-500 leading-tight">

@@ -28,14 +28,18 @@ api.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
+                const refreshToken = tokenManager.getRefreshToken();
+                if (!refreshToken) {
+                    throw new Error("No refresh token available");
+                }
+
                 const response = await axios.post(
                     `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
-                    {},
+                    { refresh_token: refreshToken },
                     { withCredentials: true }
                 );
 
                 const newToken = response.data.data.access_token;
-
                 tokenManager.setToken(newToken);
 
                 return api(originalRequest);

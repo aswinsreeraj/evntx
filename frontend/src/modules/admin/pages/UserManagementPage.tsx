@@ -5,7 +5,7 @@ import { ChevronDown, Download } from "lucide-react";
 
 export default function UserManagementPage() {
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useUsers({ page, limit: 10 });
+  const { data } = useUsers({ page, limit: 10 });
   const toggleUser = useToggleUserStatus();
 
   // State for the "dropdown" action menu
@@ -23,34 +23,7 @@ export default function UserManagementPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const dummyUsers = [
-    {
-      user_id: "1",
-      name: "John Smith",
-      email: "jsmith@example.com",
-      is_active: true,
-      total_bookings: 0,
-      wallet_balance: 0,
-    },
-    {
-      user_id: "2",
-      name: "Jane Doe",
-      email: "janedoe@eple.com",
-      is_active: false,
-      total_bookings: 800,
-      wallet_balance: 24000,
-    },
-    {
-      user_id: "3",
-      name: "Joseph Doe",
-      email: "joedoe@mail.com",
-      is_active: true,
-      total_bookings: 0,
-      wallet_balance: 0,
-    },
-  ];
-
-  const usersList = data?.users && data.users.length > 0 ? data.users : dummyUsers;
+  const usersList = data?.users || [];
 
   return (
     <AdminLayout title="User List">
@@ -71,7 +44,7 @@ export default function UserManagementPage() {
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
               {usersList.map((user: any) => (
-                <tr key={user.user_id} className="hover:bg-gray-50 transition-colors">
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-center">{user.name}</td>
                   <td className="px-6 py-4 text-center">{user.email}</td>
                   {/* Since these properties might not exist in the real API yet, we fallback to 0 */}
@@ -88,20 +61,20 @@ export default function UserManagementPage() {
                   </td>
                   <td className="px-6 py-4 text-center relative">
                     <button
-                      onClick={() => setOpenDropdownId(openDropdownId === user.user_id ? null : user.user_id)}
+                      onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
                       className="inline-flex items-center justify-between w-20 px-3 py-1.5 border border-blue-500 rounded-lg text-[#0b101e] text-xs font-semibold hover:bg-gray-50 transition-colors"
                     >
                       View <ChevronDown className="w-4 h-4 text-blue-500" />
                     </button>
                     
                     {/* Minimal Context Menu for toggling status */}
-                    {openDropdownId === user.user_id && (
+                    {openDropdownId === user.id && (
                       <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
                         <button
                           className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
                           onClick={() => {
                             toggleUser.mutate({
-                              userId: user.user_id,
+                              userId: user.id,
                               isActive: !user.is_active,
                             });
                             setOpenDropdownId(null);

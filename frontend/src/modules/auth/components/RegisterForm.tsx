@@ -1,12 +1,31 @@
 import { useState } from "react";
-import { ChevronDown, CalendarDays } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import OTPInput from "./OTPInput";
+import { authApi } from "../api";
 
-export default function RegisterForm({ email }: any) {
+export default function RegisterForm({ email, onClose }: any) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
   const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("Male");
   const [isOtherDropdownOpen, setIsOtherDropdownOpen] = useState(false);
+  const [otp, setOtp] = useState("");
+
+  const handleRegister = async () => {
+    if (otp.length !== 6 || !firstName) return;
+    try {
+      const name = `${firstName} ${lastName}`.trim();
+      await authApi.verifyOtp(email, otp, name);
+      if (onClose) onClose();
+      window.location.href = "/profile";
+    } catch (e) {
+      console.error(e);
+      alert("Failed to register. Invalid OTP.");
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm mx-auto overflow-y-auto max-h-[80vh] pr-2 pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+    <div className="flex flex-col items-center w-full max-w-sm m-auto py-4">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center mt-4">
         Welcome to EVNTX family
       </h2>
@@ -28,6 +47,8 @@ export default function RegisterForm({ email }: any) {
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-2">First Name</label>
           <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
             placeholder="John"
             className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors text-sm"
           />
@@ -35,7 +56,9 @@ export default function RegisterForm({ email }: any) {
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-2">Last Name</label>
           <input
-            placeholder="John"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Smith"
             className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors text-sm"
           />
         </div>
@@ -46,11 +69,11 @@ export default function RegisterForm({ email }: any) {
         <label className="text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
         <div className="relative">
           <input
-            type="text"
-            placeholder="Select date"
+            type="date"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors text-sm"
           />
-          <CalendarDays className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 w-5 h-5 pointer-events-none" />
         </div>
       </div>
 
@@ -108,19 +131,20 @@ export default function RegisterForm({ email }: any) {
       </div>
 
       {/* Verification Code */}
-      <div className="w-full flex flex-col mb-8">
+      <div className="w-full flex flex-col mb-8 mt-2">
         <label className="text-sm font-medium text-gray-700 mb-2">Verification Code</label>
-        <input
-          placeholder="Enter verification code"
-          className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-gray-400 transition-colors text-sm mb-2"
-        />
-        <p className="text-[#e53e5d] text-xs">
+        <OTPInput value={otp} onChange={setOtp} />
+        <p className="text-[#e53e5d] text-xs mt-2">
           Verification code has been sent to the email
         </p>
       </div>
 
       {/* Register Button */}
-      <button className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors mt-2">
+      <button 
+        onClick={handleRegister}
+        disabled={otp.length !== 6 || !firstName}
+        className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
         Register
       </button>
 

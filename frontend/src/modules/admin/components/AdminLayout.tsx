@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Bell, Search, User } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../auth/store/authStore";
+import { tokenManager } from "../../../services/tokenManager";
 
 type Props = {
   children: ReactNode;
@@ -9,7 +11,9 @@ type Props = {
 
 export default function AdminLayout({ children, title }: Props) {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const { logout } = useAuthStore();
 
   const platformLinks = [
     { name: "Dashboard", path: "/admin/dashboard" },
@@ -78,7 +82,14 @@ export default function AdminLayout({ children, title }: Props) {
         </div>
 
         <div className="p-4 mt-auto">
-          <button className="w-full text-left px-4 py-2 text-[#e53e5d] text-sm font-bold hover:bg-[#141b2d] rounded-xl transition-colors">
+          <button 
+            onClick={() => {
+              logout();
+              tokenManager.clearToken();
+              navigate("/admin/login");
+            }}
+            className="w-full text-left px-4 py-2 text-[#e53e5d] text-sm font-bold hover:bg-[#141b2d] rounded-xl transition-colors"
+          >
             Logout
           </button>
         </div>
