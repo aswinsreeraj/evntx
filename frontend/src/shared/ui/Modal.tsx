@@ -19,13 +19,6 @@ function Modal({ open, onClose, children, className = "bg-white rounded-xl p-6 w
     return () => window.removeEventListener("keydown", handler)
     }, [])
 
-    useEffect(() => {
-  document.body.style.overflow = "hidden"
-  return () => {
-    document.body.style.overflow = "auto"
-  }
-}, [])
-
   return (
     <div 
       className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 transition-opacity"

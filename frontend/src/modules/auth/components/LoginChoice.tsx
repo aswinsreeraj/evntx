@@ -1,14 +1,29 @@
 import { useState } from "react"
+import { useGoogleLogin } from "@react-oauth/google"
 import { authApi } from "../api"
 
 export default function LoginChoice({ setView, setEmail }: any) {
   const [localEmail, setLocalEmail] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleGoogle = async () => {
-    // later integrate Google SDK
-    console.log("Google login")
-  }
+  const handleGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setLoading(true);
+      try {
+        await authApi.googleLogin(tokenResponse.access_token);
+        window.location.href = "/profile";
+      } catch (error) {
+        console.error("Google login failed", error);
+        alert("Google login failed. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      console.error("Google Login Failed");
+      alert("Google Login Failed");
+    }
+  });
 
   const handleContinue = async () => {
     if (!localEmail) return;
@@ -42,7 +57,7 @@ export default function LoginChoice({ setView, setEmail }: any) {
       </p>
 
       <button
-        onClick={handleGoogle}
+        onClick={() => handleGoogle()}
         className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-3 mb-8 hover:bg-gray-50 transition-colors"
       >
         <img 

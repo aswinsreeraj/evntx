@@ -28,8 +28,9 @@ export const authApi = {
 
         const data: VerifyOtpResponse = response.data.data;
 
-        // Set access token in memory
+        // Set tokens
         tokenManager.setToken(data.access_token);
+        tokenManager.setRefreshToken(data.refresh_token);
 
         // Update auth store
         useAuthStore.getState().setAuth(
@@ -51,9 +52,21 @@ export const authApi = {
         const data = response.data.data;
 
         tokenManager.setToken(data.access_token);
+        tokenManager.setRefreshToken(data.refresh_token);
 
-        // Need user details depending on backend response
-        // If backend doesn't return user object here, fetch /users/me later
+        try {
+            const meResponse = await api.get("/users/me");
+            const user = meResponse.data.data;
+            useAuthStore.getState().setAuth(
+                {
+                    id: user.id,
+                    name: user.name,
+                },
+                user.roles || []
+            );
+        } catch (err) {
+            console.error("Failed to fetch user profile after Google login", err);
+        }
 
         return response;
     },

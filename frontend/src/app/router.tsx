@@ -1,7 +1,5 @@
 import Layout from "../shared/components/Layout";
 import HomePage from "../modules/home/pages/HomePage";
-import LoginPage from "../modules/auth/pages/LoginPage";
-import VerifyOtpPage from "../modules/auth/pages/VerifyOtpPage";
 import ProfilePage from "../modules/user/pages/ProfilePage";
 import ProtectedRoute from "../shared/components/ProtectedRoute";
 import { createBrowserRouter } from "react-router-dom";
@@ -15,8 +13,7 @@ export const router = createBrowserRouter([
         element: <Layout />,
         children: [
             { path: "/", element: <HomePage /> },
-            { path: "/login", element: <LoginPage /> },
-            { path: "/verify-otp", element: <VerifyOtpPage /> },
+            { path: "/login", element: <HomePage /> },
             {   path: "/profile",
                 element: (
                     <ProtectedRoute>

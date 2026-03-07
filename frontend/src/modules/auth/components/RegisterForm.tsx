@@ -17,6 +17,7 @@ export default function RegisterForm({ email, onClose }: any) {
       const name = `${firstName} ${lastName}`.trim();
       await authApi.verifyOtp(email, otp, name);
       if (onClose) onClose();
+      window.location.href = "/profile";
     } catch (e) {
       console.error(e);
       alert("Failed to register. Invalid OTP.");

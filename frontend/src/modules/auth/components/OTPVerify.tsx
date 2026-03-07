@@ -9,6 +9,7 @@ export default function OTPVerify({ email }: any) {
     if (otp.length !== 6) return
     try {
       await authApi.verifyOtp(email, otp)
+      window.location.href = "/profile"
     } catch (e) {
       console.error(e)
     }
