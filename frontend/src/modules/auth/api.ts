@@ -15,6 +15,7 @@ type VerifyOtpResponse = {
 
 export const authApi = {
     async requestOtp(email: string) {
+        console.log("Requesting OTP for email:", email);
         return api.post("/auth/otp/request", { email });
     },
 
@@ -50,8 +51,8 @@ export const authApi = {
 
         tokenManager.setToken(data.access_token);
 
-        // You may need user details depending on backend response
-        // If backend doesn't return user object here, you fetch /users/me later
+        // Need user details depending on backend response
+        // If backend doesn't return user object here, fetch /users/me later
 
         return response;
     },

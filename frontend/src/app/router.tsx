@@ -1,5 +1,5 @@
-import Layout from "../shared/Layout";
-import HomePage from "../modules/auth/pages/HomePage";
+import Layout from "../shared/components/Layout";
+import HomePage from "../modules/home/pages/HomePage";
 import LoginPage from "../modules/auth/pages/LoginPage";
 import VerifyOtpPage from "../modules/auth/pages/VerifyOtpPage";
 import ProfilePage from "../modules/user/pages/ProfilePage";

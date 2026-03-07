@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
@@ -9,6 +11,7 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -33,6 +36,16 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo)
 
 	router := gin.New()
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
 	router.Use(middleware.LoggingMiddleware())
 	router.Use(gin.Recovery())
 
