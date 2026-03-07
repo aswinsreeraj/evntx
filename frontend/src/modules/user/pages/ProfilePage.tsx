@@ -59,7 +59,7 @@ export default function ProfilePage() {
         gender,
         locations,
       });
-      // Optionally show a success toast here
+      
     } catch (err) {
       console.error("Failed to save profile", err);
       alert("Failed to save profile. Please try again.");
@@ -88,7 +88,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#f8f9fa] pt-8 pb-16">
       <div className="max-w-[1200px] mx-auto px-6 flex gap-6">
         
-        {/* Sidebar */}
+
         <div className="w-[240px] shrink-0 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col min-h-[600px]">
           <div className="flex flex-col gap-2 mt-4">
             <SidebarItem label="Profile" />
@@ -106,7 +106,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Main Content */}
+
         <div className="flex-1 bg-white rounded-3xl p-10 shadow-sm border border-gray-100 min-h-[600px]">
           {loading ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -115,10 +115,10 @@ export default function ProfilePage() {
           ) : (
             <>
           
-          {/* Avatar Area */}
+
           <div className="flex flex-col items-center mb-12">
             <div className="w-32 h-32 rounded-full overflow-hidden mb-4 bg-gray-400">
-               {/* Stand-in for abstract avatar image */}
+
                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full text-white bg-gray-400">
                  <path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="currentColor"/>
                  <path d="M50 45C58.2843 45 65 38.2843 65 30C65 21.7157 58.2843 15 50 15C41.7157 15 35 21.7157 35 30C35 38.2843 41.7157 45 50 45Z" fill="white"/>
@@ -131,7 +131,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="max-w-[700px] mx-auto">
-            {/* Account Details Section */}
+
             <div className="mb-10">
               <h3 className="text-base font-semibold text-gray-900 mb-4">Account Details</h3>
               <div className="grid grid-cols-2 gap-6">
@@ -162,7 +162,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Personal Details Section */}
+
             <div>
               <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Details</h3>
               <div className="grid grid-cols-2 gap-6 mb-6">
@@ -229,7 +229,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Location Preference */}
+
               <div className="mb-4">
                 <label className="block text-sm text-gray-600 mb-2">Preferred Location</label>
                 <div className="flex gap-4 mb-2">
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val && !locations.includes(val)) setLocations([...locations, val]);
-                        e.target.value = ""; // reset
+                        e.target.value = ""; 
                       }}
                       className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
                     >
@@ -251,7 +251,7 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex gap-4 w-full">
-                  {/* Selected Locations Pills */}
+
                     {locations.map(loc => (
                       <div key={loc} className="flex-1 flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3 bg-white">
                         <span className="text-sm font-medium text-gray-700">{loc}</span>

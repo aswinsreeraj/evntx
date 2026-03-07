@@ -34,7 +34,7 @@ export default function RegisterForm({ email, onClose }: any) {
         Let's complete the registration
       </p>
 
-      {/* Email Input (Disabled state) */}
+
       <div className="w-full flex flex-col mb-4">
         <label className="text-sm font-medium text-gray-700 mb-2">Email</label>
         <div className="w-full border border-gray-200 bg-transparent rounded-xl px-4 py-3 text-sm text-gray-500 cursor-not-allowed">
@@ -42,7 +42,7 @@ export default function RegisterForm({ email, onClose }: any) {
         </div>
       </div>
 
-      {/* Name Inputs */}
+
       <div className="w-full grid grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-2">First Name</label>
@@ -64,7 +64,7 @@ export default function RegisterForm({ email, onClose }: any) {
         </div>
       </div>
 
-      {/* Date of Birth */}
+
       <div className="w-full flex flex-col mb-4">
         <label className="text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
         <div className="relative">
@@ -77,7 +77,7 @@ export default function RegisterForm({ email, onClose }: any) {
         </div>
       </div>
 
-      {/* Gender Selection */}
+
       <div className="w-full flex flex-col mb-4 relative">
         <label className="text-sm font-medium text-gray-700 mb-2">Gender</label>
         <div className="grid grid-cols-3 gap-3">
@@ -115,7 +115,7 @@ export default function RegisterForm({ email, onClose }: any) {
               Other
               <ChevronDown className="w-4 h-4 ml-1 opacity-70" />
             </button>
-            {/* Minimal Dropdown implementation */}
+
             {isOtherDropdownOpen && (
               <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
                 <button 
@@ -130,7 +130,7 @@ export default function RegisterForm({ email, onClose }: any) {
         </div>
       </div>
 
-      {/* Verification Code */}
+
       <div className="w-full flex flex-col mb-8 mt-2">
         <label className="text-sm font-medium text-gray-700 mb-2">Verification Code</label>
         <OTPInput value={otp} onChange={setOtp} />
@@ -139,7 +139,7 @@ export default function RegisterForm({ email, onClose }: any) {
         </p>
       </div>
 
-      {/* Register Button */}
+
       <button 
         onClick={handleRegister}
         disabled={otp.length !== 6 || !firstName}

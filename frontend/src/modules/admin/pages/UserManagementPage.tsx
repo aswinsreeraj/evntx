@@ -8,11 +8,11 @@ export default function UserManagementPage() {
   const { data } = useUsers({ page, limit: 10 });
   const toggleUser = useToggleUserStatus();
 
-  // State for the "dropdown" action menu
+  
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -47,7 +47,7 @@ export default function UserManagementPage() {
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-center">{user.name}</td>
                   <td className="px-6 py-4 text-center">{user.email}</td>
-                  {/* Since these properties might not exist in the real API yet, we fallback to 0 */}
+
                   <td className="px-6 py-4 text-center">{user.total_bookings ?? 0}</td>
                   <td className="px-6 py-4 text-center">{user.wallet_balance ?? 0}</td>
                   <td className="px-6 py-4 text-center">
@@ -67,7 +67,7 @@ export default function UserManagementPage() {
                       View <ChevronDown className="w-4 h-4 text-blue-500" />
                     </button>
                     
-                    {/* Minimal Context Menu for toggling status */}
+
                     {openDropdownId === user.id && (
                       <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
                         <button
@@ -91,7 +91,7 @@ export default function UserManagementPage() {
           </table>
         </div>
 
-        {/* Footer actions of table */}
+
         <div className="flex items-center justify-end px-6 py-4 border-t border-gray-100 mb-2">
           <div className="flex items-center gap-1 text-sm font-medium">
             <button 

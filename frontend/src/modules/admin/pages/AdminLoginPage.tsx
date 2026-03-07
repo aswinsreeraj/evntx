@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen flex bg-white">
-      {/* Left Sidebar - Dark */}
+
       <div className="hidden lg:flex w-[20%] bg-[#0b101e] flex-col justify-start p-10">
         <div className="flex flex-col items-start gap-1">
           <h1 className="text-white text-2xl font-black tracking-wider">EVNTX</h1>
@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-      {/* Right Content Area */}
+
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-md flex flex-col items-center">
           

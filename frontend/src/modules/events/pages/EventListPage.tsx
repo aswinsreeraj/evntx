@@ -6,7 +6,7 @@ import OrganizerCTA from "../../home/components/OrganizerCTA"
 import { Search } from "lucide-react"
 
 function EventListPage() {
-  const { data, isLoading } = useEvents()
+  useEvents()
 
   const dummyEvents = [
     {
@@ -70,7 +70,7 @@ function EventListPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-4">
-        {/* Search and Sort Top Bar */}
+
         <div className="flex gap-4 items-center">
           <div className="flex-1 bg-white border border-gray-200 rounded-xl flex items-center p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
             <Search className="w-5 h-5 text-gray-400 ml-3" />
@@ -85,12 +85,12 @@ function EventListPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Sidebar */}
+
         <div className="col-span-1 hidden lg:block">
           <FilterSidebar />
         </div>
 
-        {/* Event list */}
+
         <div className="col-span-1 lg:col-span-2">
           <EventGrid events={eventsList} />
         </div>

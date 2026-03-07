@@ -1,11 +1,11 @@
 import { useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
-import { CalendarDays, MapPin, Clock, Hourglass, User } from "lucide-react";
+import { CalendarDays, MapPin, Clock, Hourglass } from "lucide-react";
 import { useState } from "react";
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
-  const { data, isLoading, error } = useEvent(eventId!);
+  const { data } = useEvent(eventId!);
 
   const [activeTab, setActiveTab] = useState("About");
 
@@ -35,25 +35,25 @@ export default function EventDetailPage() {
       {
         name: "Joe Smith",
         role: "Lead Performer",
-        avatar: "/assets/images/perfomer.jpg" // dummy avatar replacing the DJ
+        avatar: "/assets/images/perfomer.jpg" 
       },
       {
         name: "DJ Jazee",
         role: "Professional DJ",
-        avatar: "/assets/images/dj.jpg" // dummy avatar
+        avatar: "/assets/images/dj.jpg" 
       }
     ]
   };
 
-  // If we have actual data from the API, we'll try to use it.
-  // Otherwise, fallback to the dummy data to preserve the UI for now.
+  
+  
   const displayEvent = data || event;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Column - Span 2 */}
+
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
             <img 
@@ -110,10 +110,10 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {/* Right Column - Span 1 */}
+
         <div className="lg:col-span-1 flex flex-col gap-6">
           
-          {/* Book Tickets Card */}
+
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Book Tickets</h3>
             
@@ -146,8 +146,8 @@ export default function EventDetailPage() {
             </button>
           </div>
 
-          {/* Host Card */}
-          {/* Host Card */}
+
+
           {displayEvent.host && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Host</h3>
@@ -164,7 +164,7 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* Key Personnel Card */}
+
           {displayEvent.personnel && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Key Personnel</h3>

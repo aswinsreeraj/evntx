@@ -31,7 +31,7 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
   return (
     <Modal open={isOpen} onClose={onClose} className="p-0 max-w-4xl w-[90%] md:w-[800px] rounded-3xl overflow-hidden bg-white relative">
       <div className="flex flex-col md:flex-row h-full">
-        {/* Left Side Image */}
+
         <div className="hidden md:block w-1/2 relative bg-gray-100">
           <img
             src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=1470"
@@ -40,7 +40,7 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
           />
         </div>
 
-        {/* Right Side Content */}
+
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center relative min-h-[500px]">
           
           <button 

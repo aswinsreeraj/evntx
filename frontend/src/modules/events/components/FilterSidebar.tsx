@@ -4,7 +4,7 @@ export default function FilterSidebar() {
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-8">
       
-      {/* Date Range */}
+
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">Date Range</h4>
         <div className="relative">
@@ -17,10 +17,10 @@ export default function FilterSidebar() {
         </div>
       </div>
 
-      {/* Price Range */}
+
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">Price Range</h4>
-        {/* Visual Slider Placeholder */}
+
         <div className="h-1 bg-gray-200 w-full rounded-full mb-4 relative">
           <div className="absolute left-[10%] right-[30%] h-full bg-[#e53e5d] rounded-full"></div>
           <div className="absolute left-[10%] top-1/2 -translate-y-1/2 w-3 h-3 bg-[#e53e5d] rounded-full shadow border-2 border-white"></div>
@@ -39,7 +39,7 @@ export default function FilterSidebar() {
         </div>
       </div>
 
-      {/* Category */}
+
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">Category</h4>
         <button className="w-full bg-red-50 text-red-500 text-sm px-4 py-2.5 rounded-lg flex items-center justify-between mb-3 hover:bg-red-100 transition-colors">
@@ -59,7 +59,7 @@ export default function FilterSidebar() {
         </div>
       </div>
 
-      {/* Location */}
+
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">Location</h4>
         <button className="w-full bg-red-50 text-red-500 text-sm px-4 py-2.5 rounded-lg flex items-center justify-between mb-3 hover:bg-red-100 transition-colors">
@@ -79,7 +79,7 @@ export default function FilterSidebar() {
         </div>
       </div>
 
-      {/* Apply Filter Button */}
+
       <button className="w-full bg-[#0b101e] text-white py-3 rounded-xl text-sm font-medium hover:bg-black transition-colors mt-2">
         Apply Filter
       </button>

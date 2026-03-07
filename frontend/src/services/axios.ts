@@ -4,10 +4,10 @@ import { useAuthStore } from "../modules/auth/store/authStore";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
-    withCredentials: true, // important for refresh cookies
+    withCredentials: true, 
 });
 
-// Request interceptor
+
 api.interceptors.request.use((config) => {
     const token = tokenManager.getToken();
 
@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Response interceptor
+
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
