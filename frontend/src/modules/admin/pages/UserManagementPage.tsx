@@ -23,7 +23,6 @@ export default function UserManagementPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Dummy user data closely matching the Figma design for initial visual development/fallback
   const dummyUsers = [
     {
       user_id: "1",
@@ -51,16 +50,13 @@ export default function UserManagementPage() {
     },
   ];
 
-  // We use `data?.users` if available, otherwise the `dummyUsers` array so UI is always visible
   const usersList = data?.users && data.users.length > 0 ? data.users : dummyUsers;
 
   return (
     <AdminLayout title="User List">
       
-      {/* Table Container */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        
-        {/* Table wrapping dev */}
+
         <div className="w-full overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-[#f8f9fa] text-xs font-bold text-gray-900 border-b border-gray-100">
