@@ -5,8 +5,13 @@ export default function EmailInput({ email, setEmail, setView }: any) {
   const requestOtp = async () => {
     try {
       if (!email) return;
-      await authApi.requestOtp(email)
-      setView("otp-verify")
+      const res = await authApi.requestOtp(email)
+      
+      if (res.data?.is_new_user) {
+        setView("register")
+      } else {
+        setView("otp-verify")
+      }
     } catch (error) {
       console.error("Failed to send OTP", error)
       alert("Failed to send OTP. Is your backend running and configured in .env?")

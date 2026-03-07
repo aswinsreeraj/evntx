@@ -2,7 +2,7 @@ import { useState } from "react"
 import OTPInput from "./OTPInput"
 import { authApi } from "../api"
 
-export default function OTPVerify({ email, setView }: any) {
+export default function OTPVerify({ email }: any) {
   const [otp, setOtp] = useState("")
 
   const verifyOtp = async () => {
@@ -15,7 +15,7 @@ export default function OTPVerify({ email, setView }: any) {
   }
 
   return (
-    <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+    <div className="flex flex-col items-center w-full max-w-sm m-auto">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center">
         Welcome back
       </h2>

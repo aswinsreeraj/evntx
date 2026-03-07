@@ -3,6 +3,7 @@ import { X, ArrowLeft } from "lucide-react";
 import Modal from "../../../shared/ui/Modal";
 import OTPInput from "../../auth/components/OTPInput";
 import { authApi } from "../../auth/api";
+import { useNavigate } from "react-router-dom";
 
 type Props = {
   isOpen: boolean;
@@ -13,19 +14,22 @@ type Props = {
 export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
   const [otp, setOtp] = useState("");
 
+  const navigate = useNavigate();
+
   const verifyOtp = async () => {
     if (otp.length !== 6) return;
     try {
       await authApi.verifyOtp(email, otp);
       onClose();
-      // Handle successful admin login redirect here
+      navigate("/admin/users");
     } catch (e) {
       console.error(e);
+      alert("Failed to verify OTP.");
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="p-0 max-w-4xl w-[90%] md:w-[800px] rounded-3xl overflow-hidden bg-white relative">
+    <Modal open={isOpen} onClose={onClose} className="p-0 max-w-4xl w-[90%] md:w-[800px] rounded-3xl overflow-hidden bg-white relative">
       <div className="flex flex-col md:flex-row h-full">
         {/* Left Side Image */}
         <div className="hidden md:block w-1/2 relative bg-gray-100">
@@ -59,7 +63,7 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
             </h2>
 
             <p className="text-gray-500 mb-8 text-center text-sm leading-relaxed px-4">
-              Let's go manage some.
+              Let's go manage the platform.
             </p>
 
             <div className="w-full flex flex-col mb-6">

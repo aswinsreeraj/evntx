@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
       setIsOtpModalOpen(true);
     } catch (error) {
       console.error("Failed to send OTP", error);
-      alert("Failed to send OTP. Is your backend running and configured in .env?");
+      alert("Failed to send OTP. Is backend running?");
     }
   };
 

@@ -35,12 +35,6 @@ function Modal({ open, onClose, children, className = "bg-white rounded-xl p-6 w
         className={className}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-500"
-        >
-          ✕
-        </button>
 
         {children}
       </div>

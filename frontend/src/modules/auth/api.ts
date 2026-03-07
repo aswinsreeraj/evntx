@@ -15,14 +15,15 @@ type VerifyOtpResponse = {
 
 export const authApi = {
     async requestOtp(email: string) {
-        console.log("Requesting OTP for email:", email);
-        return api.post("/auth/otp/request", { email });
+        const response = await api.post("/auth/otp/request", { email });
+        return response.data; // Now returns { data: { is_new_user: true/false } }
     },
 
-    async verifyOtp(email: string, otp: string) {
+    async verifyOtp(email: string, otp: string, name?: string) {
         const response = await api.post("/auth/otp/verify", {
             email,
             otp,
+            name,
         });
 
         const data: VerifyOtpResponse = response.data.data;
