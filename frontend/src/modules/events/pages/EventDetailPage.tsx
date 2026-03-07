@@ -9,10 +9,9 @@ export default function EventDetailPage() {
 
   const [activeTab, setActiveTab] = useState("About");
 
-  // Since we might not have the API ready, we use dummy data that perfectly matches the Figma
   const event = {
     title: "Friday Night at Vapour Ladies Night",
-    cover_image_url: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=1200&q=80",
+    cover_image_url: "/assets/images/badass-bollywood.png",
     date: "Saturday, 21 February 2026",
     time: "07:00 PM",
     venue: "JLN Stadium, Kochi",
@@ -30,18 +29,18 @@ export default function EventDetailPage() {
     host: {
       name: "Jane Doe",
       role: "Event Organizer",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop"
+      avatar: "/assets/images/host.jpg"
     },
     personnel: [
       {
         name: "Joe Smith",
         role: "Lead Performer",
-        avatar: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop" // dummy avatar replacing the DJ
+        avatar: "/assets/images/perfomer.jpg" // dummy avatar replacing the DJ
       },
       {
         name: "DJ Jazee",
         role: "Professional DJ",
-        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop" // dummy avatar
+        avatar: "/assets/images/dj.jpg" // dummy avatar
       }
     ]
   };

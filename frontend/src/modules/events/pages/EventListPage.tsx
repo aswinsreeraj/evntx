@@ -8,68 +8,67 @@ import { Search } from "lucide-react"
 function EventListPage() {
   const { data, isLoading } = useEvents()
 
-  // Use dummy data from the Figma design temporarily if API is not wired up yet
   const dummyEvents = [
     {
       id: 1,
       title: "Sand Castle Workshop",
-      start_time: "2026-02-21T12:00:00Z", // 12:00 PM
+      start_time: "2026-02-21T12:00:00Z",
       city: "Pune",
-      cover_image_url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80",
+      cover_image_url: "/assets/images/sand-castle.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Art", "Workshop"]
     },
     {
       id: 2,
       title: "Premium Roy by Shreya",
-      start_time: "2026-03-03T18:00:00Z", // 06:00 PM
+      start_time: "2026-03-03T18:00:00Z",
       city: "Chennai",
-      cover_image_url: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80",
+      cover_image_url: "/assets/images/premium-roy.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Comedy", "Live Show"]
     },
     {
       id: 3,
       title: "Advancing Passive Fire Protection",
-      start_time: "2026-02-19T19:00:00Z", // 07:00 PM
+      start_time: "2026-02-19T19:00:00Z", 
       city: "Bengaluru",
-      cover_image_url: "https://images.unsplash.com/photo-1580477667995-15608129bd41?w=800&q=80",
+      cover_image_url: "/assets/images/fire-protect.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Music", "Party", "Dance"]
     },
     {
       id: 4,
       title: "Scorpions Coming Home Live 2026",
-      start_time: "2026-02-21T12:00:00Z", // 12:00 PM
+      start_time: "2026-02-21T12:00:00Z", 
       city: "Pune",
-      cover_image_url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80",
+      cover_image_url: "/assets/images/scorpions.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Art", "Workshop"]
     },
     {
       id: 5,
       title: "Anime Lovers Meet-up",
-      start_time: "2026-03-03T20:00:00Z", // 08:00 PM
+      start_time: "2026-03-03T20:00:00Z", 
       city: "Chennai",
-      cover_image_url: "https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&q=80",
+      cover_image_url: "/assets/images/anime-lover.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Comedy", "Live Show"]
     },
     {
       id: 6,
       title: "Saturday Bollywood Dhamaka",
-      start_time: "2026-02-19T19:00:00Z", // 07:00 PM
+      start_time: "2026-02-19T19:00:00Z", 
       city: "Bengaluru",
-      cover_image_url: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=800&q=80",
+      cover_image_url: "/assets/images/badass-bollywood.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",
       tags: ["Music", "Party", "Dance"]
     }
   ];
 
-  const eventsList = dummyEvents; // Replace with data?.events later
+  const eventsList = dummyEvents; 
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 pt-8 pb-4">
         {/* Search and Sort Top Bar */}
         <div className="flex gap-4 items-center">
@@ -85,14 +84,14 @@ function EventListPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sidebar */}
         <div className="col-span-1 hidden lg:block">
           <FilterSidebar />
         </div>
 
         {/* Event list */}
-        <div className="col-span-1 lg:col-span-3">
+        <div className="col-span-1 lg:col-span-2">
           <EventGrid events={eventsList} />
         </div>
       </div>

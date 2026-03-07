@@ -6,13 +6,11 @@ type Props = {
 }
 
 export default function EventCard({ event }: Props) {
-  // Format date correctly based on Figma (e.g., 21 Feb 2026)
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-GB', options);
   };
 
-  // Format time (e.g., 12:00 PM)
   const formatTime = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
     return new Date(dateString).toLocaleTimeString('en-US', options);
@@ -20,7 +18,7 @@ export default function EventCard({ event }: Props) {
 
   return (
     <Link to={`/events/${event.id}`}>
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col border border-gray-100">
+      <div className=" h-98 w-98 bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col border border-gray-100">
 
         <div className="relative h-48 w-full shrink-0">
           <img
@@ -28,7 +26,7 @@ export default function EventCard({ event }: Props) {
             alt={event.title}
             className="h-full w-full object-cover"
           />
-          <span className="absolute top-3 right-3 bg-[#e53e5d]/90 backdrop-blur-sm text-white text-xs font-medium px-3 py-1.5 rounded-md shadow-sm">
+          <span className="absolute top-3 right-3 bg-[#E7364D]/60 backdrop-blur-xl text-white text-xs font-medium px-3 py-1.5 rounded-full">
             {formatDate(event.start_time)}
           </span>
         </div>
@@ -49,7 +47,6 @@ export default function EventCard({ event }: Props) {
             {event.description}
           </p>
 
-          {/* Tags */}
           <div className="flex flex-wrap gap-2 mt-auto">
             {event.tags?.map((tag: string, index: number) => (
               <span 

@@ -26,15 +26,15 @@ export const router = createBrowserRouter([
             },
             { path: "/events", element: <EventListPage /> },
             { path: "/events/:eventId", element: <EventDetailPage /> },
-            { path: "/admin/login", element: <AdminLoginPage /> },
-            {
-            path: "/admin/users",
-            element: (
-                <ProtectedRoute roles={["admin"]}>
-                <UserManagementPage />
-                </ProtectedRoute>
-            ),
-            }
         ],
     },
+    { path: "/admin/login", element: <AdminLoginPage /> },
+    {
+        path: "/admin/users",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <UserManagementPage />
+            </ProtectedRoute>
+        ),
+    }
 ]);

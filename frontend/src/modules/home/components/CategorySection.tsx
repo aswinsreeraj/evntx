@@ -16,7 +16,7 @@ export default function CategorySection() {
             key={category.name}
             className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
               category.active 
-                ? "bg-red-100 text-red-600 border border-red-200" 
+                ? "bg-[#F0BCC5] text-[#E7364D] opacity-100" 
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-transparent"
             }`}
           >
