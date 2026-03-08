@@ -21,6 +21,7 @@ type AuthUsecase struct {
 	userRepo    repository.UserRepository
 	sessionRepo repository.UserSessionRepository
 	emailSender repository.EmailSender
+	roleRepo    repository.UserRoleRepository
 }
 
 func NewAuthUsecase(
@@ -28,29 +29,42 @@ func NewAuthUsecase(
 	userRepo repository.UserRepository,
 	sessionRepo repository.UserSessionRepository,
 	emailSender repository.EmailSender,
+	roleRepo repository.UserRoleRepository,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		otpRepo:     otpRepo,
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
 		emailSender: emailSender,
+		roleRepo:    roleRepo,
 	}
 }
-func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
-	// generate OTP
+func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
+	
+	isNewUser := false
+	_, err := u.userRepo.FindByEmail(email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			isNewUser = true
+		} else {
+			return false, err
+		}
+	}
+
+	
 	rawOTP, err := otp.GenerateOTP()
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	hash, err := otp.HashOTP(rawOTP)
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	// invalidate previous unused OTPs
+	
 	if err := u.otpRepo.InvalidatePrevious(email); err != nil {
-		return "", err
+		return false, err
 	}
 
 	emailOTP := &domain.EmailOTP{
@@ -62,24 +76,24 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (string, error) {
 	}
 
 	if err := u.otpRepo.Create(emailOTP); err != nil {
-		return "", err
+		return false, err
 	}
 
 	if err := u.emailSender.SendOTP(email, rawOTP); err != nil {
-		return "", err
+		return false, err
 	}
 
-	return "", nil
+	return isNewUser, nil
 }
 
-func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (string, string, error) {
+func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
 	logger.Log.Info().Msgf("Verifying email: %s", email)
 
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
 		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
 	logger.Log.Info().Msgf("Stored OTP hash: %s", storedOTP.OTPHash)
@@ -87,14 +101,14 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
 		logger.Log.Warn().Msgf("Compare failed: %v", err)
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
 	if err := u.otpRepo.MarkConsumed(storedOTP.ID); err != nil {
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
-	// find or create user
+	
 	user, err := u.userRepo.FindByEmail(email)
 
 	if err != nil {
@@ -102,26 +116,27 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 			user = &domain.User{
 				ID:            uuid.NewString(),
 				Email:         email,
+				Name:          name,
 				IsActive:      true,
 				EmailVerified: true,
 			}
 
 			if err := u.userRepo.Create(user); err != nil {
-				return "", "", err
+				return nil, nil, "", "", err
 			}
 		} else {
-			return "", "", err
+			return nil, nil, "", "", err
 		}
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
 	if err != nil {
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
 	refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
 	if err != nil {
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
 	refreshHash := hash.HashToken(refreshToken)
@@ -137,10 +152,99 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, userAgent, ip string) (strin
 	}
 
 	if err := u.sessionRepo.Create(session); err != nil {
-		return "", "", err
+		return nil, nil, "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
+	if err != nil {
+		roles = []domain.UserRole{}
+	}
+
+	return user, roles, accessToken, refreshToken, nil
+}
+
+func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
+
+	logger.Log.Info().Msgf("Registering user: %s", email)
+
+	storedOTP, err := u.otpRepo.FindValidOTP(email)
+	if err != nil {
+		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
+		return nil, nil, "", "", err
+	}
+
+	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
+		logger.Log.Warn().Msgf("Compare failed: %v", err)
+		return nil, nil, "", "", err
+	}
+
+	if err := u.otpRepo.MarkConsumed(storedOTP.ID); err != nil {
+		return nil, nil, "", "", err
+	}
+
+	user, err := u.userRepo.FindByEmail(email)
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			user = &domain.User{
+				ID:            uuid.NewString(),
+				Email:         email,
+				Name:          name,
+				Dob:           dob,
+				Gender:        gender,
+				IsActive:      true,
+				EmailVerified: true,
+			}
+
+			if err := u.userRepo.Create(user); err != nil {
+				return nil, nil, "", "", err
+			}
+		} else {
+			return nil, nil, "", "", err
+		}
+	} else {
+		// If user exists, update their dob/gender and activate them if needed. Or we could return an error if it's strictly a new registration.
+		// For robustness, returning user or doing an update if fields were omitted earlier is probably fine.
+		user.Name = name
+		user.Dob = dob
+		user.Gender = gender
+		if err := u.userRepo.Update(user); err != nil {
+			return nil, nil, "", "", err
+		}
+	}
+
+	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	refreshHash := hash.HashToken(refreshToken)
+
+	session := &domain.UserSession{
+		ID:               uuid.NewString(),
+		UserID:           user.ID,
+		RefreshTokenHash: refreshHash,
+		UserAgent:        userAgent,
+		IPAddress:        ip,
+		ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+		Revoked:          false,
+	}
+
+	if err := u.sessionRepo.Create(session); err != nil {
+		return nil, nil, "", "", err
+	}
+
+	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
+	if err != nil {
+		roles = []domain.UserRole{}
+	}
+
+	return user, roles, accessToken, refreshToken, nil
 }
 
 func (u *AuthUsecase) RefreshToken(refreshToken string) (string, error) {
@@ -190,7 +294,7 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 
 	user, err := u.userRepo.FindByEmail(googleUser.Email)
 	if err != nil {
-		// create new user
+		
 		user = &domain.User{
 			ID:            uuid.NewString(),
 			Email:         googleUser.Email,

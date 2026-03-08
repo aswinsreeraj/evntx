@@ -4,16 +4,38 @@ import AdminOtpModal from "../components/AdminOtpModal";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
 
+  const validateEmail = (email: string) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
   const handleLogin = async () => {
-    if (!email) return;
+    setError("");
+    if (!email) {
+      setError("Email is required");
+      return;
+    }
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
+    setLoading(true);
     try {
       await authApi.requestOtp(email);
       setIsOtpModalOpen(true);
-    } catch (error) {
-      console.error("Failed to send OTP", error);
-      alert("Failed to send OTP. Is backend running?");
+    } catch (err: any) {
+      console.error("Failed to send OTP", err);
+      setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,17 +82,25 @@ export default function AdminLoginPage() {
               type="email"
               placeholder="Enter your email here"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-gray-400"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+              className={`w-full border ${error ? 'border-red-500' : 'border-gray-300'} rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20 focus:border-red-500' : 'focus:ring-blue-500/20 focus:border-blue-500'} transition-all placeholder-gray-400`}
             />
+            {error && <span className="text-red-500 text-xs mt-2 block w-full text-left">{error}</span>}
           </div>
 
           <button 
             onClick={handleLogin}
-            disabled={!email}
-            className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!email || loading}
+            className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
           >
-            Continue
+            {loading ? (
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : (
+                "Continue"
+            )}
           </button>
         </div>
       </div>

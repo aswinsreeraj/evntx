@@ -8,9 +8,13 @@ import (
 )
 
 type UserModel struct {
-	ID            string `gorm:"type:uuid;primaryKey"`
+	ID            string   `gorm:"type:uuid;primaryKey"`
 	Name          string
-	Email         string `gorm:"uniqueIndex"`
+	Email         string   `gorm:"uniqueIndex"`
+	Mobile        string
+	Dob           string
+	Gender        string
+	Locations     []string `gorm:"serializer:json"`
 	IsActive      bool
 	EmailVerified bool
 	CreatedAt     time.Time
@@ -30,6 +34,10 @@ func (r *userGormRepository) Create(user *domain.User) error {
 		ID:            user.ID,
 		Name:          user.Name,
 		Email:         user.Email,
+		Mobile:        user.Mobile,
+		Dob:           user.Dob,
+		Gender:        user.Gender,
+		Locations:     user.Locations,
 		IsActive:      user.IsActive,
 		EmailVerified: user.EmailVerified,
 	}
@@ -49,6 +57,10 @@ func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {
 		ID:            model.ID,
 		Name:          model.Name,
 		Email:         model.Email,
+		Mobile:        model.Mobile,
+		Dob:           model.Dob,
+		Gender:        model.Gender,
+		Locations:     model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -68,6 +80,10 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 		ID:            model.ID,
 		Name:          model.Name,
 		Email:         model.Email,
+		Mobile:        model.Mobile,
+		Dob:           model.Dob,
+		Gender:        model.Gender,
+		Locations:     model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -78,17 +94,23 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 func (r *userGormRepository) Update(user *domain.User) error {
 	return r.db.Model(&UserModel{}).
 		Where("id = ?", user.ID).
-		Updates(map[string]interface{}{
-			"name":           user.Name,
-			"email":          user.Email,
-			"is_active":      user.IsActive,
-			"email_verified": user.EmailVerified,
-			"updated_at":     time.Now(),
+		Select("name", "email", "mobile", "dob", "gender", "locations", "is_active", "email_verified", "updated_at").
+		Updates(UserModel{
+			Name:          user.Name,
+			Email:         user.Email,
+			Mobile:        user.Mobile,
+			Dob:           user.Dob,
+			Gender:        user.Gender,
+			Locations:     user.Locations,
+			IsActive:      user.IsActive,
+			EmailVerified: user.EmailVerified,
+			UpdatedAt:     time.Now(),
 		}).Error
 }
 
 func (r *userGormRepository) Search(
 	search string,
+	status string,
 	page int,
 	limit int,
 ) ([]domain.User, int64, error) {
@@ -98,12 +120,24 @@ func (r *userGormRepository) Search(
 
 	query := r.db.Model(&UserModel{})
 
+	
+	query = query.Where(
+		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?)",
+		domain.RoleAdmin,
+	)
+
 	if search != "" {
 		query = query.Where(
 			"name ILIKE ? OR email ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)
+	}
+
+	if status == "active" {
+		query = query.Where("is_active = ?", true)
+	} else if status == "suspended" || status == "inactive" {
+		query = query.Where("is_active = ?", false)
 	}
 
 	query.Count(&total)
@@ -126,6 +160,10 @@ func (r *userGormRepository) Search(
 			ID:            m.ID,
 			Name:          m.Name,
 			Email:         m.Email,
+			Mobile:        m.Mobile,
+			Dob:           m.Dob,
+			Gender:        m.Gender,
+			Locations:     m.Locations,
 			IsActive:      m.IsActive,
 			EmailVerified: m.EmailVerified,
 			CreatedAt:     m.CreatedAt,

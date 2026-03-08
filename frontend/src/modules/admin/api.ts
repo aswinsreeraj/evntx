@@ -4,6 +4,8 @@ export const adminApi = {
   async getUsers(params?: {
     page?: number;
     limit?: number;
+    search?: string;
+    status?: string;
     role?: string;
     is_active?: boolean;
   }) {

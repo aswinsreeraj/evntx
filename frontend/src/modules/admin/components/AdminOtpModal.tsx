@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, ArrowLeft } from "lucide-react";
 import Modal from "../../../shared/ui/Modal";
 import OTPInput from "../../auth/components/OTPInput";
@@ -13,18 +13,69 @@ type Props = {
 
 export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
   const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  const [timer, setTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isOpen && timer > 0 && !canResend) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (timer === 0) {
+      setCanResend(true);
+    }
+    return () => clearInterval(interval);
+  }, [isOpen, timer, canResend]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setOtp("");
+      setError("");
+      setTimer(60);
+      setCanResend(false);
+    }
+  }, [isOpen]);
+
   const verifyOtp = async () => {
-    if (otp.length !== 6) return;
+    setError("");
+    if (otp.length !== 6) {
+      setError("Please enter a complete 6-digit OTP");
+      return;
+    }
+    
+    setLoading(true);
     try {
       await authApi.verifyOtp(email, otp);
       onClose();
       navigate("/admin/users");
-    } catch (e) {
-      console.error(e);
-      alert("Failed to verify OTP.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || "Invalid or expired OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setResending(true);
+    try {
+      await authApi.requestOtp(email);
+      setTimer(60);
+      setCanResend(false);
+      setOtp("");
+    } catch (err: any) {
+      console.error("Failed to resend OTP", err);
+      setError("Failed to resend OTP. Please try again later.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -77,21 +128,39 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
               <label className="text-sm font-medium text-gray-700 mb-2">
                 One-Time Password
               </label>
-              <OTPInput value={otp} onChange={setOtp} />
+              <OTPInput 
+                value={otp} 
+                onChange={(val: string) => {
+                  setOtp(val);
+                  setError("");
+                }} 
+              />
+              {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
             </div>
 
-            <div className="w-full mb-8">
-              <p className="text-[#e53e5d] text-xs">
+            <div className="w-full mb-8 flex items-center justify-between">
+              <p className={`${canResend ? "text-gray-500" : "text-[#e53e5d]"} text-xs`}>
                 OTP has been sent to the email
               </p>
+              <button
+                onClick={handleResend}
+                disabled={!canResend || resending}
+                className={`text-xs font-medium ${!canResend || resending ? "text-gray-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-800 transition-colors"}`}
+              >
+                {resending ? "Resending..." : canResend ? "Resend OTP" : `Resend in ${timer}s`}
+              </button>
             </div>
 
             <button
               onClick={verifyOtp}
-              disabled={otp.length !== 6}
-              className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={otp.length !== 6 || loading}
+              className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
             >
-              Login
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                "Login"
+              )}
             </button>
           </div>
         </div>

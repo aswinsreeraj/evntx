@@ -34,23 +34,30 @@ func (u *UserUsecase) GetProfile(userID string) (*domain.User, error) {
 	return u.repo.FindByID(userID)
 }
 
-func (u *UserUsecase) UpdateProfile(userID, name string) error {
+func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender string, locations []string) error {
 	user, err := u.repo.FindByID(userID)
 	if err != nil {
 		return err
 	}
 
-	user.Name = name
+	if name != "" {
+		user.Name = name
+	}
+	user.Mobile = mobile
+	user.Dob = dob
+	user.Gender = gender
+	user.Locations = locations
 
 	return u.repo.Update(user)
 }
 
 func (u *UserUsecase) AdminSearchUsers(
 	search string,
+	status string,
 	page int,
 	limit int,
 ) ([]domain.User, int64, error) {
-	return u.repo.Search(search, page, limit)
+	return u.repo.Search(search, status, page, limit)
 }
 
 func (u *UserUsecase) AdminUpdateUserStatus(userID string, isActive bool) error {

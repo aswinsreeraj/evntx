@@ -26,7 +26,7 @@ func main() {
 		logger.Log.Fatal().Msgf("failed to connect to database: %v", err)
 	}
 
-	// Auto migrate (temporary for development)
+	
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -58,18 +58,23 @@ func main() {
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	router.POST(
 		"/auth/otp/request",
-		middleware.RateLimitMiddleware(5, 5), // 5 req/sec burst 5
+		middleware.RateLimitMiddleware(5, 5), 
 		authHandler.RequestOTP,
 	)
 	router.POST(
 		"/auth/otp/verify",
 		middleware.RateLimitMiddleware(5, 5),
 		authHandler.VerifyOTP,
+	)
+	router.POST(
+		"/auth/register",
+		middleware.RateLimitMiddleware(5, 5),
+		authHandler.Register,
 	)
 
 	router.POST("/auth/refresh", authHandler.Refresh)

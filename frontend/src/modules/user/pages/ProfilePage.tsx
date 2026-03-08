@@ -21,6 +21,8 @@ export default function ProfilePage() {
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -49,8 +51,27 @@ export default function ProfilePage() {
     navigate("/");
   };
 
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!firstName.trim() || firstName.trim().length < 2) {
+      newErrors.firstName = "First name must be at least 2 characters";
+    }
+    if (lastName.trim() && lastName.trim().length < 2) {
+      newErrors.lastName = "Last name must be at least 2 characters";
+    }
+    if (mobile && !/^\+?[0-9\s-]{10,15}$/.test(mobile)) {
+      newErrors.mobile = "Please enter a valid mobile number";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
+    setSuccessMsg("");
+    if (!validate()) return;
+    
     setSaving(true);
+    setErrors({});
     try {
       await userApi.updateProfile({
         name: `${firstName} ${lastName}`.trim(),
@@ -59,10 +80,11 @@ export default function ProfilePage() {
         gender,
         locations,
       });
-      
-    } catch (err) {
+      setSuccessMsg("Profile updated successfully!");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
       console.error("Failed to save profile", err);
-      alert("Failed to save profile. Please try again.");
+      setErrors({ api: err.response?.data?.message || "Failed to save profile. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -155,9 +177,10 @@ export default function ProfilePage() {
                   <input 
                     type="text" 
                     value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
+                    onChange={(e) => { setMobile(e.target.value); setErrors({...errors, mobile: ""}) }}
+                    className={`w-full border ${errors.mobile ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:ring-1 ${errors.mobile ? 'focus:ring-red-400 focus:border-red-500' : 'focus:ring-gray-400 focus:border-gray-400'}`}
                   />
+                  {errors.mobile && <span className="text-red-500 text-xs mt-1 block">{errors.mobile}</span>}
                 </div>
               </div>
             </div>
@@ -171,18 +194,20 @@ export default function ProfilePage() {
                   <input 
                     type="text" 
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
+                    onChange={(e) => { setFirstName(e.target.value); setErrors({...errors, firstName: ""}) }}
+                    className={`w-full border ${errors.firstName ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:ring-1 ${errors.firstName ? 'focus:ring-red-400 focus:border-red-500' : 'focus:ring-gray-400 focus:border-gray-400'}`}
                   />
+                  {errors.firstName && <span className="text-red-500 text-xs mt-1 block">{errors.firstName}</span>}
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-2">Last Name</label>
                   <input 
                     type="text" 
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
+                    onChange={(e) => { setLastName(e.target.value); setErrors({...errors, lastName: ""}) }}
+                    className={`w-full border ${errors.lastName ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:ring-1 ${errors.lastName ? 'focus:ring-red-400 focus:border-red-500' : 'focus:ring-gray-400 focus:border-gray-400'}`}
                   />
+                  {errors.lastName && <span className="text-red-500 text-xs mt-1 block">{errors.lastName}</span>}
                 </div>
               </div>
 
@@ -271,17 +296,36 @@ export default function ProfilePage() {
             
           </div>
           
-          <div className="max-w-[700px] mx-auto flex justify-end gap-4 mt-8">
-            <button className="px-6 py-2.5 rounded-xl border border-gray-900 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors">
-              Reset Changes
-            </button>
-            <button 
-              onClick={handleSave} 
-              disabled={saving}
-              className={`px-6 py-2.5 rounded-xl bg-[#0b101e] text-sm font-medium text-white hover:bg-black transition-colors ${saving ? "opacity-70 cursor-not-allowed" : ""}`}
-            >
-              {saving ? "Saving..." : "Apply Changes"}
-            </button>
+          <div className="max-w-[700px] mx-auto mt-6">
+            {errors.api && (
+              <div className="w-full mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                <p className="text-red-600 text-sm text-center font-medium">{errors.api}</p>
+              </div>
+            )}
+            {successMsg && (
+              <div className="w-full mb-4 p-3 bg-green-50 border border-green-100 rounded-lg">
+                <p className="text-green-600 text-sm text-center font-medium">{successMsg}</p>
+              </div>
+            )}
+            <div className="flex justify-end gap-4">
+              <button 
+                className="px-6 py-2.5 rounded-xl border border-gray-900 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+                onClick={() => window.location.reload()}
+              >
+                Reset Changes
+              </button>
+              <button 
+                onClick={handleSave} 
+                disabled={saving}
+                className={`px-6 py-2.5 flex justify-center items-center rounded-xl bg-[#0b101e] text-sm font-medium text-white hover:bg-black transition-colors ${saving ? "opacity-70 cursor-not-allowed min-w-[130px]" : "min-w-[130px]"}`}
+              >
+                {saving ? (
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  "Apply Changes"
+                )}
+              </button>
+            </div>
           </div>
           </>
         )}
