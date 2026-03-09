@@ -19,6 +19,13 @@ func NewAuthHandler(u *usecase.AuthUsecase) *AuthHandler {
 	return &AuthHandler{authUsecase: u}
 }
 
+func getAuthErrorMsg(err error, defaultMsg string) string {
+	if err != nil && err.Error() == "Account has been blocked. Please send a mail to admin at admin@evntx.com" {
+		return err.Error()
+	}
+	return defaultMsg
+}
+
 type otpRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
@@ -33,7 +40,8 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 
 	isNewUser, err := h.authUsecase.RequestEmailOTP(req.Email)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, apiErrors.InvalidRequestBody, "Failed to generate OTP")
+		msg := getAuthErrorMsg(err, "Failed to generate OTP")
+		response.Error(c, http.StatusInternalServerError, apiErrors.InvalidRequestBody, msg)
 		return
 	}
 
@@ -70,7 +78,8 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	)
 
 	if err != nil {
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Invalid or expired OTP")
+		msg := getAuthErrorMsg(err, "Invalid or expired OTP")
+		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, msg)
 		return
 	}
 
@@ -149,7 +158,8 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 
 	if err != nil {
 		logger.Log.Error().Msgf("AuthUsecase.GoogleLogin failed: %v", err)
-		response.Error(c, http.StatusUnauthorized, apiErrors.UnauthorizedAccess, "Invalid Google token")
+		msg := getAuthErrorMsg(err, "Invalid Google token")
+		response.Error(c, http.StatusUnauthorized, apiErrors.UnauthorizedAccess, msg)
 		return
 	}
 
@@ -186,7 +196,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	)
 
 	if err != nil {
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Invalid OTP or registration failed")
+		msg := getAuthErrorMsg(err, "Invalid OTP or registration failed")
+		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, msg)
 		return
 	}
 

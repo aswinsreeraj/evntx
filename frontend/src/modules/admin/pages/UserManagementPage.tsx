@@ -1,17 +1,51 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useUsers, useToggleUserStatus } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter } from "lucide-react";
+import { useDebounce } from "../../../shared/hooks/useDebounce";
 
 export default function UserManagementPage() {
-  const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const statusFilter = searchParams.get("status") || "all";
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const searchFilter = searchParams.get("search") || "";
+
+  const [searchTerm, setSearchTerm] = useState(searchFilter);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const updateParams = (updates: Record<string, string>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || (key === "page" && value === "1") || (key === "limit" && value === "10") || (key === "status" && value === "all")) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, value);
+      }
+    });
+    setSearchParams(newParams);
+  };
+
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchFilter) {
+      updateParams({ search: debouncedSearchTerm, page: "1" });
+    }
+  }, [debouncedSearchTerm]);
+
+  const setPage = (p: number | ((prev: number) => number)) => {
+    const newPage = typeof p === "function" ? p(page) : p;
+    updateParams({ page: newPage.toString() });
+  };
+
+  const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
+  const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
 
   const { data } = useUsers({ 
     page, 
-    limit: 10, 
-    ...(searchTerm && { search: searchTerm }),
+    limit, 
+    ...(searchFilter && { search: searchFilter }),
     ...(statusFilter !== "all" && { status: statusFilter })
   });
   const toggleUser = useToggleUserStatus();
@@ -31,9 +65,7 @@ export default function UserManagementPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, statusFilter]);
+
 
   const usersList = data?.users || [];
   const pagination = data?.pagination;
@@ -76,6 +108,20 @@ export default function UserManagementPage() {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-32">
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+
           <div className="relative w-full sm:w-48">
             <select
               value={statusFilter}

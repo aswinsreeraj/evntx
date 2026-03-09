@@ -63,3 +63,13 @@ func (u *UserUsecase) AdminSearchUsers(
 func (u *UserUsecase) AdminUpdateUserStatus(userID string, isActive bool) error {
 	return u.repo.UpdateStatus(userID, isActive)
 }
+
+func (u *UserUsecase) UploadProfileImage(userID string, imageURL string) error {
+	user, err := u.repo.FindByID(userID)
+	if err != nil {
+		return err
+	}
+
+	user.ProfileImage = imageURL
+	return u.repo.Update(user)
+}

@@ -42,13 +42,15 @@ func NewAuthUsecase(
 func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 	
 	isNewUser := false
-	_, err := u.userRepo.FindByEmail(email)
+	user, err := u.userRepo.FindByEmail(email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			isNewUser = true
 		} else {
 			return false, err
 		}
+	} else if !user.IsActive {
+		return false, errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
 	}
 
 	
@@ -127,6 +129,8 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 		} else {
 			return nil, nil, "", "", err
 		}
+	} else if !user.IsActive {
+		return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
@@ -203,6 +207,9 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 			return nil, nil, "", "", err
 		}
 	} else {
+		if !user.IsActive {
+			return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		}
 		// If user exists, update their dob/gender and activate them if needed. Or we could return an error if it's strictly a new registration.
 		// For robustness, returning user or doing an update if fields were omitted earlier is probably fine.
 		user.Name = name
@@ -305,6 +312,8 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 		if err := u.userRepo.Create(user); err != nil {
 			return "", "", err
 		}
+	} else if !user.IsActive {
+		return "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)

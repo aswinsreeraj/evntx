@@ -11,6 +11,7 @@ type User struct {
 	Mobile        string    `json:"mobile"`
 	Dob           string    `json:"dob"`
 	Gender        string    `json:"gender"`
+	ProfileImage  string    `json:"profile_image"`
 	Locations     []string  `json:"locations"`
 	IsActive      bool      `json:"is_active"`
 	EmailVerified bool      `json:"email_verified"`

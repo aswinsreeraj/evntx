@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
@@ -91,11 +92,18 @@ func main() {
 
 	userHandler := httpDelivery.NewUserHandler(userUsecase)
 
+	err = os.MkdirAll("assets/images", os.ModePerm)
+	if err != nil {
+		logger.Log.Warn().Msg("failed to create assets/images directory")
+	}
+	router.Static("/assets", "./assets")
+
 	userGroup := router.Group("/users")
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
+	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
 	adminGroup := router.Group("/admin")
 	adminGroup.Use(middleware.JWTAuthMiddleware())

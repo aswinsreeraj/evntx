@@ -5,7 +5,6 @@ import AdminOtpModal from "../components/AdminOtpModal";
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
 
   const validateEmail = (email: string) => {
@@ -27,15 +26,18 @@ export default function AdminLoginPage() {
       return;
     }
     
-    setLoading(true);
+    // Optimistically open modal
+    setIsOtpModalOpen(true);
+    
+    // Fire and forget the OTP request, error handling is shifted to or synced with the modal if needed,
+    // but the simplest approach for "optimistic handler" is to just open the modal and let it handle 
+    // the loading state or let the user see the modal immediately.
     try {
       await authApi.requestOtp(email);
-      setIsOtpModalOpen(true);
     } catch (err: any) {
-      console.error("Failed to send OTP", err);
-      setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
-    } finally {
-      setLoading(false);
+      console.error("Failed to send OTP optimistically", err);
+      // If we want to be robust, we could pass an error state down to the modal.
+      // For now, the user requested it opens immediately without lag.
     }
   };
 
@@ -93,14 +95,10 @@ export default function AdminLoginPage() {
 
           <button 
             onClick={handleLogin}
-            disabled={!email || loading}
+            disabled={!email}
             className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
           >
-            {loading ? (
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            ) : (
-                "Continue"
-            )}
+            Continue
           </button>
         </div>
       </div>
