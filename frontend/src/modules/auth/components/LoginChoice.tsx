@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useGoogleLogin } from "@react-oauth/google"
+import { GoogleLogin } from "@react-oauth/google"
 import { authApi } from "../api"
 
 export default function LoginChoice({ setView, setEmail }: any) {
@@ -7,25 +7,28 @@ export default function LoginChoice({ setView, setEmail }: any) {
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
 
-  const handleGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setLoading(true);
-      setErrorMsg("");
-      try {
-        await authApi.googleLogin(tokenResponse.access_token);
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      if (credentialResponse.credential) {
+        await authApi.googleLogin(credentialResponse.credential);
         window.location.href = "/profile";
-      } catch (error: any) {
-        console.error("Google login failed", error);
-        setErrorMsg(error.response?.data?.error?.message || "Google login failed. Please try again.");
-      } finally {
-        setLoading(false);
+      } else {
+        setErrorMsg("Google login failed. No credential received.");
       }
-    },
-    onError: () => {
-      console.error("Google Login Failed");
-      setErrorMsg("Google Login Failed");
+    } catch (error: any) {
+      console.error("Google login failed", error);
+      setErrorMsg(error.response?.data?.error?.message || "Google login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  });
+  };
+
+  const handleGoogleError = () => {
+    console.error("Google Login Failed");
+    setErrorMsg("Google Login Failed");
+  };
 
   const handleContinue = async () => {
     if (!localEmail) return;
@@ -59,18 +62,15 @@ export default function LoginChoice({ setView, setEmail }: any) {
         You can find an event here to get you there.
       </p>
 
-      <button
-        onClick={() => handleGoogle()}
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-xl py-3 mb-8 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <img 
-          src="https://www.svgrepo.com/show/475656/google-color.svg" 
-          alt="Google logo" 
-          className="w-5 h-5"
+      <div className="w-full flex justify-center mb-8">
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          theme="outline"
+          size="large"
+          text="continue_with"
         />
-        <span className="text-gray-700 font-semibold text-sm">Login with Google</span>
-      </button>
+      </div>
 
       <div className="w-full flex items-center gap-4 mb-8">
         <div className="h-px bg-gray-200 flex-1"></div>

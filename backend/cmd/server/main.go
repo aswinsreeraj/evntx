@@ -27,7 +27,6 @@ func main() {
 		logger.Log.Fatal().Msgf("failed to connect to database: %v", err)
 	}
 
-	
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -35,6 +34,17 @@ func main() {
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
+	roleRepo := repoImpl.NewUserRoleGormRepository(db)
+	emailSender := emailImpl.NewSMTPSender()
+
+	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
+	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
+	authHandler := httpDelivery.NewAuthHandler(authUsecase)
+
+	eventRepo := repoImpl.NewEventGormRepository(db)
+	eventUsecase := usecase.NewEventUsecase(eventRepo)
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 
 	router := gin.New()
 
@@ -54,17 +64,9 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	roleRepo := repoImpl.NewUserRoleGormRepository(db)
-	emailSender := emailImpl.NewSMTPSender()
-
-	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
-	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
-	authHandler := httpDelivery.NewAuthHandler(authUsecase)
-
 	router.POST(
 		"/auth/otp/request",
-		middleware.RateLimitMiddleware(5, 5), 
+		middleware.RateLimitMiddleware(5, 5),
 		authHandler.RequestOTP,
 	)
 	router.POST(
@@ -111,10 +113,6 @@ func main() {
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
-
-	eventRepo := repoImpl.NewEventGormRepository(db)
-	eventUsecase := usecase.NewEventUsecase(eventRepo)
-	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
