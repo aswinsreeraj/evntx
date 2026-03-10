@@ -1,18 +1,60 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useUsers, useToggleUserStatus } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
-import { ChevronDown, Download } from "lucide-react";
+import { ChevronDown, Download, Search, Filter } from "lucide-react";
+import { useDebounce } from "../../../shared/hooks/useDebounce";
 
 export default function UserManagementPage() {
-  const [page, setPage] = useState(1);
-  const { data } = useUsers({ page, limit: 10 });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const statusFilter = searchParams.get("status") || "all";
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const searchFilter = searchParams.get("search") || "";
+
+  const [searchTerm, setSearchTerm] = useState(searchFilter);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const updateParams = (updates: Record<string, string>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || (key === "page" && value === "1") || (key === "limit" && value === "10") || (key === "status" && value === "all")) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, value);
+      }
+    });
+    setSearchParams(newParams);
+  };
+
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchFilter) {
+      updateParams({ search: debouncedSearchTerm, page: "1" });
+    }
+  }, [debouncedSearchTerm]);
+
+  const setPage = (p: number | ((prev: number) => number)) => {
+    const newPage = typeof p === "function" ? p(page) : p;
+    updateParams({ page: newPage.toString() });
+  };
+
+  const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
+  const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
+
+  const { data } = useUsers({ 
+    page, 
+    limit, 
+    ...(searchFilter && { search: searchFilter }),
+    ...(statusFilter !== "all" && { status: statusFilter })
+  });
   const toggleUser = useToggleUserStatus();
 
-  // State for the "dropdown" action menu
+  
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -23,11 +65,79 @@ export default function UserManagementPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+
+
   const usersList = data?.users || [];
+  const pagination = data?.pagination;
+  const totalPages = pagination ? Math.ceil(pagination.total / pagination.limit) : 1;
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setPage(i)}
+          className={`w-8 h-8 rounded shrink-0 flex items-center justify-center text-sm transition-colors ${
+            page === i
+              ? "bg-gray-900 text-white"
+              : "hover:bg-gray-100 text-gray-600"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
 
   return (
     <AdminLayout title="User List">
       
+      {/* Utility Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-80">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-32">
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          <div className="relative w-full sm:w-48">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+            <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
         <div className="w-full overflow-x-auto">
@@ -47,7 +157,7 @@ export default function UserManagementPage() {
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-center">{user.name}</td>
                   <td className="px-6 py-4 text-center">{user.email}</td>
-                  {/* Since these properties might not exist in the real API yet, we fallback to 0 */}
+
                   <td className="px-6 py-4 text-center">{user.total_bookings ?? 0}</td>
                   <td className="px-6 py-4 text-center">{user.wallet_balance ?? 0}</td>
                   <td className="px-6 py-4 text-center">
@@ -67,7 +177,7 @@ export default function UserManagementPage() {
                       View <ChevronDown className="w-4 h-4 text-blue-500" />
                     </button>
                     
-                    {/* Minimal Context Menu for toggling status */}
+
                     {openDropdownId === user.id && (
                       <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
                         <button
@@ -91,22 +201,24 @@ export default function UserManagementPage() {
           </table>
         </div>
 
-        {/* Footer actions of table */}
-        <div className="flex items-center justify-end px-6 py-4 border-t border-gray-100 mb-2">
+
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 mb-2">
+          <div className="text-sm text-gray-500">
+            Showing {usersList.length} of {pagination?.total || 0} users
+          </div>
           <div className="flex items-center gap-1 text-sm font-medium">
             <button 
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50"
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
             >
               &lt; Prev
             </button>
-            <button className="w-8 h-8 rounded shrink-0 bg-gray-300 text-gray-800 flex items-center justify-center">1</button>
-            <button className="w-8 h-8 rounded shrink-0 hover:bg-gray-100 text-gray-600 flex items-center justify-center">2</button>
-            <button className="w-8 h-8 rounded shrink-0 hover:bg-gray-100 text-gray-600 flex items-center justify-center">3</button>
+            {renderPageNumbers()}
             <button 
-              onClick={() => setPage((p) => p + 1)}
-              className="px-2 py-1 text-gray-500 hover:text-gray-900"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || totalPages === 0}
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
             >
               Next &gt;
             </button>

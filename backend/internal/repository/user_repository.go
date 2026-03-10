@@ -9,6 +9,7 @@ type UserRepository interface {
 	Update(user *domain.User) error
 	Search(
 		search string,
+		status string,
 		page int,
 		limit int,
 	) ([]domain.User, int64, error)

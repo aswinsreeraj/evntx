@@ -17,10 +17,10 @@ function AuthModal({ open, onClose }: any) {
 
   return (
     <Modal open={open} onClose={onClose} className="bg-white rounded-xl w-[900px] h-[550px] relative overflow-hidden flex">
-      {/* Container holding image and content */}
+
       <div className="flex w-full h-full">
 
-        {/* Left image - Full height */}
+
         <div className="hidden md:block w-1/2 h-full bg-gray-100">
           <img
             src="https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&q=80"
@@ -29,7 +29,7 @@ function AuthModal({ open, onClose }: any) {
           />
         </div>
 
-        {/* Animated content */}
+
         <div className="relative w-full md:w-1/2 p-10 flex flex-col overflow-y-auto scrollbar-hide">
 
           <AnimatePresence mode="wait">

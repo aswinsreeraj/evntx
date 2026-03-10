@@ -25,7 +25,7 @@ export default function FeaturedEvents() {
     {
       id: 3,
       title: "Anime Lovers Meet-up",
-      start_time: "2026-03-03T20:00:00Z", // 08:00 PM
+      start_time: "2026-03-03T20:00:00Z", 
       city: "Chennai",
       cover_image_url: "/assets/images/anime-lover.png",
       description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus aliquam volutpat lorem, sed vehicula mi pellentesque.",

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
@@ -26,7 +27,6 @@ func main() {
 		logger.Log.Fatal().Msgf("failed to connect to database: %v", err)
 	}
 
-	// Auto migrate (temporary for development)
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -34,6 +34,17 @@ func main() {
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
+	roleRepo := repoImpl.NewUserRoleGormRepository(db)
+	emailSender := emailImpl.NewSMTPSender()
+
+	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
+	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
+	authHandler := httpDelivery.NewAuthHandler(authUsecase)
+
+	eventRepo := repoImpl.NewEventGormRepository(db)
+	eventUsecase := usecase.NewEventUsecase(eventRepo)
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 
 	router := gin.New()
 
@@ -53,23 +64,20 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	roleRepo := repoImpl.NewUserRoleGormRepository(db)
-	emailSender := emailImpl.NewSMTPSender()
-
-	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
-	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender)
-	authHandler := httpDelivery.NewAuthHandler(authUsecase)
-
 	router.POST(
 		"/auth/otp/request",
-		middleware.RateLimitMiddleware(5, 5), // 5 req/sec burst 5
+		middleware.RateLimitMiddleware(5, 5),
 		authHandler.RequestOTP,
 	)
 	router.POST(
 		"/auth/otp/verify",
 		middleware.RateLimitMiddleware(5, 5),
 		authHandler.VerifyOTP,
+	)
+	router.POST(
+		"/auth/register",
+		middleware.RateLimitMiddleware(5, 5),
+		authHandler.Register,
 	)
 
 	router.POST("/auth/refresh", authHandler.Refresh)
@@ -86,11 +94,18 @@ func main() {
 
 	userHandler := httpDelivery.NewUserHandler(userUsecase)
 
+	err = os.MkdirAll("assets/images", os.ModePerm)
+	if err != nil {
+		logger.Log.Warn().Msg("failed to create assets/images directory")
+	}
+	router.Static("/assets", "./assets")
+
 	userGroup := router.Group("/users")
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
+	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
 	adminGroup := router.Group("/admin")
 	adminGroup.Use(middleware.JWTAuthMiddleware())
@@ -98,10 +113,6 @@ func main() {
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
-
-	eventRepo := repoImpl.NewEventGormRepository(db)
-	eventUsecase := usecase.NewEventUsecase(eventRepo)
-	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)

@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -28,14 +29,23 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Profile retrieved successfully", gin.H{
-		"id":    user.ID,
-		"name":  user.Name,
-		"email": user.Email,
+		"id":            user.ID,
+		"name":          user.Name,
+		"email":         user.Email,
+		"mobile":        user.Mobile,
+		"dob":           user.Dob,
+		"gender":        user.Gender,
+		"profile_image": user.ProfileImage,
+		"locations":     user.Locations,
 	})
 }
 
 type updateProfileRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name      string   `json:"name" binding:"required"`
+	Mobile    string   `json:"mobile"`
+	Dob       string   `json:"dob"`
+	Gender    string   `json:"gender"`
+	Locations []string `json:"locations"`
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -47,7 +57,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.userUsecase.UpdateProfile(userID, req.Name); err != nil {
+	if err := h.userUsecase.UpdateProfile(userID, req.Name, req.Mobile, req.Dob, req.Gender, req.Locations); err != nil {
 		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile")
 		return
 	}
@@ -58,13 +68,14 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 func (h *UserHandler) AdminListUsers(c *gin.Context) {
 
 	search := c.Query("search")
+	status := c.Query("status")
 	pageStr := c.DefaultQuery("page", "1")
-	limitStr := c.DefaultQuery("limit", "10")
+	limitStr := c.DefaultQuery("limit", "5")
 
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
 
-	users, total, err := h.userUsecase.AdminSearchUsers(search, page, limit)
+	users, total, err := h.userUsecase.AdminSearchUsers(search, status, page, limit)
 	if err != nil {
 		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to retrieve users")
 		return
@@ -111,4 +122,37 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "User status updated successfully", nil)
+}
+
+func (h *UserHandler) UploadProfileImage(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	file, err := c.FormFile("profile_image")
+	if err != nil {
+		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Image file is required")
+		return
+	}
+
+	dirPath := "assets/images/" + userID
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to create directory")
+		return
+	}
+
+	filepath := dirPath + "/" + file.Filename
+	imageURL := "/" + filepath
+
+	if err := c.SaveUploadedFile(file, filepath); err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to save image")
+		return
+	}
+
+	if err := h.userUsecase.UploadProfileImage(userID, imageURL); err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile image")
+		return
+	}
+
+	apiResponse.Success(c, "Profile image uploaded successfully", gin.H{
+		"profile_image": imageURL,
+	})
 }

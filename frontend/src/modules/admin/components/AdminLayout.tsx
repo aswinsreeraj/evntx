@@ -30,7 +30,7 @@ export default function AdminLayout({ children, title }: Props) {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex">
-      {/* Left Sidebar */}
+
       <div className="w-[240px] bg-[#0b101e] flex flex-col fixed h-full z-10 shrink-0">
         <div className="p-8 flex flex-col items-center border-b border-gray-800">
           <h1 className="text-white text-2xl font-black tracking-wider mb-1">EVNTX</h1>
@@ -95,16 +95,16 @@ export default function AdminLayout({ children, title }: Props) {
         </div>
       </div>
 
-      {/* Main Content Area */}
+
       <div className="flex-1 ml-[240px] flex flex-col min-h-screen">
         
-        {/* Top Header */}
+
         <header className="h-[72px] bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0">
           <h2 className="text-xl font-bold text-gray-900">{title}</h2>
           
           <div className="flex items-center gap-6">
             
-            {/* Search Bar */}
+
             <div className="flex items-center bg-transparent border border-gray-300 rounded-full px-4 py-2 w-[280px]">
               <Search className="w-4 h-4 text-blue-500 mr-2 shrink-0" />
               <input 
@@ -114,19 +114,19 @@ export default function AdminLayout({ children, title }: Props) {
               />
             </div>
 
-            {/* Notifications */}
+
             <button className="text-gray-400 hover:text-blue-500 transition-colors">
               <Bell className="w-5 h-5" fill="currentColor" />
             </button>
 
-            {/* User Avatar */}
+
             <button className="w-8 h-8 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center overflow-hidden">
-               <User className="w-5 h-5" fill="currentColor" /> {/* Or an image */}
+               <User className="w-5 h-5" fill="currentColor" />
             </button>
           </div>
         </header>
 
-        {/* Page Content */}
+
         <main className="flex-1 p-8">
           {children}
         </main>

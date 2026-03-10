@@ -16,7 +16,7 @@ type VerifyOtpResponse = {
 export const authApi = {
     async requestOtp(email: string) {
         const response = await api.post("/auth/otp/request", { email });
-        return response.data; // Now returns { data: { is_new_user: true/false } }
+        return response.data; 
     },
 
     async verifyOtp(email: string, otp: string, name?: string) {
@@ -28,11 +28,36 @@ export const authApi = {
 
         const data: VerifyOtpResponse = response.data.data;
 
-        // Set tokens
+        
         tokenManager.setToken(data.access_token);
         tokenManager.setRefreshToken(data.refresh_token);
 
-        // Update auth store
+        
+        useAuthStore.getState().setAuth(
+            {
+                id: data.user.id,
+                name: data.user.name,
+            },
+            data.user.roles
+        );
+
+        return response;
+    },
+
+    async register(email: string, otp: string, name: string, dob: string, gender: string) {
+        const response = await api.post("/auth/register", {
+            email,
+            otp,
+            name,
+            dob,
+            gender,
+        });
+
+        const data: VerifyOtpResponse = response.data.data;
+
+        tokenManager.setToken(data.access_token);
+        tokenManager.setRefreshToken(data.refresh_token);
+
         useAuthStore.getState().setAuth(
             {
                 id: data.user.id,
