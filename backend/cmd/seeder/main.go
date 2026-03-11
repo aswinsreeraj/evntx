@@ -13,7 +13,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Println("No .env file found, relying on system env variables")
+		log.Println("No .env file found")
 	}
 
 	db, err := database.NewPostgresConnection()
@@ -31,8 +31,8 @@ func main() {
 
 		user := repository.UserModel{
 			ID:            uuid.NewString(),
-			Name:          fmt.Sprintf("Test User %d", i),
-			Email:         fmt.Sprintf("testuser%d@example.com", i),
+			Name:          fmt.Sprintf("Sample User %d", i),
+			Email:         fmt.Sprintf("user%03d@example.com", i),
 			Mobile:        fmt.Sprintf("555000%d", i),
 			Dob:           "1990-01-01",
 			Gender:        "Male",
@@ -51,5 +51,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Seeding complete! Check your admin users list.")
+	fmt.Println("Seeding complete! Check admin users list.")
 }
