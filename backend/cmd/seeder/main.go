@@ -26,7 +26,7 @@ func main() {
 	for i := 1; i <= 35; i++ {
 		isActive := true
 		if i%4 == 0 {
-			isActive = false // make 25% of the users suspended
+			isActive = false
 		}
 
 		user := repository.UserModel{
