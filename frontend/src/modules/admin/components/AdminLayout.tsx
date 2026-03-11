@@ -48,7 +48,7 @@ export default function AdminLayout({ children, title }: Props) {
                   key={link.name}
                   to={link.path}
                   className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                    isActive || (link.name === "Users" && currentPath === "/admin") // fallback active for this preview
+                    isActive || (link.name === "Users" && currentPath === "/admin")
                       ? "bg-[#1c2438] text-white" 
                       : "text-gray-400 hover:text-gray-200 hover:bg-[#141b2d]"
                   }`}

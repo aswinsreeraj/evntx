@@ -26,18 +26,12 @@ export default function AdminLoginPage() {
       return;
     }
     
-    // Optimistically open modal
     setIsOtpModalOpen(true);
     
-    // Fire and forget the OTP request, error handling is shifted to or synced with the modal if needed,
-    // but the simplest approach for "optimistic handler" is to just open the modal and let it handle 
-    // the loading state or let the user see the modal immediately.
     try {
       await authApi.requestOtp(email);
     } catch (err: any) {
       console.error("Failed to send OTP optimistically", err);
-      // If we want to be robust, we could pass an error state down to the modal.
-      // For now, the user requested it opens immediately without lag.
     }
   };
 

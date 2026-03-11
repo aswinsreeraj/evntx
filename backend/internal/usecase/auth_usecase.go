@@ -210,8 +210,6 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 		if !user.IsActive {
 			return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
 		}
-		// If user exists, update their dob/gender and activate them if needed. Or we could return an error if it's strictly a new registration.
-		// For robustness, returning user or doing an update if fields were omitted earlier is probably fine.
 		user.Name = name
 		user.Dob = dob
 		user.Gender = gender

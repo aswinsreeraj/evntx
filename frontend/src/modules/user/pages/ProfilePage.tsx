@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
 import { useNavigate } from "react-router-dom";
-import { Edit2, X, CalendarDays, ChevronDown } from "lucide-react";
+import { Edit2, X, ChevronDown } from "lucide-react";
 import { userApi } from "../api";
 
 export default function ProfilePage() {
