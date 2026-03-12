@@ -234,3 +234,29 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 	return nil
 }
 
+func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+
+	if event.Status != "pending" {
+		return errors.New("EVT_006: Event cannot be approved in current state")
+	}
+
+	err = u.repo.ApproveEvent(ctx, eventID)
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event_id", eventID).
+		Str("admin_id", adminID).
+		Str("previous_status", event.Status).
+		Str("new_status", "approved").
+		Time("timestamp", time.Now()).
+		Msg("event_approved")
+
+	return nil
+}
+

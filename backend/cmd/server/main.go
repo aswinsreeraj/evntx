@@ -45,6 +45,7 @@ func main() {
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	eventUsecase := usecase.NewEventUsecase(eventRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase)
 
 	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase)
 
@@ -115,6 +116,7 @@ func main() {
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 
 	organizerGroup := router.Group("/organizer")
 	organizerGroup.Use(middleware.JWTAuthMiddleware())

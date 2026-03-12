@@ -315,3 +315,12 @@ func (r *eventGormRepository) UpdateEventStatus(ctx context.Context, eventID str
 			"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 		}).Error
 }
+
+func (r *eventGormRepository) ApproveEvent(ctx context.Context, eventID string) error {
+	return r.db.WithContext(ctx).Model(&EventModel{}).
+		Where("id = ?", eventID).
+		Updates(map[string]interface{}{
+			"status":     "approved",
+			"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+		}).Error
+}
