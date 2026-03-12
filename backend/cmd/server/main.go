@@ -32,6 +32,8 @@ func main() {
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
 	db.AutoMigrate(&repoImpl.UserRoleModel{})
 	db.AutoMigrate(&repoImpl.EventModerationLogModel{})
+	db.AutoMigrate(&repoImpl.BookingModel{})
+	db.AutoMigrate(&repoImpl.BookingTicketModel{})
 
 
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -48,6 +50,10 @@ func main() {
 	eventUsecase := usecase.NewEventUsecase(eventRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase)
+	
+	bookingRepo := repoImpl.NewBookingGormRepository(db)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
+	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
 
 	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase)
 
@@ -131,6 +137,11 @@ func main() {
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
+
+	goerGroup := router.Group("/bookings")
+	goerGroup.Use(middleware.JWTAuthMiddleware())
+	goerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleGoer))
+	goerGroup.POST("/reserve", bookingHandler.ReserveTickets)
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

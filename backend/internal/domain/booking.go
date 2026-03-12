@@ -1,0 +1,24 @@
+package domain
+
+import "time"
+
+type Booking struct {
+	ID          string
+	UserID      string
+	EventID     string
+	Status      string
+	TotalAmount float64
+	ExpiresAt   time.Time
+	CreatedAt   time.Time
+}
+
+type BookingTicket struct {
+	BookingID    string
+	TicketTypeID string
+	Quantity     int
+}
+
+type TicketRequest struct {
+	TicketTypeID string `json:"ticket_type_id" binding:"required"`
+	Quantity     int    `json:"quantity" binding:"required,gt=0"`
+}

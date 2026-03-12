@@ -219,6 +219,30 @@ func (r *eventGormRepository) GetEventPersonnels(eventID string) ([]domain.Event
 	return personnels, nil
 }
 
+func (r *eventGormRepository) GetTicketTypesByEventID(eventID string) ([]domain.TicketType, error) {
+	var models []TicketTypeModel
+
+	err := r.db.Where("event_id = ?", eventID).Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+
+	tickets := make([]domain.TicketType, 0, len(models))
+	for _, m := range models {
+		tickets = append(tickets, domain.TicketType{
+			ID:                m.ID,
+			EventID:           m.EventID,
+			Name:              m.Name,
+			Price:             m.Price,
+			TotalQuantity:     m.TotalQuantity,
+			AvailableQuantity: m.AvailableQuantity,
+			Version:           m.Version,
+		})
+	}
+
+	return tickets, nil
+}
+
 func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
