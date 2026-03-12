@@ -119,8 +119,35 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 
 	return &domain.Event{
 		ID:            model.ID,
+		OrganizerID:   model.OrganizerID,
 		Title:         model.Title,
 		Slug:          model.Slug,
+		Status:        model.Status,
+		City:          model.City,
+		VenueName:     model.VenueName,
+		Category:      model.Category,
+		CoverImageURL: model.CoverImageURL,
+	}, nil
+}
+
+func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error) {
+
+	var model EventModel
+
+	err := r.db.
+		Where("id = ?", eventID).
+		First(&model).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.Event{
+		ID:            model.ID,
+		OrganizerID:   model.OrganizerID,
+		Title:         model.Title,
+		Slug:          model.Slug,
+		Status:        model.Status,
 		City:          model.City,
 		VenueName:     model.VenueName,
 		Category:      model.Category,
@@ -234,6 +261,44 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 			}
 
 			if err := tx.Create(&ticketModel).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
+		if len(eventUpdates) > 0 {
+			if err := tx.Model(&EventModel{}).Where("id = ?", eventID).Updates(eventUpdates).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(detailUpdates) > 0 {
+			if err := tx.Model(&EventDetailsModel{}).Where("event_id = ?", eventID).Updates(detailUpdates).Error; err != nil {
+				return err
+			}
+		}
+
+		for _, ticket := range ticketUpdates {
+			model := TicketTypeModel{
+				ID:                ticket.ID,
+				EventID:           ticket.EventID,
+				Name:              ticket.Name,
+				Price:             ticket.Price,
+				TotalQuantity:     ticket.TotalQuantity,
+				AvailableQuantity: ticket.AvailableQuantity,
+				Version:           ticket.Version,
+				CreatedAt:         ticket.CreatedAt.Unix(),
+				UpdatedAt:         ticket.UpdatedAt.Unix(),
+			}
+
+			// Save handles both Insert and Update depending on whether Primary Key (ID) explicitly exists
+			if err := tx.Save(&model).Error; err != nil {
 				return err
 			}
 		}

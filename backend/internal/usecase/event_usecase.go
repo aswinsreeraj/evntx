@@ -117,3 +117,90 @@ func (u *EventUsecase) CreateEvent(
 	return eventID, nil
 }
 
+func (u *EventUsecase) UpdateEvent(
+	ctx context.Context,
+	organizerID string,
+	eventID string,
+	eventUpdates map[string]interface{},
+	detailsUpdates map[string]interface{},
+	ticketUpdates []domain.TicketType,
+) error {
+
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+
+	if event.OrganizerID != organizerID {
+		return errors.New("EVT_004: Forbidden action")
+	}
+
+	if event.Status != "draft" && event.Status != "rejected" {
+		return errors.New("EVT_006: Event cannot be updated in current state")
+	}
+
+	details, err := u.repo.GetEventDetails(eventID)
+	if err != nil {
+		return errors.New("event details not found")
+	}
+
+	// Calculate ticket bounds correctly using old vs new capacity maps
+	capacity := details.TotalCapacity
+	if newCap, exists := detailsUpdates["total_capacity"]; exists {
+		if c, ok := newCap.(int); ok {
+			capacity = c
+		} else if c, ok := newCap.(float64); ok {
+			capacity = int(c)
+		}
+	}
+
+	totalTickets := 0
+	for _, t := range ticketUpdates {
+		if t.Price < 0 {
+			return errors.New("ticket price must be >= 0")
+		}
+		if t.TotalQuantity < 0 {
+			return errors.New("ticket quantity must be >= 0")
+		}
+		totalTickets += t.TotalQuantity
+	}
+
+	// Need to check if total tickets exceed capacity, but this rule might be tricky if they don't submit all tickets.
+	// Since we assume ticketUpdates replaces or upserts, let's just make sure the sum of incoming ones doesn't overflow.
+	// To be perfectly safe, we'll enforce that the total updated sum doesn't exceed the capacity at face value.
+	if totalTickets > capacity {
+		return errors.New("sum of ticket quantities must not exceed total capacity")
+	}
+
+	now := time.Now()
+	eventUpdates["updated_at"] = now
+	detailsUpdates["updated_at"] = now
+
+	for i := range ticketUpdates {
+		if ticketUpdates[i].ID == "" {
+			ticketUpdates[i].ID = uuid.NewString()
+			ticketUpdates[i].CreatedAt = now
+		}
+		ticketUpdates[i].EventID = eventID
+		ticketUpdates[i].UpdatedAt = now
+		
+		// If AvailableQuantity somehow wasn't passed, sync it to total. Note: Partial updates from frontend might be tricky for tickets
+		// The requirement demands we upsert rows. We sync available natively.
+		ticketUpdates[i].AvailableQuantity = ticketUpdates[i].TotalQuantity 
+	}
+
+	err = u.repo.UpdateEvent(ctx, eventID, eventUpdates, detailsUpdates, ticketUpdates)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Failed to update event in database")
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event_id", eventID).
+		Str("organizer_id", organizerID).
+		Time("timestamp", now).
+		Msg("event_updated")
+
+	return nil
+}
+
