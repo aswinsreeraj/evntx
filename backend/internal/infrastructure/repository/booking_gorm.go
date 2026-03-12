@@ -185,3 +185,70 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 	return returnedBookings, nil
 }
 
+func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
+	var total int64
+	query := r.db.WithContext(ctx).Table("booking_models").Where("user_id = ?", userID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+
+	var results []struct {
+		BookingID      string
+		EventID        string
+		EventTitle     string
+		EventCity      string
+		EventStartTime int64
+		Status         string
+		TotalAmount    float64
+		TicketCount    int
+		CreatedAt      int64
+	}
+
+	err := query.Select(`
+		booking_models.id AS booking_id, 
+		booking_models.event_id, 
+		event_models.title AS event_title, 
+		event_models.city AS event_city, 
+		event_models.start_time AS event_start_time, 
+		booking_models.status, 
+		booking_models.total_amount, 
+		booking_models.created_at, 
+		COALESCE(SUM(booking_ticket_models.quantity), 0) AS ticket_count
+	`).
+		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
+		Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id = booking_models.id").
+		Group("booking_models.id, event_models.id").
+		Order("booking_models.created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&results).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	bookings := make([]domain.BookingWithEvent, 0, len(results))
+	for _, r := range results {
+		bookings = append(bookings, domain.BookingWithEvent{
+			BookingID:      r.BookingID,
+			EventID:        r.EventID,
+			EventTitle:     r.EventTitle,
+			EventCity:      r.EventCity,
+			EventStartTime: time.Unix(r.EventStartTime, 0),
+			Status:         r.Status,
+			TotalAmount:    r.TotalAmount,
+			TicketCount:    r.TicketCount,
+			CreatedAt:      time.Unix(r.CreatedAt, 0),
+		})
+	}
+
+	return bookings, total, nil
+}
+

@@ -41,6 +41,13 @@ func main() {
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
+
+	bookingRepo := repoImpl.NewBookingGormRepository(db)
+	eventRepo := repoImpl.NewEventGormRepository(db)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
+
+	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
+
 	emailSender := emailImpl.NewSMTPSender()
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
@@ -48,13 +55,10 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventRepo := repoImpl.NewEventGormRepository(db)
 	eventUsecase := usecase.NewEventUsecase(eventRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase)
 	
-	bookingRepo := repoImpl.NewBookingGormRepository(db)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
 
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
@@ -109,8 +113,6 @@ func main() {
 		c.JSON(200, gin.H{"message": "admin access granted"})
 	})
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase)
-
 	err = os.MkdirAll("assets/images", os.ModePerm)
 	if err != nil {
 		logger.Log.Warn().Msg("failed to create assets/images directory")
@@ -121,6 +123,7 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 

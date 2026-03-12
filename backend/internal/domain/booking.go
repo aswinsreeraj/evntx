@@ -22,3 +22,16 @@ type TicketRequest struct {
 	TicketTypeID string `json:"ticket_type_id" binding:"required"`
 	Quantity     int    `json:"quantity" binding:"required,gt=0"`
 }
+
+type BookingWithEvent struct {
+	BookingID      string
+	EventID        string
+	EventTitle     string
+	EventCity      string
+	EventStartTime time.Time
+	Status         string
+	TotalAmount    float64
+	TicketCount    int
+	CreatedAt      time.Time
+}
+

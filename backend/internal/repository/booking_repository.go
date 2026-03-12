@@ -9,5 +9,7 @@ import (
 type BookingRepository interface {
 	ReserveTickets(ctx context.Context, booking *domain.Booking, tickets []domain.BookingTicket) error
 	ExpireBookings(ctx context.Context) ([]domain.Booking, error)
+	GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error)
 }
+
 

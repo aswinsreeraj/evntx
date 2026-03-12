@@ -118,3 +118,19 @@ func (u *BookingUsecase) ProcessExpiredBookings(ctx context.Context) error {
 
 	return nil
 }
+
+func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
+	bookings, total, err := u.bookingRepo.GetUserBookings(ctx, userID, page, limit, status)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	logger.Log.Info().
+		Str("user_id", userID).
+		Int("page", page).
+		Int("limit", limit).
+		Time("timestamp", time.Now()).
+		Msg("user_bookings_fetched")
+
+	return bookings, total, nil
+}
