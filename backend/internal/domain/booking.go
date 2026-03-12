@@ -35,3 +35,14 @@ type BookingWithEvent struct {
 	CreatedAt      time.Time
 }
 
+type TicketWithEvent struct {
+	TicketID     string
+	TicketCode   string
+	EventID      string
+	EventTitle   string
+	TicketType   string
+	Status       string
+	CheckedInAt  *time.Time
+}
+
+

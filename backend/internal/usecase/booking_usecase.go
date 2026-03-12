@@ -134,3 +134,20 @@ func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, pag
 
 	return bookings, total, nil
 }
+
+func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, eventID string, status string) ([]domain.TicketWithEvent, error) {
+	tickets, err := u.bookingRepo.GetUserTickets(ctx, userID, eventID, status)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Log.Info().
+		Str("user_id", userID).
+		Str("event_filter", eventID).
+		Str("status_filter", status).
+		Time("timestamp", time.Now()).
+		Msg("user_tickets_fetched")
+
+	return tickets, nil
+}
+

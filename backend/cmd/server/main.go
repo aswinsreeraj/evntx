@@ -36,6 +36,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.EventModerationLogModel{})
 	db.AutoMigrate(&repoImpl.BookingModel{})
 	db.AutoMigrate(&repoImpl.BookingTicketModel{})
+	db.AutoMigrate(&repoImpl.TicketModel{})
 
 
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -124,6 +125,7 @@ func main() {
 
 	userGroup.GET("/me", userHandler.GetProfile)
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
+	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
