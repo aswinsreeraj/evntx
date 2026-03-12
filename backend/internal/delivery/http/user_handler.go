@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -54,6 +55,12 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	var req updateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		return
+	}
+
+	nameRegex := regexp.MustCompile(`^[a-zA-Z\s]+$`)
+	if !nameRegex.MatchString(req.Name) {
+		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Name can only contain alphabets and spaces")
 		return
 	}
 

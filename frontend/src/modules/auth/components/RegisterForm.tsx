@@ -16,11 +16,20 @@ export default function RegisterForm({ email, onClose }: any) {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+    const nameRegex = /^[a-zA-Z\s]+$/;
+
     if (!firstName.trim() || firstName.trim().length < 2) {
       newErrors.firstName = "First name must be at least 2 characters";
+    } else if (!nameRegex.test(firstName)) {
+      newErrors.firstName = "First name can only contain alphabets and spaces";
     }
-    if (lastName.trim() && lastName.trim().length < 2) {
-      newErrors.lastName = "Last name must be at least 2 characters";
+
+    if (lastName.trim()) {
+      if (lastName.trim().length < 2) {
+        newErrors.lastName = "Last name must be at least 2 characters";
+      } else if (!nameRegex.test(lastName)) {
+        newErrors.lastName = "Last name can only contain alphabets and spaces";
+      }
     }
     if (!dob) {
       newErrors.dob = "Date of birth is required";

@@ -60,11 +60,20 @@ export default function ProfilePage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+    const nameRegex = /^[a-zA-Z\s]+$/;
+
     if (!firstName.trim() || firstName.trim().length < 2) {
       newErrors.firstName = "First name must be at least 2 characters";
+    } else if (!nameRegex.test(firstName)) {
+      newErrors.firstName = "First name can only contain alphabets and spaces";
     }
-    if (lastName.trim() && lastName.trim().length < 2) {
-      newErrors.lastName = "Last name must be at least 2 characters";
+
+    if (lastName.trim()) {
+      if (lastName.trim().length < 2) {
+        newErrors.lastName = "Last name must be at least 2 characters";
+      } else if (!nameRegex.test(lastName)) {
+        newErrors.lastName = "Last name can only contain alphabets and spaces";
+      }
     }
     if (mobile && !/^\+?[0-9\s-]{10,15}$/.test(mobile)) {
       newErrors.mobile = "Please enter a valid mobile number";
