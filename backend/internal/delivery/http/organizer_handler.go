@@ -246,3 +246,31 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 		},
 	})
 }
+
+func (h *OrganizerHandler) SubmitEventHandler(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	err := h.eventUsecase.SubmitEventForApproval(c.Request.Context(), organizerID, eventID)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "EVT_004") {
+			response.Error(c, http.StatusForbidden, "EVT_004", "Forbidden action")
+			return
+		} else if strings.Contains(errMsg, "EVT_006") {
+			response.Error(c, http.StatusConflict, "EVT_006", "Event cannot be submitted in current state")
+			return
+		}
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, errMsg)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Event submitted for approval",
+		"data": gin.H{
+			"event_id": eventID,
+			"status":   "pending",
+		},
+	})
+}

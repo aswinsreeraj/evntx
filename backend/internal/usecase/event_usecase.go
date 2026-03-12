@@ -204,3 +204,33 @@ func (u *EventUsecase) UpdateEvent(
 	return nil
 }
 
+func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+
+	if event.OrganizerID != organizerID {
+		return errors.New("EVT_004: Forbidden action")
+	}
+
+	if event.Status != "draft" {
+		return errors.New("EVT_006: Event cannot be submitted in current state")
+	}
+
+	err = u.repo.UpdateEventStatus(ctx, eventID, "pending")
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event_id", eventID).
+		Str("organizer_id", organizerID).
+		Str("previous_status", event.Status).
+		Str("new_status", "pending").
+		Time("timestamp", time.Now()).
+		Msg("event_submitted_for_approval")
+
+	return nil
+}
+

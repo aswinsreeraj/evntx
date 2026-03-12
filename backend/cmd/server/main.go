@@ -122,6 +122,7 @@ func main() {
 
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
+	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)

@@ -14,4 +14,5 @@ type EventRepository interface {
 	GetEventByID(eventID string) (*domain.Event, error)
 	CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType) error
 	UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType) error
+	UpdateEventStatus(ctx context.Context, eventID string, status string) error
 }
