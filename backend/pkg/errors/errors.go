@@ -16,3 +16,20 @@ const (
 	RateLimitExceeded      = "EVT_013"
 	InternalServerError    = "EVT_999"
 )
+
+var (
+	ErrInvalidRequestBody     = New(400, InvalidRequestBody, "Invalid request body")
+	ErrResourceNotFound       = New(404, ResourceNotFound, "Resource not found")
+	ErrUnauthorizedAccess     = New(401, UnauthorizedAccess, "Unauthorized access")
+	ErrForbiddenAction        = New(403, ForbiddenAction, "Forbidden action")
+	ErrDuplicateResource      = New(409, DuplicateResource, "Duplicate resource")
+	ErrInvalidStateTransition = New(400, InvalidStateTransition, "Invalid state transition")
+	ErrPaymentFailed          = New(402, PaymentFailed, "Payment failed")
+	ErrInsufficientBalance    = New(402, InsufficientBalance, "Insufficient balance")
+	ErrTicketSoldOut          = New(400, TicketSoldOut, "Ticket sold out")
+	ErrSessionExpired         = New(401, SessionExpired, "Session expired")
+	ErrInvalidOTP             = New(400, InvalidOTP, "Invalid OTP")
+	ErrEventNotLive           = New(400, EventNotLive, "Event not live")
+	ErrRateLimitExceeded      = New(429, RateLimitExceeded, "Rate limit exceeded")
+	ErrInternalServerError    = New(500, InternalServerError, "Internal server error")
+)
