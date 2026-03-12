@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"gorm.io/gorm"
@@ -88,3 +89,62 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 		return nil
 	})
 }
+
+func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Booking, error) {
+	var expiredBookings []BookingModel
+	var returnedBookings []domain.Booking
+
+	// Fetch up to 100 expired bookings
+	err := r.db.WithContext(ctx).Where("status = ? AND expires_at < ?", "reserved", time.Now().Unix()).
+		Limit(100).
+		Find(&expiredBookings).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bm := range expiredBookings {
+		err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			// Update status to 'expired'
+			if err := tx.Model(&BookingModel{}).Where("id = ?", bm.ID).Update("status", "expired").Error; err != nil {
+				return err
+			}
+
+			// Fetch ticket relations
+			var bTickets []BookingTicketModel
+			if err := tx.Where("booking_id = ?", bm.ID).Find(&bTickets).Error; err != nil {
+				return err
+			}
+
+			// Restore ticket quantities
+			for _, bt := range bTickets {
+				if err := tx.Model(&TicketTypeModel{}).
+					Where("id = ?", bt.TicketTypeID).
+					Update("available_quantity", gorm.Expr("available_quantity + ?", bt.Quantity)).Error; err != nil {
+					return err
+				}
+			}
+
+			// Map for return
+			returnedBookings = append(returnedBookings, domain.Booking{
+				ID:          bm.ID,
+				UserID:      bm.UserID,
+				EventID:     bm.EventID,
+				Status:      "expired",
+				TotalAmount: bm.TotalAmount,
+				ExpiresAt:   time.Unix(bm.ExpiresAt, 0),
+				CreatedAt:   time.Unix(bm.CreatedAt, 0),
+			})
+
+			return nil
+		})
+
+		if err != nil {
+			// Log this or continue, returning what we have processed so far. We'll proceed with processing others.
+			continue
+		}
+	}
+
+	return returnedBookings, nil
+}
+

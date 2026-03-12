@@ -15,6 +15,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	"github.com/aswinsreeraj/evntx/pkg/workers"
 )
 
 func main() {
@@ -55,7 +57,11 @@ func main() {
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
 
+	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
+	go expirationWorker.Start()
+
 	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase)
+
 
 	router := gin.New()
 

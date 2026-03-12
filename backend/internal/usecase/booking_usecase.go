@@ -99,3 +99,22 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	return booking, nil
 }
+
+func (u *BookingUsecase) ProcessExpiredBookings(ctx context.Context) error {
+	expiredBookings, err := u.bookingRepo.ExpireBookings(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, b := range expiredBookings {
+		logger.Log.Info().
+			Str("booking_id", b.ID).
+			Str("event_id", b.EventID).
+			Str("user_id", b.UserID).
+			Time("expired_at", b.ExpiresAt).
+			Time("timestamp", time.Now()).
+			Msg("booking_expired")
+	}
+
+	return nil
+}
