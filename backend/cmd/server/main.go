@@ -66,7 +66,7 @@ func main() {
 
 	router.POST(
 		"/auth/otp/request",
-		middleware.RateLimitMiddleware(5, 5),
+		middleware.RateLimitMiddleware(1, 1),
 		authHandler.RequestOTP,
 	)
 	router.POST(
