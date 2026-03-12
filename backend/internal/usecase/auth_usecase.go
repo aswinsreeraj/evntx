@@ -40,7 +40,7 @@ func NewAuthUsecase(
 	}
 }
 func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
-	
+
 	isNewUser := false
 	user, err := u.userRepo.FindByEmail(email)
 	if err != nil {
@@ -50,10 +50,14 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 			return false, err
 		}
 	} else if !user.IsActive {
-		return false, errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		return false, errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com") // dynamic email for admin, not a static one
+		// either keep a configuration file for the project and load the mail from there, if only one admin is there
+		// fetch admin email from the database, according to the admin role and functions.
+		// each user can have a separate admin url
+		// create a table and add entry to the table for keeping track of blocker users and the email can be assigned to the entry accordingly
+
 	}
 
-	
 	rawOTP, err := otp.GenerateOTP()
 	if err != nil {
 		return false, err
@@ -64,7 +68,6 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 		return false, err
 	}
 
-	
 	if err := u.otpRepo.InvalidatePrevious(email); err != nil {
 		return false, err
 	}
@@ -110,7 +113,6 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 		return nil, nil, "", "", err
 	}
 
-	
 	user, err := u.userRepo.FindByEmail(email)
 
 	if err != nil {
@@ -299,7 +301,7 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 
 	user, err := u.userRepo.FindByEmail(googleUser.Email)
 	if err != nil {
-		
+
 		user = &domain.User{
 			ID:            uuid.NewString(),
 			Email:         googleUser.Email,
