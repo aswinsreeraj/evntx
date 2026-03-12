@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/pkg/logger"
@@ -39,6 +41,15 @@ func NewAuthUsecase(
 		roleRepo:    roleRepo,
 	}
 }
+
+func getAdminEmail() string {
+	email := os.Getenv("ADMIN_EMAIL")
+	if email == "" {
+		return "admin@evntx.com"
+	}
+	return email
+}
+
 func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 
 	isNewUser := false
@@ -50,11 +61,7 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 			return false, err
 		}
 	} else if !user.IsActive {
-		return false, errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com") // dynamic email for admin, not a static one
-		// either keep a configuration file for the project and load the mail from there, if only one admin is there
-		// fetch admin email from the database, according to the admin role and functions.
-		// each user can have a separate admin url
-		// create a table and add entry to the table for keeping track of blocker users and the email can be assigned to the entry accordingly
+		return false, fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 
 	}
 
@@ -132,7 +139,7 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 			return nil, nil, "", "", err
 		}
 	} else if !user.IsActive {
-		return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
@@ -210,7 +217,7 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 		}
 	} else {
 		if !user.IsActive {
-			return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+			return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 		}
 		user.Name = name
 		user.Dob = dob
@@ -313,7 +320,7 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 			return "", "", err
 		}
 	} else if !user.IsActive {
-		return "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		return "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)

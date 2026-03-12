@@ -1,6 +1,12 @@
 package response
 
-import "github.com/gin-gonic/gin"
+import (
+	"errors"
+	"net/http"
+
+	pkgerrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/gin-gonic/gin"
+)
 
 type ErrorDetail struct {
 	Code    string `json:"code"`
@@ -31,4 +37,16 @@ func Error(c *gin.Context, status int, code, message string) {
 			Message: message,
 		},
 	})
+}
+
+// AppError safely unwraps and responds with a custom AppError, or defaults to 500 if unknown.
+func AppError(c *gin.Context, err error) {
+	var appErr *pkgerrors.AppError
+	if errors.As(err, &appErr) {
+		Error(c, appErr.HTTPCode, appErr.Code, appErr.Message)
+		return
+	}
+
+	// Fallback for unknown errors
+	Error(c, http.StatusInternalServerError, pkgerrors.InternalServerError, "Internal server error")
 }
