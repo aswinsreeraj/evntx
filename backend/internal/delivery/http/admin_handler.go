@@ -47,3 +47,40 @@ func (h *AdminHandler) ApproveEventHandler(c *gin.Context) {
 		},
 	})
 }
+
+func (h *AdminHandler) RejectEventHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, errors.InvalidRequestBody, "Invalid request body")
+		return
+	}
+
+	err := h.eventUsecase.RejectEvent(c.Request.Context(), adminID, eventID, req.Reason)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "EVT_004") {
+			response.Error(c, http.StatusForbidden, "EVT_004", "Insufficient admin privileges")
+			return
+		} else if strings.Contains(errMsg, "EVT_006") {
+			response.Error(c, http.StatusConflict, "EVT_006", "Event cannot be rejected in current state")
+			return
+		}
+		response.Error(c, http.StatusBadRequest, errors.InvalidRequestBody, errMsg)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Event rejected successfully",
+		"data": gin.H{
+			"event_id": eventID,
+			"status":   "rejected",
+		},
+	})
+}

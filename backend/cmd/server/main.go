@@ -31,6 +31,8 @@ func main() {
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
 	db.AutoMigrate(&repoImpl.UserRoleModel{})
+	db.AutoMigrate(&repoImpl.EventModerationLogModel{})
+
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
@@ -117,6 +119,7 @@ func main() {
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
+	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
 
 	organizerGroup := router.Group("/organizer")
 	organizerGroup.Use(middleware.JWTAuthMiddleware())

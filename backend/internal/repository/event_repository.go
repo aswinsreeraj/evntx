@@ -16,4 +16,5 @@ type EventRepository interface {
 	UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType) error
 	UpdateEventStatus(ctx context.Context, eventID string, status string) error
 	ApproveEvent(ctx context.Context, eventID string) error
+	RejectEvent(ctx context.Context, eventID string, adminID string, reason string) error
 }

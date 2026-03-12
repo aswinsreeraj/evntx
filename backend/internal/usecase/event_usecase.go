@@ -260,3 +260,30 @@ func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID
 	return nil
 }
 
+func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID string, reason string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+
+	if event.Status != "pending" {
+		return errors.New("EVT_006: Event cannot be rejected in current state")
+	}
+
+	err = u.repo.RejectEvent(ctx, eventID, adminID, reason)
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event_id", eventID).
+		Str("admin_id", adminID).
+		Str("reason", reason).
+		Str("previous_status", event.Status).
+		Str("new_status", "rejected").
+		Time("timestamp", time.Now()).
+		Msg("event_rejected")
+
+	return nil
+}
+

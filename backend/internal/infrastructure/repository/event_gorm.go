@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -53,6 +55,15 @@ type TicketTypeModel struct {
 	Version           int
 	CreatedAt         int64
 	UpdatedAt         int64
+}
+
+type EventModerationLogModel struct {
+	ID        string
+	EventID   string
+	AdminID   string
+	Action    string
+	Reason    string
+	CreatedAt int64
 }
 
 type eventGormRepository struct {
@@ -323,4 +334,28 @@ func (r *eventGormRepository) ApproveEvent(ctx context.Context, eventID string) 
 			"status":     "approved",
 			"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 		}).Error
+}
+
+func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, adminID string, reason string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&EventModel{}).
+			Where("id = ?", eventID).
+			Updates(map[string]interface{}{
+				"status":     "rejected",
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			}).Error; err != nil {
+			return err
+		}
+
+		logModel := EventModerationLogModel{
+			ID:        uuid.New().String(),
+			EventID:   eventID,
+			AdminID:   adminID,
+			Action:    "rejected",
+			Reason:    reason,
+			CreatedAt: time.Now().Unix(),
+		}
+		
+		return tx.Create(&logModel).Error
+	})
 }
