@@ -1,0 +1,238 @@
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useUsers, useToggleUserStatus } from "../hooks";
+import AdminLayout from "../components/AdminLayout";
+import { ChevronDown, Download, Search, Filter } from "lucide-react";
+import { useDebounce } from "../../../shared/hooks/useDebounce";
+
+export default function UserManagementPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const statusFilter = searchParams.get("status") || "all";
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const searchFilter = searchParams.get("search") || "";
+
+  const [searchTerm, setSearchTerm] = useState(searchFilter);
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const updateParams = (updates: Record<string, string>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || (key === "page" && value === "1") || (key === "limit" && value === "10") || (key === "status" && value === "all")) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, value);
+      }
+    });
+    setSearchParams(newParams);
+  };
+
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchFilter) {
+      updateParams({ search: debouncedSearchTerm, page: "1" });
+    }
+  }, [debouncedSearchTerm]);
+
+  const setPage = (p: number | ((prev: number) => number)) => {
+    const newPage = typeof p === "function" ? p(page) : p;
+    updateParams({ page: newPage.toString() });
+  };
+
+  const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
+  const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
+
+  const { data } = useUsers({ 
+    page, 
+    limit, 
+    ...(searchFilter && { search: searchFilter }),
+    ...(statusFilter !== "all" && { status: statusFilter })
+  });
+  const toggleUser = useToggleUserStatus();
+
+  
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdownId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+
+  const usersList = data?.users || [];
+  const pagination = data?.pagination;
+  const totalPages = pagination ? Math.ceil(pagination.total / pagination.limit) : 1;
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setPage(i)}
+          className={`w-8 h-8 rounded shrink-0 flex items-center justify-center text-sm transition-colors ${
+            page === i
+              ? "bg-gray-900 text-white"
+              : "hover:bg-gray-100 text-gray-600"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
+
+  return (
+    <AdminLayout title="User List">
+      
+      {/* Utility Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+        <div className="relative w-full sm:w-80">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-32">
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-full pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          <div className="relative w-full sm:w-48">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+            <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+        <div className="w-full overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[#f8f9fa] text-xs font-bold text-gray-900 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-center">Name</th>
+                <th className="px-6 py-4 text-center">Email</th>
+                <th className="px-6 py-4 text-center">Total Bookings</th>
+                <th className="px-6 py-4 text-center">Wallet Balance</th>
+                <th className="px-6 py-4 text-center">Status</th>
+                <th className="px-6 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+              {usersList.map((user: any) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 text-center">{user.name}</td>
+                  <td className="px-6 py-4 text-center">{user.email}</td>
+
+                  <td className="px-6 py-4 text-center">{user.total_bookings ?? 0}</td>
+                  <td className="px-6 py-4 text-center">{user.wallet_balance ?? 0}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span 
+                      className={`inline-block px-4 py-1.5 rounded-full text-xs text-white ${
+                        user.is_active ? "bg-[#0ec3c5]" : "bg-[#e53e5d]"
+                      }`}
+                    >
+                      {user.is_active ? "Active" : "Suspended"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center relative">
+                    <button
+                      onClick={() => setOpenDropdownId(openDropdownId === user.id ? null : user.id)}
+                      className="inline-flex items-center justify-between w-20 px-3 py-1.5 border border-blue-500 rounded-lg text-[#0b101e] text-xs font-semibold hover:bg-gray-50 transition-colors"
+                    >
+                      View <ChevronDown className="w-4 h-4 text-blue-500" />
+                    </button>
+                    
+
+                    {openDropdownId === user.id && (
+                      <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
+                        <button
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
+                          onClick={() => {
+                            toggleUser.mutate({
+                              userId: user.id,
+                              isActive: !user.is_active,
+                            });
+                            setOpenDropdownId(null);
+                          }}
+                        >
+                          {user.is_active ? "Suspend User" : "Activate User"}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 mb-2">
+          <div className="text-sm text-gray-500">
+            Showing {usersList.length} of {pagination?.total || 0} users
+          </div>
+          <div className="flex items-center gap-1 text-sm font-medium">
+            <button 
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              &lt; Prev
+            </button>
+            {renderPageNumbers()}
+            <button 
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || totalPages === 0}
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              Next &gt;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-4">
+        <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
+          Download as CSV
+          <Download className="w-4 h-4" />
+        </button>
+      </div>
+
+    </AdminLayout>
+  );
+}
