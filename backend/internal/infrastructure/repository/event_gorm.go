@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"gorm.io/gorm"
 )
@@ -39,6 +41,18 @@ type EventPersonnelModel struct {
 	Role        string
 	Image       string
 	ProfileLink string
+}
+
+type TicketTypeModel struct {
+	ID                string
+	EventID           string
+	Name              string
+	Price             float64
+	TotalQuantity     int
+	AvailableQuantity int
+	Version           int
+	CreatedAt         int64
+	UpdatedAt         int64
 }
 
 type eventGormRepository struct {
@@ -166,3 +180,65 @@ func (r *eventGormRepository) GetEventPersonnels(eventID string) ([]domain.Event
 
 	return personnels, nil
 }
+
+func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+
+		eventModel := EventModel{
+			ID:            event.ID,
+			OrganizerID:   event.OrganizerID,
+			Title:         event.Title,
+			Slug:          event.Slug,
+			City:          event.City,
+			VenueName:     event.VenueName,
+			Category:      event.Category,
+			StartTime:     event.StartTime.Unix(),
+			EndTime:       event.EndTime.Unix(),
+			Tags:          event.Tags,
+			Status:        event.Status,
+			CoverImageURL: event.CoverImageURL,
+		}
+
+		if err := tx.Create(&eventModel).Error; err != nil {
+			return err
+		}
+
+		detailsModel := EventDetailsModel{
+			EventID:            details.EventID,
+			Description:        details.Description,
+			VenueAddress:       details.VenueAddress,
+			MapURL:             details.MapURL,
+			TotalCapacity:      details.TotalCapacity,
+			AvailableCapacity:  details.AvailableCapacity,
+			Rating:             details.Rating,
+			TotalReviews:       details.TotalReviews,
+			TermsAndConditions: details.TermsAndConditions,
+		}
+
+		if err := tx.Create(&detailsModel).Error; err != nil {
+			return err
+		}
+
+
+		for _, ticket := range tickets {
+			ticketModel := TicketTypeModel{
+				ID:                ticket.ID,
+				EventID:           ticket.EventID,
+				Name:              ticket.Name,
+				Price:             ticket.Price,
+				TotalQuantity:     ticket.TotalQuantity,
+				AvailableQuantity: ticket.AvailableQuantity,
+				Version:           ticket.Version,
+				CreatedAt:         ticket.CreatedAt.Unix(),
+				UpdatedAt:         ticket.UpdatedAt.Unix(),
+			}
+
+			if err := tx.Create(&ticketModel).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+

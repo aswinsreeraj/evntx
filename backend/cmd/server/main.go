@@ -46,6 +46,8 @@ func main() {
 	eventUsecase := usecase.NewEventUsecase(eventRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
 
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase)
+
 	router := gin.New()
 
 	router.Use(cors.New(cors.Config{
@@ -113,6 +115,12 @@ func main() {
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+
+	organizerGroup := router.Group("/organizer")
+	organizerGroup.Use(middleware.JWTAuthMiddleware())
+	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
+
+	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
