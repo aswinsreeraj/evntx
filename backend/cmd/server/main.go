@@ -15,6 +15,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+
+	"github.com/aswinsreeraj/evntx/pkg/workers"
 )
 
 func main() {
@@ -31,10 +33,22 @@ func main() {
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
 	db.AutoMigrate(&repoImpl.UserRoleModel{})
+	db.AutoMigrate(&repoImpl.EventModerationLogModel{})
+	db.AutoMigrate(&repoImpl.BookingModel{})
+	db.AutoMigrate(&repoImpl.BookingTicketModel{})
+	db.AutoMigrate(&repoImpl.TicketModel{})
+
 
 	userRepo := repoImpl.NewUserGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
+
+	bookingRepo := repoImpl.NewBookingGormRepository(db)
+	eventRepo := repoImpl.NewEventGormRepository(db)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
+
+	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
+
 	emailSender := emailImpl.NewSMTPSender()
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
@@ -42,9 +56,17 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventRepo := repoImpl.NewEventGormRepository(db)
 	eventUsecase := usecase.NewEventUsecase(eventRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase)
+	
+	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
+
+	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
+	go expirationWorker.Start()
+
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase)
+
 
 	router := gin.New()
 
@@ -92,8 +114,6 @@ func main() {
 		c.JSON(200, gin.H{"message": "admin access granted"})
 	})
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase)
-
 	err = os.MkdirAll("assets/images", os.ModePerm)
 	if err != nil {
 		logger.Log.Warn().Msg("failed to create assets/images directory")
@@ -104,6 +124,8 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
+	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
@@ -113,9 +135,24 @@ func main() {
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
+	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
+
+	organizerGroup := router.Group("/organizer")
+	organizerGroup.Use(middleware.JWTAuthMiddleware())
+	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
+
+	organizerGroup.POST("/events", organizerHandler.CreateEvent)
+	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
+	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
+
+	goerGroup := router.Group("/bookings")
+	goerGroup.Use(middleware.JWTAuthMiddleware())
+	goerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleGoer))
+	goerGroup.POST("/reserve", bookingHandler.ReserveTickets)
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

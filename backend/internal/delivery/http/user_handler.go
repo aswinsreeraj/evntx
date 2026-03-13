@@ -13,11 +13,15 @@ import (
 )
 
 type UserHandler struct {
-	userUsecase *usecase.UserUsecase
+	userUsecase    *usecase.UserUsecase
+	bookingUsecase *usecase.BookingUsecase
 }
 
-func NewUserHandler(u *usecase.UserUsecase) *UserHandler {
-	return &UserHandler{userUsecase: u}
+func NewUserHandler(userUsecase *usecase.UserUsecase, bookingUsecase *usecase.BookingUsecase) *UserHandler {
+	return &UserHandler{
+		userUsecase:    userUsecase,
+		bookingUsecase: bookingUsecase,
+	}
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -130,6 +134,93 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 
 	apiResponse.Success(c, "User status updated successfully", nil)
 }
+
+func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+	status := c.Query("status")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	bookings, total, err := h.bookingUsecase.GetUserBookings(c.Request.Context(), userID, page, limit, status)
+	if err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch bookings")
+		return
+	}
+
+	responseBookings := make([]map[string]interface{}, 0, len(bookings))
+	for _, b := range bookings {
+		responseBookings = append(responseBookings, map[string]interface{}{
+			"booking_id":       b.BookingID,
+			"event_id":         b.EventID,
+			"event_title":      b.EventTitle,
+			"event_city":       b.EventCity,
+			"event_start_time": b.EventStartTime,
+			"status":           b.Status,
+			"total_amount":     b.TotalAmount,
+			"ticket_count":     b.TicketCount,
+			"created_at":       b.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Bookings fetched successfully",
+		"data": gin.H{
+			"bookings": responseBookings,
+			"pagination": gin.H{
+				"page":  page,
+				"limit": limit,
+				"total": total,
+			},
+		},
+	})
+}
+
+func (h *UserHandler) GetMyTicketsHandler(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	eventID := c.Query("event_id")
+	status := c.Query("status")
+
+	tickets, err := h.bookingUsecase.GetUserTickets(c.Request.Context(), userID, eventID, status)
+	if err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch tickets")
+		return
+	}
+
+	responseTickets := make([]map[string]interface{}, 0, len(tickets))
+	for _, t := range tickets {
+		responseTickets = append(responseTickets, map[string]interface{}{
+			"ticket_id":     t.TicketID,
+			"ticket_code":   t.TicketCode,
+			"event_id":      t.EventID,
+			"event_title":   t.EventTitle,
+			"ticket_type":   t.TicketType,
+			"status":        t.Status,
+			"checked_in_at": t.CheckedInAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Tickets fetched successfully",
+		"data": gin.H{
+			"tickets": responseTickets,
+		},
+	})
+}
+
 
 func (h *UserHandler) UploadProfileImage(c *gin.Context) {
 	userID := c.GetString("user_id")
