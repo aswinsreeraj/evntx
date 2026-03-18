@@ -33,3 +33,11 @@ func (r *userRoleGormRepository) GetRolesByUserID(userID string) ([]domain.UserR
 
 	return roles, nil
 }
+
+func (r *userRoleGormRepository) AddRole(userID string, role domain.UserRole) error {
+	model := UserRoleModel{
+		UserID: userID,
+		Role:   string(role),
+	}
+	return r.db.Save(&model).Error
+}

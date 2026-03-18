@@ -8,18 +8,19 @@ import (
 )
 
 type UserModel struct {
-	ID            string   `gorm:"type:uuid;primaryKey"`
-	Name          string
-	Email         string   `gorm:"uniqueIndex"`
-	Mobile        string
-	Dob           string
-	Gender        string
-	ProfileImage  string
-	Locations     []string `gorm:"serializer:json"`
-	IsActive      bool
-	EmailVerified bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID               string   `gorm:"type:uuid;primaryKey"`
+	Name             string
+	Email            string   `gorm:"uniqueIndex"`
+	Mobile           string
+	Dob              string
+	Gender           string
+	ProfileImage     string
+	OrganizationName string
+	Locations        []string `gorm:"serializer:json"`
+	IsActive         bool
+	EmailVerified    bool
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type userGormRepository struct {
@@ -32,16 +33,17 @@ func NewUserGormRepository(db *gorm.DB) *userGormRepository {
 
 func (r *userGormRepository) Create(user *domain.User) error {
 	model := UserModel{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		Mobile:        user.Mobile,
-		Dob:           user.Dob,
-		Gender:        user.Gender,
-		ProfileImage:  user.ProfileImage,
-		Locations:     user.Locations,
-		IsActive:      user.IsActive,
-		EmailVerified: user.EmailVerified,
+		ID:               user.ID,
+		Name:             user.Name,
+		Email:            user.Email,
+		Mobile:           user.Mobile,
+		Dob:              user.Dob,
+		Gender:           user.Gender,
+		ProfileImage:     user.ProfileImage,
+		OrganizationName: user.OrganizationName,
+		Locations:        user.Locations,
+		IsActive:         user.IsActive,
+		EmailVerified:    user.EmailVerified,
 	}
 
 	return r.db.Create(&model).Error
@@ -61,9 +63,10 @@ func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {
 		Email:         model.Email,
 		Mobile:        model.Mobile,
 		Dob:           model.Dob,
-		Gender:        model.Gender,
-		ProfileImage:  model.ProfileImage,
-		Locations:     model.Locations,
+		Gender:           model.Gender,
+		ProfileImage:     model.ProfileImage,
+		OrganizationName: model.OrganizationName,
+		Locations:        model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -85,9 +88,10 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 		Email:         model.Email,
 		Mobile:        model.Mobile,
 		Dob:           model.Dob,
-		Gender:        model.Gender,
-		ProfileImage:  model.ProfileImage,
-		Locations:     model.Locations,
+		Gender:           model.Gender,
+		ProfileImage:     model.ProfileImage,
+		OrganizationName: model.OrganizationName,
+		Locations:        model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -98,18 +102,19 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 func (r *userGormRepository) Update(user *domain.User) error {
 	return r.db.Model(&UserModel{}).
 		Where("id = ?", user.ID).
-		Select("name", "email", "mobile", "dob", "gender", "profile_image", "locations", "is_active", "email_verified", "updated_at").
+		Select("name", "email", "mobile", "dob", "gender", "profile_image", "organization_name", "locations", "is_active", "email_verified", "updated_at").
 		Updates(UserModel{
-			Name:          user.Name,
-			Email:         user.Email,
-			Mobile:        user.Mobile,
-			Dob:           user.Dob,
-			Gender:        user.Gender,
-			ProfileImage:  user.ProfileImage,
-			Locations:     user.Locations,
-			IsActive:      user.IsActive,
-			EmailVerified: user.EmailVerified,
-			UpdatedAt:     time.Now(),
+			Name:             user.Name,
+			Email:            user.Email,
+			Mobile:           user.Mobile,
+			Dob:              user.Dob,
+			Gender:           user.Gender,
+			ProfileImage:     user.ProfileImage,
+			OrganizationName: user.OrganizationName,
+			Locations:        user.Locations,
+			IsActive:         user.IsActive,
+			EmailVerified:    user.EmailVerified,
+			UpdatedAt:        time.Now(),
 		}).Error
 }
 
@@ -162,18 +167,19 @@ func (r *userGormRepository) Search(
 	users := make([]domain.User, 0)
 	for _, m := range models {
 		users = append(users, domain.User{
-			ID:            m.ID,
-			Name:          m.Name,
-			Email:         m.Email,
-			Mobile:        m.Mobile,
-			Dob:           m.Dob,
-			Gender:        m.Gender,
-			ProfileImage:  m.ProfileImage,
-			Locations:     m.Locations,
-			IsActive:      m.IsActive,
-			EmailVerified: m.EmailVerified,
-			CreatedAt:     m.CreatedAt,
-			UpdatedAt:     m.UpdatedAt,
+			ID:               m.ID,
+			Name:             m.Name,
+			Email:            m.Email,
+			Mobile:           m.Mobile,
+			Dob:              m.Dob,
+			Gender:           m.Gender,
+			ProfileImage:     m.ProfileImage,
+			OrganizationName: m.OrganizationName,
+			Locations:        m.Locations,
+			IsActive:         m.IsActive,
+			EmailVerified:    m.EmailVerified,
+			CreatedAt:        m.CreatedAt,
+			UpdatedAt:        m.UpdatedAt,
 		})
 	}
 

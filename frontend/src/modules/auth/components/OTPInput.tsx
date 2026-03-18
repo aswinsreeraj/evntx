@@ -49,7 +49,7 @@ export default function OTPInput({ value, onChange, length = 6 }: Props) {
       {Array.from({ length }).map((_, index) => (
         <input
           key={index}
-          ref={(el) => (inputs.current[index] = el)}
+          ref={(el) => { inputs.current[index] = el; }}
           maxLength={1}
           placeholder="0"
           className="w-12 h-12 text-center border border-gray-300 rounded-xl text-lg font-medium text-gray-700 placeholder-gray-300 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"

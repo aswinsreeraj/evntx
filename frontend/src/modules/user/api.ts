@@ -6,6 +6,7 @@ export type UpdateProfilePayload = {
   dob: string;
   gender: string;
   locations: string[];
+  organization_name?: string;
 };
 
 export const userApi = {

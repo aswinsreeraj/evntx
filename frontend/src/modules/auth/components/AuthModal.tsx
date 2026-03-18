@@ -11,7 +11,7 @@ type AuthView =
   | "otp-verify"
   | "register"
 
-function AuthModal({ open, onClose }: any) {
+function AuthModal({ open, onClose, isOrganizer = false }: any) {
   const [view, setView] = useState<AuthView>("login-choice")
   const [email, setEmail] = useState("")
 
@@ -45,6 +45,7 @@ function AuthModal({ open, onClose }: any) {
                 <LoginChoice
                   setView={setView}
                   setEmail={setEmail}
+                  isOrganizer={isOrganizer}
                 />
               </motion.div>
             )}
@@ -62,6 +63,7 @@ function AuthModal({ open, onClose }: any) {
                 <OTPVerify
                   email={email}
                   setView={setView}
+                  isOrganizer={isOrganizer}
                 />
               </motion.div>
             )}
@@ -74,7 +76,7 @@ function AuthModal({ open, onClose }: any) {
                 exit={{ x: -50, opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <RegisterForm email={email} onClose={onClose} />
+                <RegisterForm email={email} onClose={onClose} isOrganizer={isOrganizer} />
               </motion.div>
             )}
 

@@ -23,11 +23,11 @@ func NewOrganizerHandler(u *usecase.EventUsecase) *OrganizerHandler {
 }
 
 type detailsInput struct {
-	Description        string  `json:"description" binding:"required"`
-	VenueAddress       string  `json:"venue_address" binding:"required"`
-	MapURL             string  `json:"map_url"`
-	TotalCapacity      int     `json:"total_capacity" binding:"required,gt=0"`
-	TermsAndConditions string  `json:"terms_and_conditions"`
+	Description        string `json:"description" binding:"required"`
+	VenueAddress       string `json:"venue_address" binding:"required"`
+	MapURL             string `json:"map_url"`
+	TotalCapacity      int    `json:"total_capacity" binding:"required,gt=0"`
+	TermsAndConditions string `json:"terms_and_conditions"`
 }
 
 type ticketInput struct {
@@ -37,16 +37,16 @@ type ticketInput struct {
 }
 
 type createEventRequest struct {
-	Title         string         `json:"title" binding:"required"`
-	City          string         `json:"city" binding:"required"`
-	VenueName     string         `json:"venue_name" binding:"required"`
-	Category      string         `json:"category"`
-	StartTime     time.Time      `json:"start_time" binding:"required"`
-	EndTime       time.Time      `json:"end_time" binding:"required"`
-	Tags          []string       `json:"tags"`
-	CoverImageURL string         `json:"cover_image_url"`
-	Details       detailsInput   `json:"details" binding:"required"`
-	TicketTypes   []ticketInput  `json:"ticket_types" binding:"required,min=1,dive"`
+	Title         string        `json:"title" binding:"required"`
+	City          string        `json:"city" binding:"required"`
+	VenueName     string        `json:"venue_name" binding:"required"`
+	Category      string        `json:"category"`
+	StartTime     time.Time     `json:"start_time" binding:"required"`
+	EndTime       time.Time     `json:"end_time" binding:"required"`
+	Tags          []string      `json:"tags"`
+	CoverImageURL string        `json:"cover_image_url"`
+	Details       detailsInput  `json:"details" binding:"required"`
+	TicketTypes   []ticketInput `json:"ticket_types" binding:"required,min=1,dive"`
 }
 
 func (h *OrganizerHandler) CreateEvent(c *gin.Context) {

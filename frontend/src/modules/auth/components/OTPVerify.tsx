@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import OTPInput from "./OTPInput"
 import { authApi } from "../api"
 
-export default function OTPVerify({ email }: any) {
+export default function OTPVerify({ email, isOrganizer }: any) {
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -33,7 +33,7 @@ export default function OTPVerify({ email }: any) {
     setLoading(true)
     try {
       await authApi.verifyOtp(email, otp)
-      window.location.href = "/profile"
+      window.location.href = isOrganizer ? "/organizer/profile" : "/profile"
     } catch (err: any) {
       console.error(err)
       setError(err.response?.data?.message || "Invalid or expired OTP. Please try again.")
@@ -61,11 +61,13 @@ export default function OTPVerify({ email }: any) {
   return (
     <div className="flex flex-col items-center w-full max-w-sm m-auto">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center">
-        Welcome back
+        {isOrganizer ? "Secure Organizer Login" : "Welcome back"}
       </h2>
 
       <p className="text-gray-500 mb-8 text-center text-sm leading-relaxed px-4">
-        Dive back into the ultimate experience
+        {isOrganizer 
+          ? "Enter the OTP sent to your registered email to continue managing your events." 
+          : "Dive back into the ultimate experience"}
       </p>
 
       <div className="w-full flex flex-col mb-6">

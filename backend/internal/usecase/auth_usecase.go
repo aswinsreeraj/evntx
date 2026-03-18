@@ -176,7 +176,7 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 	return user, roles, accessToken, refreshToken, nil
 }
 
-func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
+func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organizationName, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
 	logger.Log.Info().Msgf("Registering user: %s", email)
 
@@ -200,13 +200,14 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			user = &domain.User{
-				ID:            uuid.NewString(),
-				Email:         email,
-				Name:          name,
-				Dob:           dob,
-				Gender:        gender,
-				IsActive:      true,
-				EmailVerified: true,
+				ID:               uuid.NewString(),
+				Email:            email,
+				Name:             name,
+				Dob:              dob,
+				Gender:           gender,
+				OrganizationName: organizationName,
+				IsActive:         true,
+				EmailVerified:    true,
 			}
 
 			if err := u.userRepo.Create(user); err != nil {
@@ -222,6 +223,7 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 		user.Name = name
 		user.Dob = dob
 		user.Gender = gender
+		user.OrganizationName = organizationName
 		if err := u.userRepo.Update(user); err != nil {
 			return nil, nil, "", "", err
 		}
@@ -256,6 +258,25 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
 	if err != nil {
 		roles = []domain.UserRole{}
+	}
+
+	targetRole := domain.RoleGoer
+	if roleStr == "organizer" {
+		targetRole = domain.RoleOrganizer
+	}
+
+	hasRole := false
+	for _, r := range roles {
+		if r == targetRole {
+			hasRole = true
+			break
+		}
+	}
+
+	if !hasRole {
+		if err := u.roleRepo.AddRole(user.ID, targetRole); err == nil {
+			roles = append(roles, targetRole)
+		}
 	}
 
 	return user, roles, accessToken, refreshToken, nil

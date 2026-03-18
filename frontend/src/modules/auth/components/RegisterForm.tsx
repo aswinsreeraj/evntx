@@ -3,12 +3,13 @@ import { ChevronDown } from "lucide-react";
 import OTPInput from "./OTPInput";
 import { authApi } from "../api";
 
-export default function RegisterForm({ email, onClose }: any) {
+export default function RegisterForm({ email, onClose, isOrganizer }: any) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState<"Male" | "Female" | "Other" | "">("Male");
   const [isOtherDropdownOpen, setIsOtherDropdownOpen] = useState(false);
+  const [organizationName, setOrganizationName] = useState("");
   const [otp, setOtp] = useState("");
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,6 +40,9 @@ export default function RegisterForm({ email, onClose }: any) {
     if (!gender) {
       newErrors.gender = "Gender is required";
     }
+    if (isOrganizer && (!organizationName.trim() || organizationName.trim().length < 2)) {
+      newErrors.organizationName = "Organization name is required";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,9 +59,10 @@ export default function RegisterForm({ email, onClose }: any) {
     setErrors({});
     try {
       const name = `${firstName} ${lastName}`.trim();
-      await authApi.register(email, otp, name, dob, gender);
+      const role = isOrganizer ? "organizer" : "goer";
+      await authApi.register(email, otp, name, dob, gender, role, isOrganizer ? organizationName : undefined);
       if (onClose) onClose();
-      window.location.href = "/profile";
+      window.location.href = isOrganizer ? "/organizer/profile" : "/profile";
     } catch (e: any) {
       console.error(e);
       setErrors({ api: e.response?.data?.message || "Failed to register. Invalid OTP or request." });
@@ -69,11 +74,11 @@ export default function RegisterForm({ email, onClose }: any) {
   return (
     <div className="flex flex-col items-center w-full max-w-sm m-auto py-4">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center mt-4">
-        Welcome to EVNTX family
+        {isOrganizer ? "Create Organizer Account" : "Welcome to EVNTX family"}
       </h2>
 
       <p className="text-gray-500 mb-6 text-center text-sm leading-relaxed px-4">
-        Let's complete the registration
+        {isOrganizer ? "Set up your organizer profile to start creating and managing events." : "Let's complete the registration"}
       </p>
 
 
@@ -108,6 +113,18 @@ export default function RegisterForm({ email, onClose }: any) {
         </div>
       </div>
 
+      {isOrganizer && (
+        <div className="w-full flex flex-col mb-4">
+          <label className="text-sm font-medium text-gray-700 mb-2">Organization Name</label>
+          <input
+            value={organizationName}
+            onChange={(e) => { setOrganizationName(e.target.value); setErrors({ ...errors, organizationName: "" }) }}
+            placeholder="Your Organization"
+            className={`w-full border ${errors.organizationName ? 'border-red-500' : 'border-gray-300'} rounded-xl px-4 py-3 focus:outline-none focus:ring-1 ${errors.organizationName ? 'focus:ring-red-400' : 'focus:ring-gray-400'} transition-colors text-sm`}
+          />
+          {errors.organizationName && <span className="text-red-500 text-xs mt-1">{errors.organizationName}</span>}
+        </div>
+      )}
 
       <div className="w-full flex flex-col mb-4">
         <label className="text-sm font-medium text-gray-700 mb-2">Date of Birth</label>

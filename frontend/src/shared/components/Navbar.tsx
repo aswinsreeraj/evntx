@@ -5,7 +5,7 @@ import { useAuthStore } from "../../modules/auth/store/authStore"
 import { useNavigate } from "react-router-dom"
 
 function Navbar() {
-  const [open, setOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<"goer" | "organizer" | null>(null)
   const { isAuthenticated, logout } = useAuthStore()
   const navigate = useNavigate()
 
@@ -16,7 +16,7 @@ function Navbar() {
         <h1 onClick={() => navigate("/")} className="font-sigmar text-2xl tracking-wide cursor-pointer">EVNTX</h1>
 
         <div className="flex items-center gap-4">
-          <button className="text-red-500 font-medium">
+          <button className="text-red-500 font-medium" onClick={() => setAuthMode("organizer")}>
             + Create Event
           </button>
 
@@ -25,12 +25,16 @@ function Navbar() {
               Logout
             </Button>
           ) : (
-            <Button onClick={() => setOpen(true)}>
+            <Button onClick={() => setAuthMode("goer")}>
               Login
             </Button>
           )}
 
-          <AuthModal open={open} onClose={() => setOpen(false)} />
+          <AuthModal 
+            open={authMode !== null} 
+            onClose={() => setAuthMode(null)} 
+            isOrganizer={authMode === "organizer"} 
+          />
         </div>
       </div>
     </header>

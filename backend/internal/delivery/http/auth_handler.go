@@ -171,11 +171,13 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 }
 
 type registerRequest struct {
-	Email  string `json:"email" binding:"required,email"`
-	OTP    string `json:"otp" binding:"required,len=6"`
-	Name   string `json:"name" binding:"required"`
-	Dob    string `json:"dob"`
-	Gender string `json:"gender"`
+	Email            string `json:"email" binding:"required,email"`
+	OTP              string `json:"otp" binding:"required,len=6"`
+	Name             string `json:"name" binding:"required"`
+	Dob              string `json:"dob"`
+	Gender           string `json:"gender"`
+	Role             string `json:"role"`
+	OrganizationName string `json:"organization_name"`
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -198,6 +200,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		req.Name,
 		req.Dob,
 		req.Gender,
+		req.Role,
+		req.OrganizationName,
 		c.Request.UserAgent(),
 		c.ClientIP(),
 	)

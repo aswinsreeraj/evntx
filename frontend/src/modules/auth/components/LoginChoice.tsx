@@ -2,7 +2,7 @@ import { useState } from "react"
 import { GoogleLogin } from "@react-oauth/google"
 import { authApi } from "../api"
 
-export default function LoginChoice({ setView, setEmail }: any) {
+export default function LoginChoice({ setView, setEmail, isOrganizer }: any) {
   const [localEmail, setLocalEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -54,12 +54,15 @@ export default function LoginChoice({ setView, setEmail }: any) {
   return (
     <div className="flex flex-col items-center w-full max-w-sm m-auto">
       <h2 className="text-2xl font-bold mb-3 text-gray-900 text-center">
-        Welcome to the world of events
+        {isOrganizer ? "Manage Your Events" : "Welcome to the world of events"}
       </h2>
 
       <p className="text-gray-500 mb-8 text-center text-sm leading-relaxed px-4">
-        Do you need to connect, learn, network or just chill?<br/>
-        You can find an event here to get you there.
+        {isOrganizer ? (
+          <>Reach your audience and grow your community.<br/>Log in to EVNTX Organizer dashboard.</>
+        ) : (
+          <>Do you need to connect, learn, network or just chill?<br/>You can find an event here to get you there.</>
+        )}
       </p>
 
       <div className="w-full flex justify-center mb-8">

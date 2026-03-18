@@ -7,6 +7,7 @@ import EventListPage from "../modules/events/pages/EventListPage";
 import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
+import OrganizerProfile from "../modules/organizer/pages/Profile";
 
 export const router = createBrowserRouter([
     {
@@ -24,6 +25,14 @@ export const router = createBrowserRouter([
             { path: "/events", element: <EventListPage /> },
             { path: "/events/:eventId", element: <EventDetailPage /> },
         ],
+    },
+    {
+        path: "/organizer/profile",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerProfile />
+            </ProtectedRoute>
+        ),
     },
     { path: "/admin/login", element: <AdminLoginPage /> },
     {

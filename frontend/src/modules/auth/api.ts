@@ -44,13 +44,15 @@ export const authApi = {
         return response;
     },
 
-    async register(email: string, otp: string, name: string, dob: string, gender: string) {
+    async register(email: string, otp: string, name: string, dob: string, gender: string, role?: string, organization_name?: string) {
         const response = await api.post("/auth/register", {
             email,
             otp,
             name,
             dob,
             gender,
+            role,
+            organization_name,
         });
 
         const data: VerifyOtpResponse = response.data.data;

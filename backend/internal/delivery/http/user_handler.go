@@ -46,11 +46,12 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 type updateProfileRequest struct {
-	Name      string   `json:"name" binding:"required"`
-	Mobile    string   `json:"mobile"`
-	Dob       string   `json:"dob"`
-	Gender    string   `json:"gender"`
-	Locations []string `json:"locations"`
+	Name             string   `json:"name" binding:"required"`
+	Mobile           string   `json:"mobile"`
+	Dob              string   `json:"dob"`
+	Gender           string   `json:"gender"`
+	OrganizationName string   `json:"organization_name"`
+	Locations        []string `json:"locations"`
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -68,7 +69,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.userUsecase.UpdateProfile(userID, req.Name, req.Mobile, req.Dob, req.Gender, req.Locations); err != nil {
+	if err := h.userUsecase.UpdateProfile(userID, req.Name, req.Mobile, req.Dob, req.Gender, req.OrganizationName, req.Locations); err != nil {
 		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile")
 		return
 	}

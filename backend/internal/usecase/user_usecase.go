@@ -34,7 +34,7 @@ func (u *UserUsecase) GetProfile(userID string) (*domain.User, error) {
 	return u.repo.FindByID(userID)
 }
 
-func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender string, locations []string) error {
+func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizationName string, locations []string) error {
 	user, err := u.repo.FindByID(userID)
 	if err != nil {
 		return err
@@ -46,6 +46,7 @@ func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender string, lo
 	user.Mobile = mobile
 	user.Dob = dob
 	user.Gender = gender
+	user.OrganizationName = organizationName
 	user.Locations = locations
 
 	return u.repo.Update(user)
