@@ -2,9 +2,12 @@ package http
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -36,17 +39,25 @@ type ticketInput struct {
 	TotalQuantity int     `json:"total_quantity" binding:"required,gt=0"`
 }
 
+type personnelInput struct {
+	Name        string `json:"name" binding:"required"`
+	Role        string `json:"role" binding:"required"`
+	Image       string `json:"image"`
+	ProfileLink string `json:"profile_link"`
+}
+
 type createEventRequest struct {
-	Title         string        `json:"title" binding:"required"`
-	City          string        `json:"city" binding:"required"`
-	VenueName     string        `json:"venue_name" binding:"required"`
-	Category      string        `json:"category"`
-	StartTime     time.Time     `json:"start_time" binding:"required"`
-	EndTime       time.Time     `json:"end_time" binding:"required"`
-	Tags          []string      `json:"tags"`
-	CoverImageURL string        `json:"cover_image_url"`
-	Details       detailsInput  `json:"details" binding:"required"`
-	TicketTypes   []ticketInput `json:"ticket_types" binding:"required,min=1,dive"`
+	Title         string           `json:"title" binding:"required"`
+	City          string           `json:"city" binding:"required"`
+	VenueName     string           `json:"venue_name" binding:"required"`
+	Category      string           `json:"category"`
+	StartTime     time.Time        `json:"start_time" binding:"required"`
+	EndTime       time.Time        `json:"end_time" binding:"required"`
+	Tags          []string         `json:"tags"`
+	CoverImageURL string           `json:"cover_image_url"`
+	Details       detailsInput     `json:"details" binding:"required"`
+	TicketTypes   []ticketInput    `json:"ticket_types" binding:"required,min=1,dive"`
+	KeyPersonnel  []personnelInput `json:"key_personnel" binding:"omitempty,dive"`
 }
 
 func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
@@ -95,7 +106,17 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 		})
 	}
 
-	eventID, err := h.eventUsecase.CreateEvent(c.Request.Context(), organizerID, event, details, tickets)
+	var personnels []domain.EventPersonnel
+	for _, p := range req.KeyPersonnel {
+		personnels = append(personnels, domain.EventPersonnel{
+			Name:        p.Name,
+			Role:        p.Role,
+			Image:       p.Image,
+			ProfileLink: p.ProfileLink,
+		})
+	}
+
+	eventID, err := h.eventUsecase.CreateEvent(c.Request.Context(), organizerID, event, details, tickets, personnels)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, apiErrors.InvalidStateTransition, err.Error())
 		return
@@ -126,17 +147,26 @@ type ticketUpdateInput struct {
 	TotalQuantity *int     `json:"total_quantity" binding:"omitempty,gt=0"`
 }
 
+type personnelUpdateInput struct {
+	ID          *string `json:"id"`
+	Name        *string `json:"name"`
+	Role        *string `json:"role"`
+	Image       *string `json:"image"`
+	ProfileLink *string `json:"profile_link"`
+}
+
 type updateEventRequest struct {
-	Title         *string             `json:"title"`
-	City          *string             `json:"city"`
-	VenueName     *string             `json:"venue_name"`
-	Category      *string             `json:"category"`
-	StartTime     *time.Time          `json:"start_time"`
-	EndTime       *time.Time          `json:"end_time"`
-	Tags          []string            `json:"tags"`
-	CoverImageURL *string             `json:"cover_image_url"`
-	Details       *detailsUpdateInput `json:"details"`
-	TicketTypes   []ticketUpdateInput `json:"ticket_types" binding:"omitempty,dive"`
+	Title         *string                `json:"title"`
+	City          *string                `json:"city"`
+	VenueName     *string                `json:"venue_name"`
+	Category      *string                `json:"category"`
+	StartTime     *time.Time             `json:"start_time"`
+	EndTime       *time.Time             `json:"end_time"`
+	Tags          []string               `json:"tags"`
+	CoverImageURL *string                `json:"cover_image_url"`
+	Details       *detailsUpdateInput    `json:"details"`
+	TicketTypes   []ticketUpdateInput    `json:"ticket_types" binding:"omitempty,dive"`
+	KeyPersonnel  []personnelUpdateInput `json:"key_personnel" binding:"omitempty,dive"`
 }
 
 func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
@@ -222,7 +252,28 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 		tickets = append(tickets, ticket)
 	}
 
-	err := h.eventUsecase.UpdateEvent(c.Request.Context(), organizerID, eventID, eventUpdates, detailsUpdates, tickets)
+	var personnels []domain.EventPersonnel
+	for _, p := range req.KeyPersonnel {
+		personnel := domain.EventPersonnel{}
+		if p.ID != nil {
+			personnel.ID = *p.ID
+		}
+		if p.Name != nil {
+			personnel.Name = *p.Name
+		}
+		if p.Role != nil {
+			personnel.Role = *p.Role
+		}
+		if p.Image != nil {
+			personnel.Image = *p.Image
+		}
+		if p.ProfileLink != nil {
+			personnel.ProfileLink = *p.ProfileLink
+		}
+		personnels = append(personnels, personnel)
+	}
+
+	err := h.eventUsecase.UpdateEvent(c.Request.Context(), organizerID, eventID, eventUpdates, detailsUpdates, tickets, personnels)
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "EVT_004") {
@@ -272,5 +323,78 @@ func (h *OrganizerHandler) SubmitEventHandler(c *gin.Context) {
 			"event_id": eventID,
 			"status":   "pending",
 		},
+	})
+}
+
+func (h *OrganizerHandler) UploadImage(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+
+	file, err := c.FormFile("image")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Image file is required")
+		return
+	}
+
+	dirPath := "assets/events/" + organizerID
+	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to create directory")
+		return
+	}
+
+	fileID := uuid.NewString()
+	ext := filepath.Ext(file.Filename)
+	filename := fileID + ext
+
+	filePath := dirPath + "/" + filename
+	imageURL := "/" + filePath
+
+	if err := c.SaveUploadedFile(file, filePath); err != nil {
+		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to save image")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Image uploaded successfully",
+		"data": gin.H{
+			"url": imageURL,
+		},
+	})
+}
+
+func (h *OrganizerHandler) GetMyEvents(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	status := c.Query("status")
+
+	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), organizerID, status)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch events")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    events,
+	})
+}
+
+func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	err := h.eventUsecase.DeleteEvent(c.Request.Context(), organizerID, eventID)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "EVT_004") {
+			response.Error(c, http.StatusForbidden, "EVT_004", "Forbidden action")
+			return
+		}
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, errMsg)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Event deleted successfully",
 	})
 }

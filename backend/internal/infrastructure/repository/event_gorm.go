@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -243,7 +244,7 @@ func (r *eventGormRepository) GetTicketTypesByEventID(eventID string) ([]domain.
 	return tickets, nil
 }
 
-func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType) error {
+func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType, personnels []domain.EventPersonnel) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
 		eventModel := EventModel{
@@ -300,11 +301,25 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 			}
 		}
 
+		for _, p := range personnels {
+			pModel := EventPersonnelModel{
+				ID:          p.ID,
+				EventID:     p.EventID,
+				Name:        p.Name,
+				Role:        p.Role,
+				Image:       p.Image,
+				ProfileLink: p.ProfileLink,
+			}
+			if err := tx.Create(&pModel).Error; err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 }
 
-func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType) error {
+func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType, personnelUpdates []domain.EventPersonnel) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
 		if len(eventUpdates) > 0 {
@@ -335,6 +350,25 @@ func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, e
 			// Save handles both Insert and Update depending on whether Primary Key (ID) explicitly exists
 			if err := tx.Save(&model).Error; err != nil {
 				return err
+			}
+		}
+
+		if personnelUpdates != nil {
+			if err := tx.Where("event_id = ?", eventID).Delete(&EventPersonnelModel{}).Error; err != nil {
+				return err
+			}
+			for _, p := range personnelUpdates {
+				model := EventPersonnelModel{
+					ID:          p.ID,
+					EventID:     p.EventID,
+					Name:        p.Name,
+					Role:        p.Role,
+					Image:       p.Image,
+					ProfileLink: p.ProfileLink,
+				}
+				if err := tx.Create(&model).Error; err != nil {
+					return err
+				}
 			}
 		}
 
@@ -381,5 +415,56 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 		}
 		
 		return tx.Create(&logModel).Error
+	})
+}
+
+func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
+	var models []EventModel
+	query := r.db.Model(&EventModel{}).Where("organizer_id = ?", organizerID)
+
+	if status != "" && status != "All" && status != "all" {
+		query = query.Where("status = ?", strings.ToLower(status))
+	}
+
+	err := query.Order("start_time DESC").Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]domain.Event, 0)
+	for _, m := range models {
+		events = append(events, domain.Event{
+			ID:            m.ID,
+			OrganizerID:   m.OrganizerID,
+			Title:         m.Title,
+			Slug:          m.Slug,
+			Status:        m.Status,
+			City:          m.City,
+			VenueName:     m.VenueName,
+			Category:      m.Category,
+			StartTime:     time.Unix(m.StartTime, 0),
+			EndTime:       time.Unix(m.EndTime, 0),
+			Tags:          m.Tags,
+			CoverImageURL: m.CoverImageURL,
+		})
+	}
+	return events, nil
+}
+
+func (r *eventGormRepository) DeleteEvent(ctx context.Context, eventID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("event_id = ?", eventID).Delete(&EventPersonnelModel{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("event_id = ?", eventID).Delete(&TicketTypeModel{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("event_id = ?", eventID).Delete(&EventDetailsModel{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("id = ?", eventID).Delete(&EventModel{}).Error; err != nil {
+			return err
+		}
+		return nil
 	})
 }

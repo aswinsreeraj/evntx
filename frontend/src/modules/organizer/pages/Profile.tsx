@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../auth/store/authStore";
-import { tokenManager } from "../../../services/tokenManager";
 import { useNavigate } from "react-router-dom";
 import { Edit2, X, ChevronDown, Plus } from "lucide-react";
 import { userApi } from "../../user/api";
+import OrganizerLayout from "../components/OrganizerLayout";
 
 export default function OrganizerProfile() {
-  const { user, logout } = useAuthStore();
-  const navigate = useNavigate();
-
-  const [activeTab, setActiveTab] = useState("Profile");
+  const { user } = useAuthStore();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -55,12 +52,6 @@ export default function OrganizerProfile() {
     };
     loadProfile();
   }, []);
-
-  const handleLogout = () => {
-    logout();
-    tokenManager.clearToken();
-    navigate("/");
-  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -134,47 +125,9 @@ export default function OrganizerProfile() {
     }
   };
 
-  const SidebarItem = ({ label }: { label: string }) => {
-    const isActive = activeTab === label;
-    return (
-      <button
-        onClick={() => setActiveTab(label)}
-        className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-          ? "bg-gray-200 text-gray-900"
-          : "text-gray-700 hover:bg-gray-100"
-          }`}
-      >
-        {label}
-      </button>
-    );
-  };
-
   return (
-    <div className="min-h-screen border-t border-gray-100 bg-[#f8f9fa] flex">
-      {/* Sidebar */}
-      <div className="w-[240px] shrink-0 bg-white border-r border-gray-100 flex flex-col min-h-screen sticky top-0 py-6 px-4">
-        <h1 onClick={() => navigate("/")} className="font-sigmar text-2xl tracking-wide cursor-pointer mb-8 px-2">EVNTX</h1>
-        
-        <div className="flex flex-col gap-1">
-          <SidebarItem label="Dashboard" />
-          <SidebarItem label="My Events" />
-          <SidebarItem label="Reports" />
-          <SidebarItem label="Wallet" />
-          <SidebarItem label="Profile" />
-        </div>
-        
-        <div className="mt-auto">
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-4 py-2.5 text-[#e53e5d] text-sm font-medium hover:bg-gray-50 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 py-10 px-10 max-w-5xl">
+    <OrganizerLayout activeTab="Profile">
+      <div className="py-10 px-10 max-w-5xl">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Profile Management</h1>
           <button className="bg-[#e53e5d] hover:bg-[#d03550] text-white px-5 py-2.5 flex items-center gap-2 rounded-xl text-sm font-medium transition-colors shadow-sm">
@@ -424,6 +377,6 @@ export default function OrganizerProfile() {
           )}
         </div>
       </div>
-    </div>
+    </OrganizerLayout>
   );
 }

@@ -143,8 +143,11 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
+	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
+	organizerGroup.DELETE("/events/:event_id", organizerHandler.DeleteEvent)
 	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
+	organizerGroup.POST("/upload", organizerHandler.UploadImage)
 
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
