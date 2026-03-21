@@ -24,6 +24,10 @@ func (u *EventUsecase) ListEvents(city string, page int, limit int) (interface{}
 	return u.repo.ListLiveEvents(city, page, limit)
 }
 
+func (u *EventUsecase) AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error) {
+	return u.repo.AdminSearchEvents(search, status, page, limit)
+}
+
 func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)
@@ -57,6 +61,7 @@ func (u *EventUsecase) CreateEvent(
 	event *domain.Event,
 	details *domain.EventDetails,
 	tickets []domain.TicketType,
+	personnels []domain.EventPersonnel,
 ) (string, error) {
 
 	if !event.StartTime.Before(event.EndTime) {
@@ -102,7 +107,12 @@ func (u *EventUsecase) CreateEvent(
 		tickets[i].UpdatedAt = now
 	}
 
-	err := u.repo.CreateEvent(ctx, event, details, tickets)
+	for i := range personnels {
+		personnels[i].ID = uuid.NewString()
+		personnels[i].EventID = eventID
+	}
+
+	err := u.repo.CreateEvent(ctx, event, details, tickets, personnels)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Failed to create event in database")
 		return "", err
@@ -124,6 +134,7 @@ func (u *EventUsecase) UpdateEvent(
 	eventUpdates map[string]interface{},
 	detailsUpdates map[string]interface{},
 	ticketUpdates []domain.TicketType,
+	personnelUpdates []domain.EventPersonnel,
 ) error {
 
 	event, err := u.repo.GetEventByID(eventID)
@@ -189,7 +200,14 @@ func (u *EventUsecase) UpdateEvent(
 		ticketUpdates[i].AvailableQuantity = ticketUpdates[i].TotalQuantity 
 	}
 
-	err = u.repo.UpdateEvent(ctx, eventID, eventUpdates, detailsUpdates, ticketUpdates)
+	for i := range personnelUpdates {
+		if personnelUpdates[i].ID == "" {
+			personnelUpdates[i].ID = uuid.NewString()
+		}
+		personnelUpdates[i].EventID = eventID
+	}
+
+	err = u.repo.UpdateEvent(ctx, eventID, eventUpdates, detailsUpdates, ticketUpdates, personnelUpdates)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Failed to update event in database")
 		return err
@@ -287,3 +305,31 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 	return nil
 }
 
+func (u *EventUsecase) GetOrganizerEvents(ctx context.Context, organizerID string, status string) ([]domain.Event, error) {
+	return u.repo.GetEventsByOrganizerID(organizerID, status)
+}
+
+func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+
+	if event.OrganizerID != organizerID {
+		return errors.New("EVT_004: Forbidden action")
+	}
+
+	err = u.repo.DeleteEvent(ctx, eventID)
+	if err != nil {
+		logger.Log.Error().Err(err).Msg("Failed to delete event")
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event_id", eventID).
+		Str("organizer_id", organizerID).
+		Time("timestamp", time.Now()).
+		Msg("event_deleted")
+
+	return nil
+}

@@ -61,6 +61,15 @@ func (u *UserUsecase) AdminSearchUsers(
 	return u.repo.Search(search, status, page, limit)
 }
 
+func (u *UserUsecase) AdminSearchOrganizers(
+	search string,
+	status string,
+	page int,
+	limit int,
+) ([]domain.OrganizerDetails, int64, error) {
+	return u.repo.SearchOrganizers(search, status, page, limit)
+}
+
 func (u *UserUsecase) AdminUpdateUserStatus(userID string, isActive bool) error {
 	return u.repo.UpdateStatus(userID, isActive)
 }

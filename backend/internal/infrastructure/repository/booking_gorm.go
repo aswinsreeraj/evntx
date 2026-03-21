@@ -116,26 +116,22 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 		})
 
 		if err == nil {
-			return nil // Success
+			return nil
 		}
 
-		// If it's specifically sold out, don't retry, fail fast
 		if errors.Is(err, errors.New("EVT_009: Ticket sold out")) || err.Error() == "EVT_009: Ticket sold out" {
 			return err
 		}
 
-		// If it's a conflict, retry on next loop iteration
 		if err.Error() == "conflict" {
 			continue
 		}
 
-		// Fallback native error pass-out
 		return err
 	}
 
 	return errors.New("EVT_009: Ticket sold out")
 }
-
 
 func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Booking, error) {
 	var expiredBookings []BookingModel
@@ -172,7 +168,6 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 				}
 			}
 
-			// Map for return
 			returnedBookings = append(returnedBookings, domain.Booking{
 				ID:          bm.ID,
 				UserID:      bm.UserID,
@@ -187,7 +182,6 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 		})
 
 		if err != nil {
-			// Log this or continue, returning what we have processed so far. We'll proceed with processing others.
 			continue
 		}
 	}
@@ -326,5 +320,3 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 
 	return tickets, nil
 }
-
-

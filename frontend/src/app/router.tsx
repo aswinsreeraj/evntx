@@ -7,7 +7,11 @@ import EventListPage from "../modules/events/pages/EventListPage";
 import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
+import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
+import EventManagementPage from "../modules/admin/pages/EventManagementPage";
 import OrganizerProfile from "../modules/organizer/pages/Profile";
+import EventForm from "../modules/organizer/pages/EventForm";
+import MyEvents from "../modules/organizer/pages/MyEvents";
 
 export const router = createBrowserRouter([
     {
@@ -34,12 +38,52 @@ export const router = createBrowserRouter([
             </ProtectedRoute>
         ),
     },
+    {
+        path: "/organizer/events/create",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <EventForm />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/events/:eventId/edit",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <EventForm />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/events",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <MyEvents />
+            </ProtectedRoute>
+        ),
+    },
     { path: "/admin/login", element: <AdminLoginPage /> },
     {
         path: "/admin/users",
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <UserManagementPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/organizers",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <OrganizerManagementPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/events",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <EventManagementPage />
             </ProtectedRoute>
         ),
     }

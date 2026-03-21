@@ -2,7 +2,6 @@ package domain
 
 import "time"
 
-// TicketType represent different pricing tiers or ticket categories for an Event.
 type TicketType struct {
 	ID                string
 	EventID           string
