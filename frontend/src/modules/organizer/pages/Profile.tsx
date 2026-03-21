@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../auth/store/authStore";
-import { useNavigate } from "react-router-dom";
 import { Edit2, X, ChevronDown, Plus } from "lucide-react";
 import { userApi } from "../../user/api";
 import OrganizerLayout from "../components/OrganizerLayout";

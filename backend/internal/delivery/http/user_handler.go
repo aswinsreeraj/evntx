@@ -136,6 +136,54 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 	apiResponse.Success(c, "User status updated successfully", nil)
 }
 
+func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
+	search := c.Query("search")
+	status := c.Query("status")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "5")
+
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	orgs, total, err := h.userUsecase.AdminSearchOrganizers(search, status, page, limit)
+	if err != nil {
+		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to retrieve organizers")
+		return
+	}
+
+	response := make([]gin.H, 0)
+	for _, u := range orgs {
+		response = append(response, gin.H{
+			"id":                     u.ID,
+			"name":                   u.Name,
+			"email":                  u.Email,
+			"mobile":                 u.Mobile,
+			"dob":                    u.Dob,
+			"gender":                 u.Gender,
+			"organization_name":      u.OrganizationName,
+			"profile_image":          u.ProfileImage,
+			"is_active":              u.IsActive,
+			"total_bookings":         u.TotalBookings,
+			"total_events":           u.TotalEvents,
+			"wallet_balance":         u.WalletBalance,
+			"total_revenue_generated": u.TotalRevenue,
+			"created_at":             u.CreatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"organizers": response,
+			"pagination": gin.H{
+				"total": total,
+				"page":  page,
+				"limit": limit,
+			},
+		},
+	})
+}
+
 func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 	userID := c.GetString("user_id")
 

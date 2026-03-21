@@ -18,3 +18,10 @@ type Event struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }
+
+type AdminEventDetails struct {
+	Event
+	OrganizerName string `json:"organizer_name"`
+	TicketsSold   int64  `json:"tickets_sold"`
+	Revenue       int64  `json:"revenue"`
+}

@@ -24,6 +24,10 @@ func (u *EventUsecase) ListEvents(city string, page int, limit int) (interface{}
 	return u.repo.ListLiveEvents(city, page, limit)
 }
 
+func (u *EventUsecase) AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error) {
+	return u.repo.AdminSearchEvents(search, status, page, limit)
+}
+
 func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)

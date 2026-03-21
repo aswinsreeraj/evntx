@@ -186,6 +186,78 @@ func (r *userGormRepository) Search(
 	return users, total, nil
 }
 
+func (r *userGormRepository) SearchOrganizers(
+	search string,
+	status string,
+	page int,
+	limit int,
+) ([]domain.OrganizerDetails, int64, error) {
+
+	var models []struct {
+		UserModel
+		TotalEvents int64
+	}
+	var total int64
+
+	query := r.db.Table("user_models").
+		Select("user_models.*, COALESCE((SELECT COUNT(id) FROM event_models WHERE event_models.organizer_id = user_models.id), 0) as total_events").
+		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer)
+
+	if search != "" {
+		query = query.Where(
+			"user_models.name ILIKE ? OR user_models.email ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	if status == "active" {
+		query = query.Where("user_models.is_active = ?", true)
+	} else if status == "suspended" || status == "inactive" {
+		query = query.Where("user_models.is_active = ?", false)
+	}
+
+	query.Count(&total)
+
+	offset := (page - 1) * limit
+	err := query.
+		Order("user_models.created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&models).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	orgs := make([]domain.OrganizerDetails, 0, len(models))
+	for _, m := range models {
+		orgs = append(orgs, domain.OrganizerDetails{
+			User: domain.User{
+				ID:               m.ID,
+				Name:             m.Name,
+				Email:            m.Email,
+				Mobile:           m.Mobile,
+				Dob:              m.Dob,
+				Gender:           m.Gender,
+				ProfileImage:     m.ProfileImage,
+				OrganizationName: m.OrganizationName,
+				Locations:        m.Locations,
+				IsActive:         m.IsActive,
+				EmailVerified:    m.EmailVerified,
+				CreatedAt:        m.CreatedAt,
+				UpdatedAt:        m.UpdatedAt,
+			},
+			TotalBookings: 0,
+			TotalEvents:   m.TotalEvents,
+			WalletBalance: 0,
+			TotalRevenue:  0,
+		})
+	}
+
+	return orgs, total, nil
+}
+
 func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {
 	return r.db.Model(&UserModel{}).
 		Where("id = ?", userID).

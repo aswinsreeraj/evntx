@@ -134,7 +134,9 @@ func main() {
 	adminGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleAdmin))
 
 	adminGroup.GET("/users", userHandler.AdminListUsers)
+	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+	adminGroup.GET("/events", adminHandler.AdminListEvents)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
 

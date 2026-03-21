@@ -18,6 +18,38 @@ export const adminApi = {
       is_active: isActive,
     });
 
+    return response.data;
+  },
+
+  async getOrganizers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    const response = await api.get("/admin/organizers", { params });
     return response.data.data;
+  },
+
+  async getEvents(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) {
+    const response = await api.get("/admin/events", { params });
+    return response.data.data;
+  },
+
+  async approveEvent(eventId: string) {
+    const response = await api.patch(`/admin/events/${eventId}/approve`);
+    return response.data;
+  },
+
+  async rejectEvent(eventId: string, reason: string) {
+    const response = await api.patch(`/admin/events/${eventId}/reject`, {
+      reason,
+    });
+    return response.data;
   },
 };
