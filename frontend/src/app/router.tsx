@@ -1,10 +1,14 @@
 import Layout from "../shared/components/Layout";
 import HomePage from "../modules/home/pages/HomePage";
 import ProfilePage from "../modules/user/pages/ProfilePage";
+import MyBookingsPage from "../modules/user/pages/MyBookingsPage";
+import CalendarPage from "../modules/user/pages/CalendarPage";
 import ProtectedRoute from "../shared/components/ProtectedRoute";
 import { createBrowserRouter } from "react-router-dom";
 import EventListPage from "../modules/events/pages/EventListPage";
 import EventDetailPage from "../modules/events/pages/EventDetailPage";
+import EventBookingPage from "../modules/events/pages/EventBookingPage";
+import BookingConfirmationPage from "../modules/events/pages/BookingConfirmationPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
 import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
@@ -26,8 +30,40 @@ export const router = createBrowserRouter([
                     </ProtectedRoute>
                 ),  
             },
+            {
+                path: "/profile/bookings",
+                element: (
+                    <ProtectedRoute>
+                        <MyBookingsPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "/profile/calendar",
+                element: (
+                    <ProtectedRoute>
+                        <CalendarPage />
+                    </ProtectedRoute>
+                ),
+            },
             { path: "/events", element: <EventListPage /> },
             { path: "/events/:eventId", element: <EventDetailPage /> },
+            {
+                path: "/events/:eventId/book",
+                element: (
+                    <ProtectedRoute>
+                        <EventBookingPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "/events/:eventId/confirmation",
+                element: (
+                    <ProtectedRoute>
+                        <BookingConfirmationPage />
+                    </ProtectedRoute>
+                ),
+            },
         ],
     },
     {

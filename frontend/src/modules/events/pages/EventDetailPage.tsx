@@ -1,53 +1,17 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
 import { CalendarDays, MapPin, Clock, Hourglass } from "lucide-react";
 import { useState } from "react";
+import { buildDisplayEvent, formatCurrency } from "../eventBookingData";
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
   const { data } = useEvent(eventId!);
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("About");
 
-  const event = {
-    title: "Friday Night at Vapour Ladies Night",
-    cover_image_url: "/assets/images/badass-bollywood.png",
-    date: "Saturday, 21 February 2026",
-    time: "07:00 PM",
-    venue: "JLN Stadium, Kochi",
-    duration: "5 hours 30 minutes",
-    price: "5,000",
-    about: {
-      subtitle: "Saturday Bollywod Dhamaka",
-      content: [
-        "Duis placerat nisl at nisi luctus in rhoncus felis condimentum. Vivamus in augue et sem porttitor scelerisque at ac ex. Nam vel gravida lorem.",
-        "Aliquam ultrices pretium odio nec hendrerit. Curabitur quis massa interdum, condimentum purus eu, bibendum felis. Proin libero ex, maximus et quam ut, volutpat condimentum tellus. Aliquam erat volutpat.",
-        "Ut ipsum eros venenatis eu velit vitae landit bibendum massa.",
-        "Cras id urna a quam viverra egestas sit amet et ante. In hac habitasse platea dictumst. Cras nec blandit nisi. Sed ac massa arcu."
-      ]
-    },
-    host: {
-      name: "Jane Doe",
-      role: "Event Organizer",
-      avatar: "/assets/images/host.jpg"
-    },
-    personnel: [
-      {
-        name: "Joe Smith",
-        role: "Lead Performer",
-        avatar: "/assets/images/perfomer.jpg" 
-      },
-      {
-        name: "DJ Jazee",
-        role: "Professional DJ",
-        avatar: "/assets/images/dj.jpg" 
-      }
-    ]
-  };
-
-  
-  
-  const displayEvent = data || event;
+  const displayEvent = buildDisplayEvent(eventId ?? "", data);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -57,7 +21,7 @@ export default function EventDetailPage() {
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
             <img 
-              src={displayEvent.cover_image_url} 
+              src={displayEvent.coverImageUrl} 
               alt={displayEvent.title} 
               className="w-full h-full object-cover" 
             />
@@ -120,28 +84,33 @@ export default function EventDetailPage() {
             <div className="flex flex-col gap-4 mb-8">
               <div className="flex items-start gap-4 text-sm text-gray-700">
                 <CalendarDays className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.date || new Date(displayEvent.start_time).toLocaleDateString()}</span>
+                <span>{displayEvent.dateLabel}</span>
               </div>
               <div className="flex items-start gap-4 text-sm text-gray-700">
                 <Clock className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.time || new Date(displayEvent.start_time).toLocaleTimeString()}</span>
+                <span>{displayEvent.timeLabel}</span>
               </div>
               <div className="flex items-start gap-4 text-sm text-gray-700">
                 <MapPin className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.venue || displayEvent.city}</span>
+                <span>{displayEvent.displayLocation}</span>
               </div>
               <div className="flex items-start gap-4 text-sm text-gray-700">
                 <Hourglass className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.duration || "N/A"}</span>
+                <span>{displayEvent.durationLabel || "N/A"}</span>
               </div>
             </div>
 
             <div className="bg-[#fcf3f4] rounded-xl p-4 mb-4 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Price From</span>
-              <span className="text-sm font-bold text-[#e53e5d]">₹ {displayEvent.price || "N/A"}</span>
+              <span className="text-sm font-bold text-[#e53e5d]">
+                {displayEvent.ticketTypes[0] ? formatCurrency(displayEvent.ticketTypes[0].price) : `₹ ${displayEvent.priceLabel || "N/A"}`}
+              </span>
             </div>
 
-            <button className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-colors">
+            <button
+              className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-colors"
+              onClick={() => navigate(`/events/${eventId}/book`)}
+            >
               Continue to Booking
             </button>
           </div>

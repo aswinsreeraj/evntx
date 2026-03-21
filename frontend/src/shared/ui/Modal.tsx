@@ -8,8 +8,9 @@ type Props = {
 }
 
 function Modal({ open, onClose, children, className = "bg-white rounded-xl p-6 w-full max-w-md relative" }: Props) {
-  if (!open) return null
   useEffect(() => {
+    if (!open) return
+
     const handler = (e: KeyboardEvent) => {
         if (e.key === "Escape") onClose()
     }
@@ -17,7 +18,9 @@ function Modal({ open, onClose, children, className = "bg-white rounded-xl p-6 w
     window.addEventListener("keydown", handler)
 
     return () => window.removeEventListener("keydown", handler)
-    }, [])
+    }, [open, onClose])
+
+  if (!open) return null
 
   return (
     <div 
