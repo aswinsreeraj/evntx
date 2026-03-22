@@ -73,9 +73,9 @@ export default function EventManagementPage() {
   const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
   const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
 
-  const { data } = useEvents({ 
-    page, 
-    limit, 
+  const { data } = useEvents({
+    page,
+    limit,
     ...(searchFilter && { search: searchFilter }),
     ...(statusFilter !== "all" && { status: statusFilter })
   });
@@ -167,8 +167,8 @@ export default function EventManagementPage() {
 
   return (
     <AdminLayout title="Manage Events">
-      
-      {/* Utility Bar */}
+
+      {}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 mt-6">
         <div className="relative w-full sm:w-80">
           <input
@@ -245,7 +245,7 @@ export default function EventManagementPage() {
                   <td className="px-6 py-4 text-center">{evt.revenue ?? 0}</td>
                   <td className="px-6 py-4 text-center">{evt.city}</td>
                   <td className="px-6 py-4 text-center">
-                    <span 
+                    <span
                       className={`inline-block px-4 py-1.5 rounded-full text-xs font-bold ${getStatusColor(evt.status)}`}
                     >
                       {evt.status.charAt(0).toUpperCase() + evt.status.slice(1)}
@@ -273,7 +273,7 @@ export default function EventManagementPage() {
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 mb-2">
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors text-sm font-medium flex items-center"
@@ -282,7 +282,7 @@ export default function EventManagementPage() {
               Prev
             </button>
             <div className="flex gap-1 mx-2">{renderPageNumbers()}</div>
-            <button 
+            <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || totalPages === 0}
               className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors text-sm font-medium flex items-center"
@@ -293,7 +293,7 @@ export default function EventManagementPage() {
           </div>
         </div>
       </div>
-      
+
       <div className="flex justify-end mt-4">
         <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
           Download as CSV
@@ -306,7 +306,7 @@ export default function EventManagementPage() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold">{modalState.type} Event</h2>
-              <button 
+              <button
                 onClick={() => {
                   setModalState({ isOpen: false, type: null, eventId: null });
                   setRejectReason("");
@@ -316,13 +316,13 @@ export default function EventManagementPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6">
               <p className="text-gray-600 mb-6">
                 Are you sure you want to {modalState.type?.toLowerCase()} this event?
                 {modalState.type === "Approve" ? " It will be allowed to go live." : " It will be hidden from users."}
               </p>
-              
+
               {modalState.type === "Reject" && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-[#0b101e] mb-2">
@@ -353,8 +353,8 @@ export default function EventManagementPage() {
                   onClick={confirmAction}
                   disabled={approveEvent.isPending || rejectEvent.isPending || (modalState.type === "Reject" && !rejectReason.trim())}
                   className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors ${
-                    modalState.type === "Approve" 
-                      ? "bg-[#0ec3c5] hover:bg-[#0da6a8]" 
+                    modalState.type === "Approve"
+                      ? "bg-[#0ec3c5] hover:bg-[#0da6a8]"
                       : "bg-[#e53e5d] hover:bg-[#c2344f]"
                   } disabled:opacity-50`}
                 >

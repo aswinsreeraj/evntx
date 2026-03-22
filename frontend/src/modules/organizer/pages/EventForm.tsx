@@ -10,14 +10,13 @@ export default function EventForm() {
   const isEditMode = Boolean(eventId);
   const navigate = useNavigate();
 
-  // Form State
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Comedy");
   const [startTime, setStartTime] = useState("");
   const [endTime] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  
+
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string>("");
 
@@ -47,27 +46,27 @@ export default function EventForm() {
           const data = await organizerApi.getEventBySlug(eventId);
           if (data) {
             const { event, details, ticket_types, personnels } = data;
-            
+
             setTitle(event.title || "");
             setCategory(event.category || "Comedy");
-            
+
             if (event.start_time) {
               const st = new Date(event.start_time);
               st.setMinutes(st.getMinutes() - st.getTimezoneOffset());
               setStartTime(st.toISOString().slice(0, 16));
             }
-            
+
             if (event.tags) {
               setTags(event.tags.split(',').filter(Boolean));
             }
-            
+
             if (event.cover_image_url) {
               setCoverImagePreview(`${import.meta.env.VITE_API_BASE_URL || ""}${event.cover_image_url}`);
             }
-            
+
             setVenueName(event.venue_name || "");
             setCity(event.city || "");
-            
+
             if (details) {
               setVenueAddress(details.venue_address || "");
               setMapUrl(details.map_url || "");
@@ -205,8 +204,8 @@ export default function EventForm() {
       } else {
         await organizerApi.createEvent(payload as CreateEventPayload);
       }
-      
-      navigate("/organizer/profile"); // redirect to dashboard or events list
+
+      navigate("/organizer/profile");
 
     } catch (err: any) {
       console.error(err);
@@ -238,14 +237,14 @@ export default function EventForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-[24px] p-10 shadow-sm border border-gray-100 min-h-[600px] flex flex-col gap-8">
-          
+
           {errorMsg && (
             <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium border border-red-100">
                {errorMsg}
             </div>
           )}
 
-          {/* Basic Info */}
+          {}
           <div>
               <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">Event Title</label>
               <input
@@ -383,7 +382,7 @@ export default function EventForm() {
                           + Add Ticket Type
                       </button>
                   </div>
-                  
+
                   <div className="flex flex-col gap-4">
                       {tickets.map((ticket, idx) => (
                           <div key={idx} className="bg-gray-50 border border-gray-200 rounded-2xl p-6 relative group">
@@ -466,7 +465,7 @@ export default function EventForm() {
                                     <input type="text" required placeholder="Lead Performer" value={p.role} onChange={e => updatePersonnel(idx, "role", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none focus:border-gray-400" />
                                 </div>
                            </div>
-                           
+
                            <div className="mb-6">
                                 <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Thumbnail Image</label>
                                 <div className="border border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center relative bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group/upload">

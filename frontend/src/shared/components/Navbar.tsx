@@ -66,7 +66,6 @@ function Navbar() {
             ]
           : []
 
-
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -200,10 +199,10 @@ function Navbar() {
           </div>
         )}
 
-        <AuthModal 
-          open={authModalOpen !== null} 
-          onClose={closeAuthModal} 
-          isOrganizer={authModalOpen === "organizer"} 
+        <AuthModal
+          open={authModalOpen !== null}
+          onClose={closeAuthModal}
+          isOrganizer={authModalOpen === "organizer"}
         />
       </div>
     </header>

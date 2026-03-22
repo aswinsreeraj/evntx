@@ -53,8 +53,8 @@ export default function OTPInput({ value, onChange, length = 6 }: Props) {
           maxLength={1}
           placeholder="0"
           className="w-12 h-12 text-center border border-gray-300 rounded-xl text-lg font-medium text-gray-700 placeholder-gray-300 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-          style={{ 
-             borderColor: value[index] ? '#a855f7' : '' 
+          style={{
+             borderColor: value[index] ? '#a855f7' : ''
           }}
           value={value[index] || ""}
           onChange={(e) => handleChange(index, e.target.value)}

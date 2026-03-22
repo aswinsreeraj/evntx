@@ -20,7 +20,6 @@ function AuthModal({ open, onClose, isOrganizer = false }: any) {
 
       <div className="flex w-full h-full">
 
-
         <div className="hidden md:block w-1/2 h-full bg-gray-100">
           <img
             src="https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&q=80"
@@ -28,7 +27,6 @@ function AuthModal({ open, onClose, isOrganizer = false }: any) {
             className="h-full w-full object-cover"
           />
         </div>
-
 
         <div className="relative w-full md:w-1/2 p-10 flex flex-col overflow-y-auto scrollbar-hide">
 
@@ -49,8 +47,6 @@ function AuthModal({ open, onClose, isOrganizer = false }: any) {
                 />
               </motion.div>
             )}
-
-
 
             {view === "otp-verify" && (
               <motion.div

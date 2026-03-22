@@ -43,20 +43,18 @@ export default function UserManagementPage() {
   const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
   const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
 
-  const { data } = useUsers({ 
-    page, 
-    limit, 
+  const { data } = useUsers({
+    page,
+    limit,
     ...(searchFilter && { search: searchFilter }),
     ...(statusFilter !== "all" && { status: statusFilter })
   });
   const toggleUser = useToggleUserStatus();
 
-  
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -82,8 +80,6 @@ export default function UserManagementPage() {
       left: rect.right - 160,
     });
   };
-
-
 
   const usersList = data?.users || [];
   const pagination = data?.pagination;
@@ -111,8 +107,8 @@ export default function UserManagementPage() {
 
   return (
     <AdminLayout title="User List">
-      
-      {/* Utility Bar */}
+
+      {}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
         <div className="relative w-full sm:w-80">
           <input
@@ -179,7 +175,7 @@ export default function UserManagementPage() {
                   <td className="px-6 py-4 text-center">{user.total_bookings ?? 0}</td>
                   <td className="px-6 py-4 text-center">{user.wallet_balance ?? 0}</td>
                   <td className="px-6 py-4 text-center">
-                    <span 
+                    <span
                       className={`inline-block px-4 py-1.5 rounded-full text-xs text-white ${
                         user.is_active ? "bg-[#0ec3c5]" : "bg-[#e53e5d]"
                       }`}
@@ -201,13 +197,12 @@ export default function UserManagementPage() {
           </table>
         </div>
 
-
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 mb-2">
           <div className="text-sm text-gray-500">
             Showing {usersList.length} of {pagination?.total || 0} users
           </div>
           <div className="flex items-center gap-1 text-sm font-medium">
-            <button 
+            <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
@@ -215,7 +210,7 @@ export default function UserManagementPage() {
               &lt; Prev
             </button>
             {renderPageNumbers()}
-            <button 
+            <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages || totalPages === 0}
               className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"

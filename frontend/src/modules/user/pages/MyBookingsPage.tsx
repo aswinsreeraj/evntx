@@ -1,5 +1,5 @@
 import { MapPin, Star } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import CancellationModal from "../components/CancellationModal"
 import UserDashboardShell from "../components/UserDashboardShell"
@@ -7,32 +7,21 @@ import TicketModal from "../components/TicketModal"
 import { userApi } from "../api"
 import { getFeedbackMap, saveFeedbackMap, type FeedbackRecord } from "../feedbackStorage"
 import {
-  enrichBookings,
-  fallbackBookings,
-  fallbackTicketsByEvent,
+  formatDateBadge,
+  formatEventTime,
   type BookingRecord,
-  type EnrichedBooking,
   type TicketRecord,
 } from "../userDashboardData"
 
 type TicketModalState = {
-  booking: EnrichedBooking
+  booking: BookingRecord
   tickets: TicketRecord[]
 }
 
 type CancellationModalState = {
-  booking: EnrichedBooking
+  booking: BookingRecord
   tickets: TicketRecord[]
 }
-
-const buildFallbackTicket = (booking: EnrichedBooking): TicketRecord => ({
-  ticket_id: `${booking.booking_id}-ticket`,
-  ticket_code: booking.booking_id.slice(0, 4).toUpperCase(),
-  event_id: booking.event_id,
-  event_title: booking.event_title,
-  ticket_type: "Standard",
-  status: "active",
-})
 
 export default function MyBookingsPage() {
   const [activeTab, setActiveTab] = useState<"upcoming" | "finished">("upcoming")
@@ -54,9 +43,10 @@ export default function MyBookingsPage() {
     const loadBookings = async () => {
       try {
         const data = await userApi.getMyBookings()
-        setBookings(data.length > 0 ? data : fallbackBookings)
+        const validBookings = (data || []).filter(b => b.ticket_count > 0)
+        setBookings(validBookings)
       } catch {
-        setBookings(fallbackBookings)
+        setBookings([])
       } finally {
         setLoading(false)
       }
@@ -65,8 +55,11 @@ export default function MyBookingsPage() {
     void loadBookings()
   }, [])
 
-  const enrichedBookings = useMemo(() => enrichBookings(bookings), [bookings])
-  const filteredBookings = enrichedBookings.filter((booking) => booking.bookingStatus === activeTab)
+  const filteredBookings = bookings.filter((booking) => {
+    const bookingDate = new Date(booking.event_start_time)
+    const bookingStatus = bookingDate.getTime() >= Date.now() ? "upcoming" : "finished"
+    return bookingStatus === activeTab
+  })
 
   const ensureDraft = (bookingId: string) => {
     setDraftFeedback((state) => {
@@ -101,43 +94,30 @@ export default function MyBookingsPage() {
     })
   }
 
-  const openTickets = async (booking: EnrichedBooking) => {
+  const openTickets = async (booking: BookingRecord) => {
     setLoadingTickets(booking.booking_id)
 
     try {
-      const apiTickets = await userApi.getMyTickets(undefined, booking.booking_id)
-      const tickets =
-        apiTickets.length > 0
-          ? apiTickets
-          : fallbackTicketsByEvent[booking.event_id] ?? [buildFallbackTicket(booking)]
-      setEventTickets((current) => ({ ...current, [booking.booking_id]: tickets }))
-      setTicketModal({ booking, tickets })
+      const tickets = await userApi.getMyTickets(undefined, booking.booking_id)
+      setEventTickets((current) => ({ ...current, [booking.booking_id]: tickets || [] }))
+      setTicketModal({ booking, tickets: tickets || [] })
     } catch {
-      const tickets = fallbackTicketsByEvent[booking.event_id] ?? [buildFallbackTicket(booking)]
-      setEventTickets((current) => ({ ...current, [booking.booking_id]: tickets }))
-      setTicketModal({
-        booking,
-        tickets,
-      })
+      setTicketModal({ booking, tickets: [] })
     } finally {
       setLoadingTickets(null)
     }
   }
 
-  const openCancellation = async (booking: EnrichedBooking) => {
+  const openCancellation = async (booking: BookingRecord) => {
     setLoadingCancellation(booking.booking_id)
 
     try {
       const apiTickets = await userApi.getMyTickets(undefined, booking.booking_id)
-      const tickets =
-        apiTickets.length > 0
-          ? apiTickets
-          : eventTickets[booking.booking_id] ?? fallbackTicketsByEvent[booking.event_id] ?? [buildFallbackTicket(booking)]
+      const tickets = apiTickets.length > 0 ? apiTickets : eventTickets[booking.booking_id] ?? []
       setEventTickets((current) => ({ ...current, [booking.booking_id]: tickets }))
       setCancellationModal({ booking, tickets })
     } catch {
-      const tickets = eventTickets[booking.booking_id] ?? fallbackTicketsByEvent[booking.event_id] ?? [buildFallbackTicket(booking)]
-      setEventTickets((current) => ({ ...current, [booking.booking_id]: tickets }))
+      const tickets = eventTickets[booking.booking_id] ?? []
       setCancellationModal({ booking, tickets })
     } finally {
       setLoadingCancellation(null)
@@ -160,9 +140,10 @@ export default function MyBookingsPage() {
       await userApi.cancelBooking(booking.booking_id, { items })
 
       const data = await userApi.getMyBookings()
-      setBookings(data.length > 0 ? data : [])
+      const validBookings = (data || []).filter(b => b.ticket_count > 0)
+      setBookings(validBookings)
     } catch {
-      // silently handle - booking may already be cancelled
+
     }
 
     setCancellationModal(null)
@@ -177,9 +158,8 @@ export default function MyBookingsPage() {
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`border-b-2 px-2 pb-2 capitalize transition ${
-                activeTab === tab ? "border-[#ff445d] text-[#111111]" : "border-transparent text-[#6d6d6d]"
-              }`}
+              className={`border-b-2 px-2 pb-2 capitalize transition ${activeTab === tab ? "border-[#ff445d] text-[#111111]" : "border-transparent text-[#6d6d6d]"
+                }`}
             >
               {tab}
             </button>
@@ -199,8 +179,8 @@ export default function MyBookingsPage() {
                 {activeTab === "upcoming" ? "No upcoming events" : "No completed events"}
               </h3>
               <p className="text-gray-500">
-                {activeTab === "upcoming" 
-                  ? "You don't have any upcoming bookings yet." 
+                {activeTab === "upcoming"
+                  ? "You don't have any upcoming bookings yet."
                   : "You haven't attended any events yet."}
               </p>
             </div>
@@ -209,7 +189,8 @@ export default function MyBookingsPage() {
           {!loading && filteredBookings.map((booking) => {
             const savedFeedback = feedbackMap[booking.booking_id]
             const currentDraft = draftFeedback[booking.booking_id] ?? savedFeedback ?? { rating: 0, comment: "" }
-            const showFeedbackForm = booking.bookingStatus === "finished" && !!draftFeedback[booking.booking_id]
+            const isFinished = new Date(booking.event_start_time).getTime() < Date.now()
+            const showFeedbackForm = isFinished && !!draftFeedback[booking.booking_id]
 
             return (
               <div
@@ -218,22 +199,34 @@ export default function MyBookingsPage() {
               >
                 <div className="grid md:grid-cols-[200px_1fr]">
                   <div className="relative min-h-[150px]">
-                    <img src={booking.coverImageUrl} alt={booking.event_title} className="h-full w-full object-cover" />
+                    {booking.coverImageUrl ? (
+                      <img
+                        src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
+                        alt={booking.event_title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-700 to-gray-900">
+                        <span className="text-4xl font-bold text-white opacity-30">
+                          {(booking.event_title || "E")[0].toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute left-3 top-3 rounded-xl bg-[#9d7a7a]/80 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
-                      {booking.dateBadge}
+                      {formatDateBadge(booking.event_start_time)}
                     </div>
                   </div>
 
                   <div className="flex flex-col justify-between gap-4 p-5">
                     <div>
                       <h2 className="text-xl font-semibold leading-tight text-[#111827]">{booking.event_title}</h2>
-                      <p className="mt-1 text-base text-[#111827]">{booking.timeLabel}</p>
+                      <p className="mt-1 text-base text-[#111827]">{formatEventTime(booking.event_start_time)}</p>
                       <div className="mt-2 flex items-center gap-2 text-sm text-[#5d6573]">
                         <MapPin className="h-4 w-4 text-[#ff445d]" />
-                        <span>{booking.venue}</span>
+                        <span>{booking.venue || booking.event_city}</span>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {booking.tags.map((tag) => (
+                        {Array.isArray(booking.tags) && booking.tags.map((tag: string) => (
                           <span key={tag} className="rounded-full bg-[#efefef] px-3 py-1 text-xs text-[#5b6069]">
                             {tag}
                           </span>
@@ -245,7 +238,7 @@ export default function MyBookingsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-end gap-3">
-                      {booking.bookingStatus === "upcoming" ? (
+                      {!isFinished ? (
                         <button
                           type="button"
                           onClick={() => void openCancellation(booking)}

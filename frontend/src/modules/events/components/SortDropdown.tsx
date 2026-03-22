@@ -19,7 +19,7 @@ export default function SortDropdown({ currentSort, onSortChange }: SortDropdown
 
   return (
     <div className="relative w-64">
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-[#0b101e] text-white px-5 py-3 rounded-xl flex items-center justify-between text-sm font-medium hover:bg-black transition-colors"
       >

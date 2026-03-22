@@ -1,8 +1,8 @@
 import { AlertTriangle, Info, Minus, Plus, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import Modal from "../../../shared/ui/Modal"
-import type { EnrichedBooking, TicketRecord } from "../userDashboardData"
-import { formatCurrency, getTicketPricingForEvent } from "../userDashboardData"
+import type { BookingRecord, TicketRecord } from "../userDashboardData"
+import { formatCurrency } from "../userDashboardData"
 
 type CancellationSelection = {
   ticketType: string
@@ -12,7 +12,7 @@ type CancellationSelection = {
 }
 
 type Props = {
-  booking: EnrichedBooking | null
+  booking: BookingRecord | null
   tickets: TicketRecord[]
   open: boolean
   onClose: () => void
@@ -28,11 +28,8 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
       grouped.set(ticket.ticket_type, (grouped.get(ticket.ticket_type) ?? 0) + 1)
     })
 
-    const pricing = getTicketPricingForEvent(booking.event_title)
-
     return Array.from(grouped.entries()).map(([ticketType, count]) => {
-      const priceItem = pricing.find((item) => item.ticketType === ticketType)
-      const price = priceItem ? priceItem.price : (booking.total_amount / tickets.length) || 0
+      const price = (booking.total_amount / tickets.length) || 0
 
       return {
         ticketType,

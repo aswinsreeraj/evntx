@@ -37,7 +37,7 @@ export default function LoginChoice({ setView, setEmail, isOrganizer }: any) {
     try {
       const res = await authApi.requestOtp(localEmail);
       setEmail(localEmail);
-      
+
       if (res.data?.is_new_user) {
         setView("register");
       } else {

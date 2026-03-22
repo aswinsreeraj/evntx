@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import UserDashboardShell from "../components/UserDashboardShell"
 import { userApi } from "../api"
-import { enrichBookings, getMonthLabel, type BookingRecord } from "../userDashboardData"
+import { formatDateBadge, formatEventTime, type BookingRecord } from "../userDashboardData"
 
 const monthOptions = Array.from({ length: 12 }, (_, month) => month)
 
@@ -18,7 +18,8 @@ export default function CalendarPage() {
     const loadBookings = async () => {
       try {
         const data = await userApi.getMyBookings()
-        setBookings(data)
+        const validBookings = (data || []).filter(b => b.ticket_count > 0)
+        setBookings(validBookings)
       } catch {
         setBookings([])
       } finally {
@@ -29,9 +30,7 @@ export default function CalendarPage() {
     void loadBookings()
   }, [])
 
-  const enrichedBookings = useMemo(() => enrichBookings(bookings), [bookings])
-
-  const monthBookings = enrichedBookings.filter((booking) => {
+  const monthBookings = bookings.filter((booking) => {
     const date = new Date(booking.event_start_time)
     return date.getMonth() === activeMonth && date.getFullYear() === activeYear
   })
@@ -79,7 +78,7 @@ export default function CalendarPage() {
                 >
                   {monthOptions.map((month) => (
                     <option key={month} value={month}>
-                      {getMonthLabel(month)}
+                      {new Date(2026, month, 1).toLocaleString("en-US", { month: "long" })}
                     </option>
                   ))}
                 </select>
@@ -135,13 +134,12 @@ export default function CalendarPage() {
                     key={day}
                     type="button"
                     onClick={() => setSelectedDay(day)}
-                    className={`mx-auto flex h-10 w-10 items-center justify-center rounded-2xl transition ${
-                      isSelected
+                    className={`mx-auto flex h-10 w-10 items-center justify-center rounded-2xl transition ${isSelected
                         ? "bg-[#111827] text-white"
                         : isToday && !hasEvent
                           ? "ring-2 ring-[#ef3650] text-[#ef3650] font-semibold"
                           : colorClass || "text-[#111111] hover:bg-gray-100"
-                    }`}
+                      }`}
                   >
                     {day}
                   </button>
@@ -161,13 +159,13 @@ export default function CalendarPage() {
                   className="flex items-center gap-3 rounded-[20px] border border-[#efefef] bg-white px-4 py-3 text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)]"
                 >
                   <div className={`rounded-2xl px-3 py-2 text-center text-white ${index % 3 === 0 ? "bg-[#c9c9c9] text-[#111111]" : index % 3 === 1 ? "bg-[#ef3650]" : "bg-[#111827]"}`}>
-                    <div className="text-xs">{getMonthLabel(new Date(booking.event_start_time).getMonth())}</div>
+                    <div className="text-xs">{new Date(booking.event_start_time).toLocaleString("en-US", { month: "short" })}</div>
                     <div className="text-xl">{new Date(booking.event_start_time).getDate()}</div>
                   </div>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-[#202020]">{booking.event_title}</div>
                     <div className="mt-1 text-xs text-[#73809b]">
-                      {booking.timeLabel} • {booking.event_city}
+                      {formatEventTime(booking.event_start_time)} • {booking.venue || booking.event_city}
                     </div>
                   </div>
                 </button>
@@ -194,20 +192,32 @@ export default function CalendarPage() {
                 className="grid overflow-hidden rounded-[20px] border border-[#efefef] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] md:grid-cols-[220px_1fr]"
               >
                 <div className="relative min-h-[136px]">
-                  <img src={booking.coverImageUrl} alt={booking.event_title} className="h-full w-full object-cover" />
+                  {booking.coverImageUrl ? (
+                    <img
+                      src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
+                      alt={booking.event_title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-700 to-gray-900">
+                      <span className="text-4xl font-bold text-white opacity-30">
+                        {(booking.event_title || "E")[0].toUpperCase()}
+                      </span>
+                    </div>
+                  )}
                   <div className="absolute left-3 top-3 rounded-xl bg-[#a77da5]/80 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
-                    {booking.dateBadge}
+                    {formatDateBadge(booking.event_start_time)}
                   </div>
                 </div>
                 <div className="p-5">
                   <h3 className="text-[1.5rem] font-semibold text-[#111827]">{booking.event_title}</h3>
-                  <p className="mt-1 text-base text-[#111827]">{booking.timeLabel}</p>
+                  <p className="mt-1 text-base text-[#111827]">{formatEventTime(booking.event_start_time)}</p>
                   <div className="mt-2 flex items-center gap-2 text-sm text-[#5d6573]">
                     <MapPin className="h-4 w-4 text-[#ff445d]" />
-                    <span>{booking.venue}</span>
+                    <span>{booking.venue || booking.event_city}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {booking.tags.map((tag) => (
+                    {Array.isArray(booking.tags) && booking.tags.map((tag: string) => (
                       <span key={tag} className="rounded-full bg-[#efefef] px-3 py-1 text-xs text-[#5b6069]">
                         {tag}
                       </span>

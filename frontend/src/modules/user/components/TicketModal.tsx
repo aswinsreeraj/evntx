@@ -1,34 +1,25 @@
 import { ChevronLeft, ChevronRight, ChevronDown, Mail, MapPin, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Modal from "../../../shared/ui/Modal"
-import type { EnrichedBooking } from "../userDashboardData"
+import { formatDateBadge, formatEventTime, type BookingRecord } from "../userDashboardData"
 import type { TicketRecord } from "../userDashboardData"
 import { useAuthStore } from "../../auth/store/authStore"
 
 type Props = {
-  booking: EnrichedBooking | null
+  booking: BookingRecord | null
   tickets: TicketRecord[]
   open: boolean
   onClose: () => void
 }
 
 function TicketQr({ value }: { value: string }) {
-  const cells = useMemo(() => {
-    const seed = value.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0)
-    return Array.from({ length: 15 * 15 }, (_, index) => ((index * 17 + seed) % 5 === 0 ? 1 : 0))
-  }, [value])
-
   return (
-    <div
-      className="grid gap-[2px] rounded-lg bg-white p-2"
-      style={{ gridTemplateColumns: "repeat(15, minmax(0, 1fr))" }}
-    >
-      {cells.map((cell, index) => (
-        <div
-          key={index}
-          className={`h-[6px] w-[6px] rounded-[1px] ${cell ? "bg-[#111827]" : "bg-transparent"}`}
-        />
-      ))}
+    <div className="rounded-lg bg-white p-2">
+      <img
+        src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(value)}`}
+        alt="Ticket QR Code"
+        className="h-[120px] w-[120px]"
+      />
     </div>
   )
 }
@@ -92,29 +83,37 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
           </button>
 
           <div className="relative w-full overflow-hidden rounded-[26px] bg-[#111821] text-white">
-            <img
-              src={booking.coverImageUrl}
-              alt={booking.event_title}
-              className="h-[200px] w-full object-cover"
-            />
+            {booking.coverImageUrl ? (
+              <img
+                src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
+                alt={booking.event_title}
+                className="h-[200px] w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-[200px] w-full items-center justify-center bg-gradient-to-br from-gray-700 to-gray-900">
+                <span className="text-4xl font-bold text-white opacity-30">
+                  {(booking.event_title || "E")[0].toUpperCase()}
+                </span>
+              </div>
+            )}
 
             <div className="space-y-5 px-6 py-6">
               <div>
                 <h3 className="text-xl font-semibold leading-tight">{booking.event_title}</h3>
                 <div className="mt-2 flex items-center gap-2 text-base text-[#f0f2f5]">
                   <MapPin className="h-5 w-5 text-[#ff4d5f]" />
-                  <span>{booking.venue}</span>
+                  <span>{booking.venue || booking.event_city}</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-left">
                 <div>
                   <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Date</p>
-                  <p className="mt-1 text-lg">{booking.dateBadge}</p>
+                  <p className="mt-1 text-lg">{formatDateBadge(booking.event_start_time)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Time</p>
-                  <p className="mt-1 text-lg">{booking.timeLabel}</p>
+                  <p className="mt-1 text-lg">{formatEventTime(booking.event_start_time)}</p>
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket Type</p>
