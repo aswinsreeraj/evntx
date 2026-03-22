@@ -64,6 +64,7 @@ function AuthModal({ open, onClose, isOrganizer = false }: any) {
                   email={email}
                   setView={setView}
                   isOrganizer={isOrganizer}
+                  onClose={onClose}
                 />
               </motion.div>
             )}

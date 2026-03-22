@@ -7,6 +7,29 @@ export type UpdateProfilePayload = {
   gender: string;
   locations: string[];
   organization_name?: string;
+  address?: string;
+};
+
+export type UserBooking = {
+  booking_id: string;
+  event_id: string;
+  event_title: string;
+  event_city: string;
+  event_start_time: string;
+  status: string;
+  total_amount: number;
+  ticket_count: number;
+  created_at: string;
+};
+
+export type UserTicket = {
+  ticket_id: string;
+  ticket_code: string;
+  event_id: string;
+  event_title: string;
+  ticket_type: string;
+  status: string;
+  checked_in_at?: string | null;
 };
 
 export const userApi = {
@@ -29,5 +52,27 @@ export const userApi = {
       },
     });
     return res.data.data;
+  },
+
+  async getMyBookings(status?: string): Promise<UserBooking[]> {
+    const res = await api.get("/users/me/bookings", {
+      params: { status },
+    });
+    return res.data.data.bookings;
+  },
+
+  async getMyTickets(eventId?: string, bookingId?: string, status?: string): Promise<UserTicket[]> {
+    const res = await api.get("/users/me/tickets", {
+      params: {
+        event_id: eventId,
+        booking_id: bookingId,
+        status,
+      },
+    });
+    return res.data.data.tickets;
+  },
+
+  async cancelBooking(bookingId: string, payload: { items: { ticket_type: string; quantity: number }[] }): Promise<void> {
+    await api.post(`/bookings/${bookingId}/cancel`, payload);
   },
 };

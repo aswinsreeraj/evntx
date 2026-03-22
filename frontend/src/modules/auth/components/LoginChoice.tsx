@@ -13,7 +13,7 @@ export default function LoginChoice({ setView, setEmail, isOrganizer }: any) {
     try {
       if (credentialResponse.credential) {
         await authApi.googleLogin(credentialResponse.credential);
-        window.location.href = "/profile";
+        window.location.href = isOrganizer ? "/organizer/profile" : "/";
       } else {
         setErrorMsg("Google login failed. No credential received.");
       }

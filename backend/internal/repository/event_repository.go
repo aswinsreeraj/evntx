@@ -7,7 +7,7 @@ import (
 )
 
 type EventRepository interface {
-	ListLiveEvents(city string, page int, limit int) ([]domain.Event, int64, error)
+	ListLiveEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) ([]domain.Event, int64, float64, float64, error)
 	AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error)
 	GetEventBySlug(slug string) (*domain.Event, error)
 	GetEventDetails(eventID string) (*domain.EventDetails, error)

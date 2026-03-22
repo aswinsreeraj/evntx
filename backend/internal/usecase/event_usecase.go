@@ -20,32 +20,93 @@ func NewEventUsecase(repo repository.EventRepository) *EventUsecase {
 	return &EventUsecase{repo: repo}
 }
 
-func (u *EventUsecase) ListEvents(city string, page int, limit int) (interface{}, int64, error) {
-	return u.repo.ListLiveEvents(city, page, limit)
+func (u *EventUsecase) ListEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) (interface{}, int64, float64, float64, error) {
+	return u.repo.ListLiveEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate, page, limit)
 }
 
 func (u *EventUsecase) AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error) {
 	return u.repo.AdminSearchEvents(search, status, page, limit)
 }
 
-func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, error) {
+func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
+	}
+
+	if event.Status != "approved" && event.Status != "live" {
+		return nil, nil, nil, nil, errors.New("event not found")
 	}
 
 	details, err := u.repo.GetEventDetails(event.ID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	personnels, err := u.repo.GetEventPersonnels(event.ID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return event, details, personnels, nil
+	tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return event, details, personnels, tickets, nil
+}
+
+func (u *EventUsecase) GetOrganizerEvent(slug string, organizerID string) (interface{}, interface{}, interface{}, interface{}, error) {
+	event, err := u.repo.GetEventBySlug(slug)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	if event.OrganizerID != organizerID {
+		return nil, nil, nil, nil, errors.New("event not found")
+	}
+
+	details, err := u.repo.GetEventDetails(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	personnels, err := u.repo.GetEventPersonnels(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return event, details, personnels, tickets, nil
+}
+
+func (u *EventUsecase) AdminGetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) {
+	event, err := u.repo.GetEventBySlug(slug)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	details, err := u.repo.GetEventDetails(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	personnels, err := u.repo.GetEventPersonnels(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return event, details, personnels, tickets, nil
 }
 
 func generateSlug(title string) string {
@@ -64,7 +125,7 @@ func (u *EventUsecase) CreateEvent(
 	personnels []domain.EventPersonnel,
 ) (string, error) {
 
-	if !event.StartTime.Before(event.EndTime) {
+	if !event.EndTime.IsZero() && !event.StartTime.Before(event.EndTime) {
 		return "", errors.New("start_time must be before end_time")
 	}
 
@@ -155,7 +216,6 @@ func (u *EventUsecase) UpdateEvent(
 		return errors.New("event details not found")
 	}
 
-	// Calculate ticket bounds correctly using old vs new capacity maps
 	capacity := details.TotalCapacity
 	if newCap, exists := detailsUpdates["total_capacity"]; exists {
 		if c, ok := newCap.(int); ok {
@@ -176,9 +236,6 @@ func (u *EventUsecase) UpdateEvent(
 		totalTickets += t.TotalQuantity
 	}
 
-	// Need to check if total tickets exceed capacity, but this rule might be tricky if they don't submit all tickets.
-	// Since we assume ticketUpdates replaces or upserts, let's just make sure the sum of incoming ones doesn't overflow.
-	// To be perfectly safe, we'll enforce that the total updated sum doesn't exceed the capacity at face value.
 	if totalTickets > capacity {
 		return errors.New("sum of ticket quantities must not exceed total capacity")
 	}
@@ -194,10 +251,8 @@ func (u *EventUsecase) UpdateEvent(
 		}
 		ticketUpdates[i].EventID = eventID
 		ticketUpdates[i].UpdatedAt = now
-		
-		// If AvailableQuantity somehow wasn't passed, sync it to total. Note: Partial updates from frontend might be tricky for tickets
-		// The requirement demands we upsert rows. We sync available natively.
-		ticketUpdates[i].AvailableQuantity = ticketUpdates[i].TotalQuantity 
+
+		ticketUpdates[i].AvailableQuantity = ticketUpdates[i].TotalQuantity
 	}
 
 	for i := range personnelUpdates {
@@ -232,7 +287,7 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 		return errors.New("EVT_004: Forbidden action")
 	}
 
-	if event.Status != "draft" {
+	if event.Status != "draft" && event.Status != "rejected" {
 		return errors.New("EVT_006: Event cannot be submitted in current state")
 	}
 
@@ -258,7 +313,7 @@ func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID
 		return errors.New("event not found")
 	}
 
-	if event.Status != "pending" {
+	if event.Status == "approved" || event.Status == "live" || event.Status == "completed" {
 		return errors.New("EVT_006: Event cannot be approved in current state")
 	}
 
@@ -284,7 +339,7 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 		return errors.New("event not found")
 	}
 
-	if event.Status != "pending" {
+	if event.Status == "rejected" || event.Status == "completed" {
 		return errors.New("EVT_006: Event cannot be rejected in current state")
 	}
 

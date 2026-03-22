@@ -200,14 +200,13 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			user = &domain.User{
-				ID:               uuid.NewString(),
-				Email:            email,
-				Name:             name,
-				Dob:              dob,
-				Gender:           gender,
-				OrganizationName: organizationName,
-				IsActive:         true,
-				EmailVerified:    true,
+				ID:            uuid.NewString(),
+				Email:         email,
+				Name:          name,
+				Dob:           dob,
+				Gender:        gender,
+				IsActive:      true,
+				EmailVerified: true,
 			}
 
 			if err := u.userRepo.Create(user); err != nil {
@@ -223,7 +222,6 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 		user.Name = name
 		user.Dob = dob
 		user.Gender = gender
-		user.OrganizationName = organizationName
 		if err := u.userRepo.Update(user); err != nil {
 			return nil, nil, "", "", err
 		}
@@ -260,22 +258,28 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 		roles = []domain.UserRole{}
 	}
 
-	targetRole := domain.RoleGoer
 	if roleStr == "organizer" {
-		targetRole = domain.RoleOrganizer
-	}
-
-	hasRole := false
-	for _, r := range roles {
-		if r == targetRole {
-			hasRole = true
-			break
+		hasOrganizer := false
+		for _, r := range roles {
+			if r == domain.RoleOrganizer {
+				hasOrganizer = true
+				break
+			}
+		}
+		if !hasOrganizer {
+			if err := u.roleRepo.AddRole(user.ID, domain.RoleOrganizer); err == nil {
+				roles = append(roles, domain.RoleOrganizer)
+			}
 		}
 	}
 
-	if !hasRole {
-		if err := u.roleRepo.AddRole(user.ID, targetRole); err == nil {
-			roles = append(roles, targetRole)
+	if roleStr == "organizer" && organizationName != "" {
+		if err := u.userRepo.UpsertOrganizerDetails(&domain.OrganizerDetail{
+			UserID:           user.ID,
+			OrganizationName: organizationName,
+			Address:          "",
+		}); err != nil {
+			return nil, nil, "", "", err
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -100,7 +101,7 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 				return err
 			}
 
-			// 4. Create the booking ticket associations
+			// 4. Create the booking ticket associations and individual physical tickets
 			for _, ticket := range tickets {
 				btModel := BookingTicketModel{
 					BookingID:    ticket.BookingID,
@@ -109,6 +110,22 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 				}
 				if err := tx.Create(&btModel).Error; err != nil {
 					return err
+				}
+
+				// 5. Generate actual distinct physical units resolving frontend mapping loops
+				for i := 0; i < ticket.Quantity; i++ {
+					newTktId := uuid.New().String()
+					tktModel := TicketModel{
+						ID:           newTktId,
+						BookingID:    ticket.BookingID,
+						TicketTypeID: ticket.TicketTypeID,
+						TicketCode:   "TKT-" + newTktId[:8],
+						QRPayload:    newTktId,
+						Status:       "valid",
+					}
+					if err := tx.Create(&tktModel).Error; err != nil {
+						return err
+					}
 				}
 			}
 
@@ -131,6 +148,93 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 	}
 
 	return errors.New("EVT_009: Ticket sold out")
+}
+
+func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var bm BookingModel
+		if err := tx.Where("id = ? AND user_id = ?", bookingID, userID).First(&bm).Error; err != nil {
+			return errors.New("booking not found")
+		}
+
+		if bm.Status != "confirmed" && bm.Status != "reserved" {
+			return errors.New("booking cannot be cancelled")
+		}
+
+		var totalRefund float64
+
+		for _, item := range items {
+			if item.Quantity <= 0 {
+				continue
+			}
+
+			// Find TicketTypeModel by name and event_id
+			var tt TicketTypeModel
+			if err := tx.Where("name = ? AND event_id = ?", item.TicketType, bm.EventID).First(&tt).Error; err != nil {
+				return errors.New("invalid ticket type")
+			}
+
+			// Ensure user actually has enough valid tickets of this type
+			var tM []TicketModel
+			if err := tx.Where("booking_id = ? AND ticket_type_id = ? AND status != 'cancelled'", bookingID, tt.ID).
+				Limit(item.Quantity).
+				Find(&tM).Error; err != nil {
+				return err
+			}
+
+			if len(tM) < item.Quantity {
+				return errors.New("not enough tickets to cancel")
+			}
+
+			// Cancel exactly item.Quantity physical tickets
+			var idsToCancel []string
+			for _, t := range tM {
+				idsToCancel = append(idsToCancel, t.ID)
+			}
+
+			if err := tx.Model(&TicketModel{}).Where("id IN ?", idsToCancel).Update("status", "cancelled").Error; err != nil {
+				return err
+			}
+
+			// Reduce Quantity in booking_ticket_models
+			if err := tx.Model(&BookingTicketModel{}).
+				Where("booking_id = ? AND ticket_type_id = ?", bookingID, tt.ID).
+				Update("quantity", gorm.Expr("quantity - ?", item.Quantity)).Error; err != nil {
+				return err
+			}
+
+			// Restore TicketTypeModel available inventory
+			if err := tx.Model(&TicketTypeModel{}).
+				Where("id = ?", tt.ID).
+				Update("available_quantity", gorm.Expr("available_quantity + ?", item.Quantity)).Error; err != nil {
+				return err
+			}
+
+			totalRefund += tt.Price * float64(item.Quantity)
+		}
+
+		// Reduce total amount
+		if totalRefund > 0 {
+			if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).
+				Update("total_amount", gorm.Expr("total_amount - ?", totalRefund)).Error; err != nil {
+				return err
+			}
+		}
+
+		// Check if any valid tickets remain. If not, cancel the booking entirely.
+		var remainingTickets int64
+		if err := tx.Model(&TicketModel{}).Where("booking_id = ? AND status != 'cancelled'", bookingID).Count(&remainingTickets).Error; err != nil {
+			return err
+		}
+
+		if remainingTickets == 0 {
+			if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Update("status", "cancelled").Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Booking, error) {
@@ -256,18 +360,23 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 	return bookings, total, nil
 }
 
-func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID string, eventID string, status string) ([]domain.TicketWithEvent, error) {
+func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
 	query := r.db.WithContext(ctx).Table("tickets").
 		Joins("JOIN booking_models ON booking_models.id = tickets.booking_id").
 		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
 		Joins("JOIN ticket_type_models ON ticket_type_models.id = tickets.ticket_type_id").
-		Where("booking_models.user_id = ?", userID)
+		Where("booking_models.user_id = ?" , userID)
 
+	if bookingID != "" {
+		query = query.Where("booking_models.id = ?", bookingID)
+	}
 	if eventID != "" {
 		query = query.Where("event_models.id = ?", eventID)
 	}
 	if status != "" {
 		query = query.Where("tickets.status = ?", status)
+	} else {
+		query = query.Where("tickets.status != ?", "cancelled")
 	}
 
 	var results []struct {

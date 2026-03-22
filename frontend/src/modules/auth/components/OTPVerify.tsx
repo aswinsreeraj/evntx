@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import OTPInput from "./OTPInput"
 import { authApi } from "../api"
 
-export default function OTPVerify({ email, isOrganizer }: any) {
+export default function OTPVerify({ email, isOrganizer, onClose }: any) {
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -33,7 +33,15 @@ export default function OTPVerify({ email, isOrganizer }: any) {
     setLoading(true)
     try {
       await authApi.verifyOtp(email, otp)
-      window.location.href = isOrganizer ? "/organizer/profile" : "/profile"
+      if (isOrganizer) {
+        window.location.href = "/organizer/profile"
+      } else {
+        if (onClose) {
+          onClose()
+        } else {
+          window.location.href = "/"
+        }
+      }
     } catch (err: any) {
       console.error(err)
       setError(err.response?.data?.message || "Invalid or expired OTP. Please try again.")

@@ -23,6 +23,8 @@ type EventModel struct {
 	Tags          string
 	Status        string
 	CoverImageURL string
+	CreatedAt     int64
+	UpdatedAt     int64
 }
 
 type EventDetailsModel struct {
@@ -35,6 +37,8 @@ type EventDetailsModel struct {
 	Rating             float64
 	TotalReviews       int
 	TermsAndConditions string
+	CreatedAt          int64
+	UpdatedAt          int64
 }
 
 type EventPersonnelModel struct {
@@ -75,29 +79,133 @@ func NewEventGormRepository(db *gorm.DB) *eventGormRepository {
 	return &eventGormRepository{db: db}
 }
 
-func (r *eventGormRepository) ListLiveEvents(city string, page int, limit int) ([]domain.Event, int64, error) {
+func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) ([]domain.Event, int64, float64, float64, error) {
 
 	var models []EventModel
 	var total int64
+	var globalMin, globalMax float64
 
-	query := r.db.Model(&EventModel{}).Where("status = ?", "live")
+	r.db.Model(&TicketTypeModel{}).
+		Joins("JOIN event_models ON event_models.id = ticket_type_models.event_id").
+		Where("event_models.status IN ?", []string{"live", "approved"}).
+		Select("COALESCE(MIN(ticket_type_models.price), 0), COALESCE(MAX(ticket_type_models.price), 0)").
+		Row().Scan(&globalMin, &globalMax)
+
+	query := r.db.Model(&EventModel{}).Where("status IN ?", []string{"live", "approved"})
 
 	if city != "" {
-		query = query.Where("city ILIKE ?", "%"+city+"%")
+		cities := strings.Split(city, ",")
+		for i := range cities {
+			cities[i] = strings.TrimSpace(cities[i])
+		}
+		query = query.Where("city IN ?", cities)
+	}
+	if category != "" && category != "All" && category != "all" {
+		categories := strings.Split(category, ",")
+		for i := range categories {
+			categories[i] = strings.TrimSpace(categories[i])
+		}
+		query = query.Where("category IN ?", categories)
+	}
+	if search != "" {
+		searchPattern := "%" + search + "%"
+		query = query.Where("title ILIKE ? OR venue_name ILIKE ? OR tags ILIKE ? OR city ILIKE ? OR category ILIKE ?", searchPattern, searchPattern, searchPattern, searchPattern, searchPattern)
+	}
+
+	if minPrice != "" || maxPrice != "" {
+		subquery := r.db.Model(&TicketTypeModel{}).Select("event_id")
+		if minPrice != "" {
+			subquery = subquery.Where("price >= ?", minPrice)
+		}
+		if maxPrice != "" {
+			subquery = subquery.Where("price <= ?", maxPrice)
+		}
+		query = query.Where("id IN (?)", subquery)
+	}
+
+	if startDate != "" {
+		if t, err := time.Parse("2006-01-02", startDate); err == nil {
+			query = query.Where("start_time >= ?", t.Unix())
+		} else if t, err := time.Parse(time.RFC3339, startDate); err == nil {
+			query = query.Where("start_time >= ?", t.Unix())
+		}
+	}
+	if endDate != "" {
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			query = query.Where("start_time <= ?", t.Add(24*time.Hour-time.Second).Unix())
+		} else if t, err := time.Parse(time.RFC3339, endDate); err == nil {
+			query = query.Where("start_time <= ?", t.Unix())
+		}
 	}
 
 	query.Count(&total)
 
+	// Fallback: if user specified city but no events were found, fetch all events ignoring city
+	if total == 0 && city != "" {
+		query = r.db.Model(&EventModel{}).Where("status IN ?", []string{"live", "approved"})
+		
+		if category != "" && category != "All" && category != "all" {
+			categories := strings.Split(category, ",")
+			for i := range categories {
+				categories[i] = strings.TrimSpace(categories[i])
+			}
+			query = query.Where("category IN ?", categories)
+		}
+		
+		if search != "" {
+			searchPattern := "%" + search + "%"
+			query = query.Where("title ILIKE ? OR venue_name ILIKE ? OR tags ILIKE ? OR city ILIKE ? OR category ILIKE ?", searchPattern, searchPattern, searchPattern, searchPattern, searchPattern)
+		}
+
+		if minPrice != "" || maxPrice != "" {
+			subquery := r.db.Model(&TicketTypeModel{}).Select("event_id")
+			if minPrice != "" {
+				subquery = subquery.Where("price >= ?", minPrice)
+			}
+			if maxPrice != "" {
+				subquery = subquery.Where("price <= ?", maxPrice)
+			}
+			query = query.Where("id IN (?)", subquery)
+		}
+
+		if startDate != "" {
+			if t, err := time.Parse("2006-01-02", startDate); err == nil {
+				query = query.Where("start_time >= ?", t.Unix())
+			} else if t, err := time.Parse(time.RFC3339, startDate); err == nil {
+				query = query.Where("start_time >= ?", t.Unix())
+			}
+		}
+		if endDate != "" {
+			if t, err := time.Parse("2006-01-02", endDate); err == nil {
+				query = query.Where("start_time <= ?", t.Add(24*time.Hour-time.Second).Unix())
+			} else if t, err := time.Parse(time.RFC3339, endDate); err == nil {
+				query = query.Where("start_time <= ?", t.Unix())
+			}
+		}
+
+		query.Count(&total)
+	}
+
 	offset := (page - 1) * limit
 
+	orderStr := "start_time ASC"
+	switch sortBy {
+	case "date_asc":
+		orderStr = "start_time ASC"
+	case "date_desc":
+		orderStr = "start_time DESC"
+	case "created_at_desc":
+		orderStr = "created_at DESC"
+	}
+
 	err := query.
-		Order("start_time ASC").
+		Order(orderStr).
 		Limit(limit).
 		Offset(offset).
 		Find(&models).Error
 
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, 0, err
 	}
 
 	events := make([]domain.Event, 0)
@@ -110,11 +218,16 @@ func (r *eventGormRepository) ListLiveEvents(city string, page int, limit int) (
 			City:          m.City,
 			VenueName:     m.VenueName,
 			Category:      m.Category,
+			StartTime:     time.Unix(m.StartTime, 0),
+			EndTime:       time.Unix(m.EndTime, 0),
+			Tags:          m.Tags,
 			CoverImageURL: m.CoverImageURL,
+			CreatedAt:     time.Unix(m.CreatedAt, 0),
+			UpdatedAt:     time.Unix(m.UpdatedAt, 0),
 		})
 	}
 
-	return events, total, nil
+	return events, total, globalMin, globalMax, nil
 }
 
 func (r *eventGormRepository) AdminSearchEvents(
@@ -127,12 +240,28 @@ func (r *eventGormRepository) AdminSearchEvents(
 	var models []struct {
 		EventModel
 		OrganizerName string
+		TicketsSold   int64
+		Revenue       float64
 	}
 	var total int64
 
 	query := r.db.Table("event_models").
-		Select("event_models.*, user_models.name AS organizer_name").
-		Joins("LEFT JOIN user_models ON user_models.id = event_models.organizer_id")
+		Select(`
+			event_models.*,
+			user_models.name AS organizer_name,
+			COALESCE((
+				SELECT SUM(bkt.quantity)
+				FROM booking_models bk
+				JOIN booking_ticket_models bkt ON bkt.booking_id = bk.id
+				WHERE bk.event_id = event_models.id AND bk.status = 'confirmed'
+			), 0) AS tickets_sold,
+			COALESCE((
+				SELECT SUM(bk.total_amount)
+				FROM booking_models bk
+				WHERE bk.event_id = event_models.id AND bk.status = 'confirmed'
+			), 0) AS revenue
+		`).
+		Joins("LEFT JOIN user_models ON user_models.id::text = event_models.organizer_id")
 
 	if search != "" {
 		query = query.Where(
@@ -163,22 +292,17 @@ func (r *eventGormRepository) AdminSearchEvents(
 	for _, m := range models {
 		details = append(details, domain.AdminEventDetails{
 			Event: domain.Event{
-				ID:            m.ID,
-				OrganizerID:   m.OrganizerID,
-				Title:         m.Title,
-				Slug:          m.Slug,
-				City:          m.City,
-				VenueName:     m.VenueName,
-				Category:      m.Category,
-				StartTime:     time.Unix(m.StartTime, 0),
-				EndTime:       time.Unix(m.EndTime, 0),
-				Tags:          m.Tags,
-				Status:        m.Status,
-				CoverImageURL: m.CoverImageURL,
+				ID:        m.ID,
+				Title:     m.Title,
+				City:      m.City,
+				StartTime: time.Unix(m.StartTime, 0),
+				Status:    m.Status,
+				CreatedAt: time.Unix(m.CreatedAt, 0),
+				UpdatedAt: time.Unix(m.UpdatedAt, 0),
 			},
 			OrganizerName: m.OrganizerName,
-			TicketsSold:   0,
-			Revenue:       0,
+			TicketsSold:   m.TicketsSold,
+			Revenue:       int64(m.Revenue),
 		})
 	}
 
@@ -190,7 +314,7 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 	var model EventModel
 
 	err := r.db.
-		Where("slug = ? AND status = ?", slug, "live").
+		Where("slug = ? OR id = ?", slug, slug).
 		First(&model).Error
 
 	if err != nil {
@@ -206,7 +330,12 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 		City:          model.City,
 		VenueName:     model.VenueName,
 		Category:      model.Category,
+		StartTime:     time.Unix(model.StartTime, 0),
+		EndTime:       time.Unix(model.EndTime, 0),
+		Tags:          model.Tags,
 		CoverImageURL: model.CoverImageURL,
+		CreatedAt:     time.Unix(model.CreatedAt, 0),
+		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -231,7 +360,12 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 		City:          model.City,
 		VenueName:     model.VenueName,
 		Category:      model.Category,
+		StartTime:     time.Unix(model.StartTime, 0),
+		EndTime:       time.Unix(model.EndTime, 0),
+		Tags:          model.Tags,
 		CoverImageURL: model.CoverImageURL,
+		CreatedAt:     time.Unix(model.CreatedAt, 0),
+		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -257,6 +391,8 @@ func (r *eventGormRepository) GetEventDetails(eventID string) (*domain.EventDeta
 		Rating:             model.Rating,
 		TotalReviews:       model.TotalReviews,
 		TermsAndConditions: model.TermsAndConditions,
+		CreatedAt:          time.Unix(model.CreatedAt, 0),
+		UpdatedAt:          time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -328,6 +464,8 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 			Tags:          event.Tags,
 			Status:        event.Status,
 			CoverImageURL: event.CoverImageURL,
+			CreatedAt:     event.CreatedAt.Unix(),
+			UpdatedAt:     event.UpdatedAt.Unix(),
 		}
 
 		if err := tx.Create(&eventModel).Error; err != nil {
@@ -344,6 +482,8 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 			Rating:             details.Rating,
 			TotalReviews:       details.TotalReviews,
 			TermsAndConditions: details.TermsAndConditions,
+			CreatedAt:          details.CreatedAt.Unix(),
+			UpdatedAt:          details.UpdatedAt.Unix(),
 		}
 
 		if err := tx.Create(&detailsModel).Error; err != nil {
@@ -388,6 +528,12 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 
 func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType, personnelUpdates []domain.EventPersonnel) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if updatedAt, ok := eventUpdates["updated_at"].(time.Time); ok {
+			eventUpdates["updated_at"] = updatedAt.Unix()
+		}
+		if updatedAt, ok := detailUpdates["updated_at"].(time.Time); ok {
+			detailUpdates["updated_at"] = updatedAt.Unix()
+		}
 
 		if len(eventUpdates) > 0 {
 			if err := tx.Model(&EventModel{}).Where("id = ?", eventID).Updates(eventUpdates).Error; err != nil {
@@ -512,6 +658,8 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 			EndTime:       time.Unix(m.EndTime, 0),
 			Tags:          m.Tags,
 			CoverImageURL: m.CoverImageURL,
+			CreatedAt:     time.Unix(m.CreatedAt, 0),
+			UpdatedAt:     time.Unix(m.UpdatedAt, 0),
 		})
 	}
 	return events, nil

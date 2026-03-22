@@ -22,7 +22,6 @@ func NewBookingExpirationWorker(bookingUsecase *usecase.BookingUsecase) *Booking
 }
 
 func (w *BookingExpirationWorker) Start() {
-	// Tick every 1 minute
 	w.ticker = time.NewTicker(1 * time.Minute)
 
 	logger.Log.Info().Msg("BookingExpirationWorker started")
@@ -30,7 +29,6 @@ func (w *BookingExpirationWorker) Start() {
 	for {
 		select {
 		case <-w.ticker.C:
-			// Execute processing
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			err := w.bookingUsecase.ProcessExpiredBookings(ctx)
 			cancel()

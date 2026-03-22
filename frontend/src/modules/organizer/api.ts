@@ -67,6 +67,11 @@ export const organizerApi = {
     return res.data;
   },
 
+  async getEventBySlug(slug: string) {
+    const res = await api.get(`/organizer/events/slug/${slug}`);
+    return res.data.data;
+  },
+
   async deleteEvent(eventId: string) {
     const res = await api.delete(`/organizer/events/${eventId}`);
     return res.data;

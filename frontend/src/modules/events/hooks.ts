@@ -8,10 +8,11 @@ export function useEvents(params?: any) {
   });
 }
 
-export function useEvent(eventId: string) {
+export function useEvent(eventId: string, isOrganizer = false, isAdmin = false) {
   return useQuery({
-    queryKey: ["event", eventId],
-    queryFn: () => eventsApi.getEvent(eventId),
-    enabled: !!eventId,
+    queryKey: ["event", eventId, isOrganizer, isAdmin],
+    queryFn: () => eventsApi.getEventForViewer(eventId, isOrganizer, isAdmin),
+    enabled: Boolean(eventId),
+    retry: false,
   });
 }

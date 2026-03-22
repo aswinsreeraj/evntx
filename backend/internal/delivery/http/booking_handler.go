@@ -59,3 +59,37 @@ func (h *BookingHandler) ReserveTickets(c *gin.Context) {
 		},
 	})
 }
+
+func (h *BookingHandler) CancelBooking(c *gin.Context) {
+	userID := c.GetString("user_id")
+	bookingID := c.Param("booking_id")
+
+	var req struct {
+		Items []domain.TicketCancelRequest `json:"items" binding:"required,dive"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", "Invalid cancellation request")
+		return
+	}
+
+	err := h.bookingUsecase.CancelBooking(c.Request.Context(), bookingID, userID, req.Items)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "not found") {
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "Booking not found")
+			return
+		}
+		if strings.Contains(errMsg, "cannot be cancelled") {
+			response.Error(c, http.StatusBadRequest, "INVALID_STATE", "Booking cannot be cancelled")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to cancel booking")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Booking cancelled successfully",
+	})
+}

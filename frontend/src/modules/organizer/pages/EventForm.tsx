@@ -42,19 +42,64 @@ export default function EventForm() {
 
   useEffect(() => {
     if (isEditMode && eventId) {
-      // Fetch event data to populate form
-      // this requires a GET request, usually public endpoint is fine for details
       const fetchEvent = async () => {
         try {
-            // For now, let's just attempt to load the event using a fictional endpoint or one from the events list
-            // Assuming eventApi.getEvent(eventId) exists. If it relies on slug, we need to handle that.
-            // But right now we'll just set loading false and implement full fetch later if needed.
-            setLoadingInitial(false);
+          const data = await organizerApi.getEventBySlug(eventId);
+          if (data) {
+            const { event, details, ticket_types, personnels } = data;
+            
+            setTitle(event.title || "");
+            setCategory(event.category || "Comedy");
+            
+            if (event.start_time) {
+              const st = new Date(event.start_time);
+              st.setMinutes(st.getMinutes() - st.getTimezoneOffset());
+              setStartTime(st.toISOString().slice(0, 16));
+            }
+            
+            if (event.tags) {
+              setTags(event.tags.split(',').filter(Boolean));
+            }
+            
+            if (event.cover_image_url) {
+              setCoverImagePreview(`${import.meta.env.VITE_API_BASE_URL || ""}${event.cover_image_url}`);
+            }
+            
+            setVenueName(event.venue_name || "");
+            setCity(event.city || "");
+            
+            if (details) {
+              setVenueAddress(details.venue_address || "");
+              setMapUrl(details.map_url || "");
+              setDescription(details.description || "");
+              setTerms(details.terms_and_conditions || "");
+            }
+
+            if (ticket_types && ticket_types.length > 0) {
+              setTickets(ticket_types.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                price: t.price,
+                total_quantity: t.total_quantity
+              })));
+            }
+
+            if (personnels && personnels.length > 0) {
+              setPersonnel(personnels.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                role: p.role,
+                image: p.image,
+                profile_link: p.profile_link
+              })));
+            }
+          }
+          setLoadingInitial(false);
         } catch (err) {
-            console.error(err);
-            setLoadingInitial(false);
+          console.error(err);
+          setLoadingInitial(false);
         }
-      }
+      };
       fetchEvent();
     }
   }, [eventId, isEditMode]);
@@ -182,7 +227,10 @@ export default function EventForm() {
   return (
     <OrganizerLayout activeTab="My Events">
       <div className="py-10 px-10 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col gap-4 mb-8">
+          <button type="button" onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit">
+            <span aria-hidden="true">&larr;</span> Back
+          </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{isEditMode ? "Update the event" : "Create a new event for the community"}</h1>
             <p className="text-sm text-gray-500 mt-1">Events are published only post approval.</p>

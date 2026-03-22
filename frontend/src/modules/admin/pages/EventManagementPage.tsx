@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEvents, useApproveEvent, useRejectEvent } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter, X } from "lucide-react";
@@ -24,8 +25,19 @@ function getStatusColor(status: string) {
   }
 }
 
+function canApprove(status: string) {
+  const normalizedStatus = status.toLowerCase();
+  return normalizedStatus !== "approved" && normalizedStatus !== "live" && normalizedStatus !== "completed";
+}
+
+function canReject(status: string) {
+  const normalizedStatus = status.toLowerCase();
+  return normalizedStatus !== "rejected" && normalizedStatus !== "completed";
+}
+
 export default function EventManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const page = parseInt(searchParams.get("page") || "1", 10);
   const statusFilter = searchParams.get("status") || "all";
@@ -72,6 +84,7 @@ export default function EventManagementPage() {
   const rejectEvent = useRejectEvent();
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [modalState, setModalState] = useState<{ isOpen: boolean; type: "Approve" | "Reject" | null; eventId: string | null }>({
@@ -85,15 +98,32 @@ export default function EventManagementPage() {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownId(null);
+        setDropdownPosition(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const toggleDropdown = (eventId: string, target: HTMLButtonElement) => {
+    if (openDropdownId === eventId) {
+      setOpenDropdownId(null);
+      setDropdownPosition(null);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    setOpenDropdownId(eventId);
+    setDropdownPosition({
+      top: rect.bottom + 8,
+      left: rect.right - 160,
+    });
+  };
+
   const handleAction = (eventId: string, type: "Approve" | "Reject") => {
     setModalState({ isOpen: true, type, eventId });
     setOpenDropdownId(null);
+    setDropdownPosition(null);
   };
 
   const confirmAction = () => {
@@ -151,8 +181,8 @@ export default function EventManagementPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-32">
+        <div className="flex items-center gap-3 w-auto">
+          <div className="relative w-full sm:w-fit">
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
@@ -166,7 +196,7 @@ export default function EventManagementPage() {
             <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
 
-          <div className="relative w-full sm:w-48">
+          <div className="relative w-full sm:w-42">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -186,8 +216,8 @@ export default function EventManagementPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="w-full overflow-x-auto">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible">
+        <div className="w-full overflow-x-auto overflow-y-visible">
           <table className="w-full text-sm text-left">
             <thead className="bg-[#f8f9fa] text-xs font-bold text-gray-900 border-b border-gray-100">
               <tr>
@@ -206,7 +236,11 @@ export default function EventManagementPage() {
                 <tr key={evt.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-center">{evt.title}</td>
                   <td className="px-6 py-4 text-center">{evt.organizer_name || "Unknown"}</td>
-                  <td className="px-6 py-4 text-center">{new Date(evt.start_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="px-6 py-4 text-center">
+                    {evt.start_time
+                      ? new Date(evt.start_time).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                      : "N/A"}
+                  </td>
                   <td className="px-6 py-4 text-center">{evt.tickets_sold ?? 0}</td>
                   <td className="px-6 py-4 text-center">{evt.revenue ?? 0}</td>
                   <td className="px-6 py-4 text-center">{evt.city}</td>
@@ -217,34 +251,13 @@ export default function EventManagementPage() {
                       {evt.status.charAt(0).toUpperCase() + evt.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center relative">
+                  <td className="px-6 py-4 text-center">
                     <button
-                      onClick={() => setOpenDropdownId(openDropdownId === evt.id ? null : evt.id)}
+                      onClick={(e) => toggleDropdown(evt.id, e.currentTarget)}
                       className="inline-flex items-center justify-between w-20 px-3 py-1.5 border border-blue-500 rounded-lg text-[#0b101e] text-xs font-semibold hover:bg-gray-50 transition-colors"
                     >
                       View <ChevronDown className="w-4 h-4 text-blue-500" />
                     </button>
-                    
-                    {openDropdownId === evt.id && (
-                      <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
-                        {evt.status.toLowerCase() !== "approved" && evt.status.toLowerCase() !== "live" && evt.status.toLowerCase() !== "completed" && (
-                          <button
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
-                            onClick={() => handleAction(evt.id, "Approve")}
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {evt.status.toLowerCase() !== "rejected" && evt.status.toLowerCase() !== "completed" && (
-                           <button
-                             className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-red-600"
-                             onClick={() => handleAction(evt.id, "Reject")}
-                           >
-                             Reject
-                           </button>
-                        )}
-                      </div>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -294,7 +307,10 @@ export default function EventManagementPage() {
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold">{modalState.type} Event</h2>
               <button 
-                onClick={() => setModalState({ isOpen: false, type: null, eventId: null })}
+                onClick={() => {
+                  setModalState({ isOpen: false, type: null, eventId: null });
+                  setRejectReason("");
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -324,7 +340,10 @@ export default function EventManagementPage() {
 
               <div className="flex gap-4">
                 <button
-                  onClick={() => setModalState({ isOpen: false, type: null, eventId: null })}
+                  onClick={() => {
+                    setModalState({ isOpen: false, type: null, eventId: null });
+                    setRejectReason("");
+                  }}
                   className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
                   disabled={approveEvent.isPending || rejectEvent.isPending}
                 >
@@ -346,6 +365,52 @@ export default function EventManagementPage() {
           </div>
         </div>
       )}
+
+      {openDropdownId && dropdownPosition &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[1000] bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-40"
+            style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
+          >
+                  {eventsList
+              .filter((evt: any) => evt.id === openDropdownId)
+              .map((evt: any) => (
+                <div key={evt.id}>
+                  <button
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
+                    disabled={!evt.slug && !evt.id}
+                    onClick={() => {
+                      navigate(`/events/${evt.slug ?? evt.id}`);
+                      setOpenDropdownId(null);
+                      setDropdownPosition(null);
+                    }}
+                  >
+                    View Event
+                  </button>
+                  {canApprove(evt.status) && (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
+                      disabled={!evt.id}
+                      onClick={() => handleAction(evt.id, "Approve")}
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {canReject(evt.status) && (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-red-600"
+                      disabled={!evt.id}
+                      onClick={() => handleAction(evt.id, "Reject")}
+                    >
+                      Reject
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>,
+          document.body
+        )}
 
     </AdminLayout>
   );

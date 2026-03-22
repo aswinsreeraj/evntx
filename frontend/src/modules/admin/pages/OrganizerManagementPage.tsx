@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useOrganizers, useToggleUserStatus } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
@@ -51,17 +52,34 @@ export default function OrganizerManagementPage() {
   const toggleUser = useToggleUserStatus();
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownId(null);
+        setDropdownPosition(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const toggleDropdown = (organizerId: string, target: HTMLButtonElement) => {
+    if (openDropdownId === organizerId) {
+      setOpenDropdownId(null);
+      setDropdownPosition(null);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    setOpenDropdownId(organizerId);
+    setDropdownPosition({
+      top: rect.bottom + 8,
+      left: rect.right - 160,
+    });
+  };
 
   const organizersList = data?.organizers || [];
   const pagination = data?.pagination;
@@ -104,7 +122,7 @@ export default function OrganizerManagementPage() {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative w-full sm:w-32">
+          <div className="relative w-full sm:w-fit">
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
@@ -118,7 +136,7 @@ export default function OrganizerManagementPage() {
             <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           </div>
 
-          <div className="relative w-full sm:w-48">
+          <div className="relative w-full sm:w-42">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -134,8 +152,8 @@ export default function OrganizerManagementPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="w-full overflow-x-auto">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible">
+        <div className="w-full overflow-x-auto overflow-y-visible">
           <table className="w-full text-sm text-left">
             <thead className="bg-[#f8f9fa] text-xs font-bold text-gray-900 border-b border-gray-100">
               <tr>
@@ -167,30 +185,13 @@ export default function OrganizerManagementPage() {
                       {org.is_active ? "Active" : "Suspended"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center relative">
+                  <td className="px-6 py-4 text-center">
                     <button
-                      onClick={() => setOpenDropdownId(openDropdownId === org.id ? null : org.id)}
+                      onClick={(e) => toggleDropdown(org.id, e.currentTarget)}
                       className="inline-flex items-center justify-between w-20 px-3 py-1.5 border border-blue-500 rounded-lg text-[#0b101e] text-xs font-semibold hover:bg-gray-50 transition-colors"
                     >
                       View <ChevronDown className="w-4 h-4 text-blue-500" />
                     </button>
-                    
-                    {openDropdownId === org.id && (
-                      <div ref={dropdownRef} className="absolute z-10 right-10 top-12 bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-32">
-                        <button
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
-                          onClick={() => {
-                            toggleUser.mutate({
-                              userId: org.id,
-                              isActive: !org.is_active,
-                            });
-                            setOpenDropdownId(null);
-                          }}
-                        >
-                          {org.is_active ? "Suspend User" : "Activate User"}
-                        </button>
-                      </div>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -225,6 +226,35 @@ export default function OrganizerManagementPage() {
           <Download className="w-4 h-4" />
         </button>
       </div>
+
+      {openDropdownId && dropdownPosition &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[1000] bg-white border border-gray-200 shadow-xl rounded-lg py-1 w-40"
+            style={{ top: dropdownPosition.top, left: dropdownPosition.left }}
+          >
+            {organizersList
+              .filter((org: any) => org.id === openDropdownId)
+              .map((org: any) => (
+                <button
+                  key={org.id}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
+                  onClick={() => {
+                    toggleUser.mutate({
+                      userId: org.id,
+                      isActive: !org.is_active,
+                    });
+                    setOpenDropdownId(null);
+                    setDropdownPosition(null);
+                  }}
+                >
+                  {org.is_active ? "Suspend User" : "Activate User"}
+                </button>
+              ))}
+          </div>,
+          document.body
+        )}
 
     </AdminLayout>
   );
