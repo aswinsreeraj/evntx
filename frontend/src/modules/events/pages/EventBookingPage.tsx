@@ -17,7 +17,7 @@ export default function EventBookingPage() {
   const { user, roles } = useAuthStore()
 
   const displayEvent = buildDisplayEvent(eventId ?? "", data)
-  
+
   useEffect(() => {
     if (user && roles && roles.some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin")) {
       navigate(`/events/${eventId}`, { replace: true })

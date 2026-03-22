@@ -61,10 +61,10 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
 
   return (
     <div className="min-h-screen border-t border-gray-100 bg-[#f8f9fa] flex">
-      {/* Sidebar */}
+      {}
       <div className="w-[240px] shrink-0 bg-white border-r border-gray-100 flex flex-col min-h-screen sticky top-0 py-6 px-4">
         <h1 onClick={() => navigate("/")} className="font-sigmar text-2xl tracking-wide cursor-pointer mb-8 px-2">EVNTX</h1>
-        
+
         <div className="flex flex-col gap-1 mb-8">
           <p className="px-4 text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Main</p>
           <SidebarItem label="Dashboard" />
@@ -77,7 +77,7 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
           <p className="px-4 text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Account</p>
           <SidebarItem label="Profile" route="/organizer/profile" />
         </div>
-        
+
         <div className="mt-auto">
           <button
             onClick={handleLogout}
@@ -88,7 +88,7 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
         </div>
       </div>
 
-      {/* Main Content */}
+      {}
       <div className="flex-1 max-h-screen overflow-y-auto relative">
          <div className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 backdrop-blur-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-end gap-4 px-8 py-4">

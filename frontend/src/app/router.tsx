@@ -28,7 +28,7 @@ export const router = createBrowserRouter([
                     <ProtectedRoute roles={["goer"]}>
                         <ProfilePage />
                     </ProtectedRoute>
-                ),  
+                ),
             },
             {
                 path: "/profile/bookings",

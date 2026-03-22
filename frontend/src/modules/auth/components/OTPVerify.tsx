@@ -6,7 +6,7 @@ export default function OTPVerify({ email, isOrganizer, onClose }: any) {
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  
+
   const [timer, setTimer] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const [resending, setResending] = useState(false)
@@ -29,7 +29,7 @@ export default function OTPVerify({ email, isOrganizer, onClose }: any) {
       setError("Please enter a complete 6-digit OTP")
       return
     }
-    
+
     setLoading(true)
     try {
       await authApi.verifyOtp(email, otp)
@@ -73,8 +73,8 @@ export default function OTPVerify({ email, isOrganizer, onClose }: any) {
       </h2>
 
       <p className="text-gray-500 mb-8 text-center text-sm leading-relaxed px-4">
-        {isOrganizer 
-          ? "Enter the OTP sent to your registered email to continue managing your events." 
+        {isOrganizer
+          ? "Enter the OTP sent to your registered email to continue managing your events."
           : "Dive back into the ultimate experience"}
       </p>
 
@@ -89,12 +89,12 @@ export default function OTPVerify({ email, isOrganizer, onClose }: any) {
         <label className="text-sm font-medium text-gray-700 mb-2">
           One-Time Password
         </label>
-        <OTPInput 
-            value={otp} 
+        <OTPInput
+            value={otp}
             onChange={(val: string) => {
                 setOtp(val)
                 setError("")
-            }} 
+            }}
         />
         {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
       </div>

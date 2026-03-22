@@ -25,9 +25,9 @@ export default function AdminLoginPage() {
       setError("Please enter a valid email address");
       return;
     }
-    
+
     setIsOtpModalOpen(true);
-    
+
     try {
       await authApi.requestOtp(email);
     } catch (err: any) {
@@ -45,14 +45,13 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-md flex flex-col items-center">
-          
+
           <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center">
             Welcome to Platform Management
           </h2>
-          
+
           <p className="text-gray-500 mb-10 text-center text-sm">
             Manage platform settings as administrator
           </p>
@@ -87,7 +86,7 @@ export default function AdminLoginPage() {
             {error && <span className="text-red-500 text-xs mt-2 block w-full text-left">{error}</span>}
           </div>
 
-          <button 
+          <button
             onClick={handleLogin}
             disabled={!email}
             className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
@@ -97,9 +96,9 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-      <AdminOtpModal 
-        isOpen={isOtpModalOpen} 
-        onClose={() => setIsOtpModalOpen(false)} 
+      <AdminOtpModal
+        isOpen={isOtpModalOpen}
+        onClose={() => setIsOtpModalOpen(false)}
         email={email}
       />
     </div>

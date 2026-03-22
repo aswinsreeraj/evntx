@@ -9,7 +9,7 @@ import { useState } from "react"
 
 function EventListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  
+
   const search = searchParams.get("search") || ""
   const city = searchParams.get("city") || ""
   const category = searchParams.get("category") || ""
@@ -24,7 +24,7 @@ function EventListPage() {
 
   const [searchInput, setSearchInput] = useState(search)
 
-  const { data } = useEvents({ 
+  const { data } = useEvents({
     limit: 12,
     city: city || undefined,
     category: category || undefined,
@@ -38,7 +38,7 @@ function EventListPage() {
   const eventsList = data?.events || []
   const globalMinPrice = data?.price_range?.min !== undefined ? data.price_range.min : 0
   const globalMaxPrice = data?.price_range?.max !== undefined ? data.price_range.max : 100000
-  // Update URL on search enter
+
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       const newParams = new URLSearchParams(searchParams)
@@ -67,14 +67,14 @@ function EventListPage() {
               className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-gray-800 placeholder-gray-400 text-sm"
             />
           </div>
-          <SortDropdown 
-            currentSort={sort} 
+          <SortDropdown
+            currentSort={sort}
             onSortChange={(newSort) => {
               const newParams = new URLSearchParams(searchParams)
               if (newSort) newParams.set("sort", newSort)
               else newParams.delete("sort")
               setSearchParams(newParams)
-            }} 
+            }}
           />
         </div>
       </div>
@@ -82,7 +82,7 @@ function EventListPage() {
       <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         <div className="col-span-1 hidden lg:block">
-          <FilterSidebar 
+          <FilterSidebar
             selectedCities={citiesArray}
             selectedCategories={categoriesArray}
             startDate={start_date}
@@ -93,13 +93,13 @@ function EventListPage() {
             globalMaxPrice={globalMaxPrice}
             onFilterChange={(filters) => {
               const newParams = new URLSearchParams(searchParams)
-              
+
               if (filters.cities.length > 0) newParams.set("city", filters.cities.join(","))
               else newParams.delete("city")
-              
+
               if (filters.categories.length > 0) newParams.set("category", filters.categories.join(","))
               else newParams.delete("category")
-              
+
               if (filters.startDate) newParams.set("start_date", filters.startDate)
               else newParams.delete("start_date")
 
@@ -111,12 +111,11 @@ function EventListPage() {
 
               if (filters.maxPrice) newParams.set("max_price", filters.maxPrice)
               else newParams.delete("max_price")
-              
+
               setSearchParams(newParams)
             }}
           />
         </div>
-
 
         <div className="col-span-1 lg:col-span-2">
           {eventsList.length === 0 ? (

@@ -125,7 +125,6 @@ export default function ProfilePage() {
           ) : (
             <>
 
-
               <div className="flex flex-col items-center mb-12">
                 <div className="relative group">
                   <input
@@ -193,7 +192,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-
                 <div>
                   <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Details</h3>
                   <div className="grid grid-cols-2 gap-6 mb-6">
@@ -260,7 +258,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-
 
                   <div className="mb-4">
                     <label className="block text-sm text-gray-600 mb-2">Preferred Location</label>

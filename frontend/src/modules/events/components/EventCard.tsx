@@ -72,8 +72,8 @@ export default function EventCard({ event }: Props) {
 
           <div className="flex flex-wrap gap-2 mt-auto">
             {eventTags.map((tag: string, index: number) => (
-              <span 
-                key={index} 
+              <span
+                key={index}
                 className="bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1 rounded-full"
               >
                 {tag}

@@ -15,8 +15,8 @@ export default function CategorySection({ activeCategory, onCategoryChange }: Ca
             key={name}
             onClick={() => onCategoryChange(name)}
             className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
-              activeCategory === name 
-                ? "bg-[#F0BCC5] text-[#E7364D] opacity-100" 
+              activeCategory === name
+                ? "bg-[#F0BCC5] text-[#E7364D] opacity-100"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-transparent"
             }`}
           >

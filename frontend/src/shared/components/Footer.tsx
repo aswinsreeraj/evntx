@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="bg-[#0b101e] text-gray-300">
       <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col items-center">
         <h2 className="font-bold text-white text-2xl tracking-wide mb-4">EVNTX</h2>
-        
+
         <div className="flex gap-4 mb-8">
           <a href="#" className="text-gray-400 hover:text-white transition-colors">
             <Instagram className="w-5 h-5" />

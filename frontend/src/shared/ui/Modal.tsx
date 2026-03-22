@@ -23,11 +23,11 @@ function Modal({ open, onClose, children, className = "bg-white rounded-xl p-6 w
   if (!open) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 transition-opacity"
       onClick={onClose}
     >
-      <div 
+      <div
         className={className}
         onClick={(e) => e.stopPropagation()}
       >

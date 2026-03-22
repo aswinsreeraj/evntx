@@ -42,14 +42,13 @@ export default function EventDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
 
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
-            <img 
-              src={displayEvent.coverImageUrl} 
-              alt={displayEvent.title} 
-              className="w-full h-full object-cover" 
+            <img
+              src={displayEvent.coverImageUrl}
+              alt={displayEvent.title}
+              className="w-full h-full object-cover"
             />
           </div>
 
@@ -115,14 +114,12 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-
         <div className="lg:col-span-1 flex flex-col gap-6">
-          
 
           {!(useAuthStore.getState().roles || []).some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin") && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Book Tickets</h3>
-              
+
               <div className="flex flex-col gap-4 mb-8">
                 <div className="flex items-start gap-4 text-sm text-gray-700">
                   <CalendarDays className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
@@ -164,8 +161,6 @@ export default function EventDetailPage() {
             </div>
           )}
 
-
-
           {displayEvent.host && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Host</h3>
@@ -181,7 +176,6 @@ export default function EventDetailPage() {
               </button>
             </div>
           )}
-
 
           {displayEvent.personnel && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

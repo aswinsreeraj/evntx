@@ -20,6 +20,9 @@ export type UserBooking = {
   total_amount: number;
   ticket_count: number;
   created_at: string;
+  coverImageUrl: string;
+  venue: string;
+  tags: string[];
 };
 
 export type UserTicket = {

@@ -35,7 +35,7 @@ export default function FilterSidebar({
   const [localCategories, setLocalCategories] = useState<string[]>(selectedCategories || []);
   const [localStartDate, setLocalStartDate] = useState(startDate || "");
   const [localEndDate, setLocalEndDate] = useState(endDate || "");
-  
+
   const [localMinPrice, setLocalMinPrice] = useState(minPrice || "");
   const [localMaxPrice, setLocalMaxPrice] = useState(maxPrice || "");
 
@@ -87,13 +87,13 @@ export default function FilterSidebar({
   };
 
   const toggleCategory = (cat: string) => {
-    setLocalCategories(prev => 
+    setLocalCategories(prev =>
       prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
   };
 
   const toggleCity = (city: string) => {
-    setLocalCities(prev => 
+    setLocalCities(prev =>
       prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]
     );
   };
@@ -115,8 +115,8 @@ export default function FilterSidebar({
 
   return (
     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-6 w-full max-w-sm">
-      
-      {/* Date Range */}
+
+      {}
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Date Range</h4>
         <div className="bg-red-50 rounded-xl px-4 py-3 flex items-center gap-3 relative">
@@ -124,8 +124,8 @@ export default function FilterSidebar({
            <div className="flex gap-2 items-center flex-1 w-full relative">
               <div className="flex flex-col flex-1 relative">
                 <span className="text-[10px] uppercase font-bold text-red-400 absolute -top-4 left-0">Start Date</span>
-                <input 
-                   type="date" 
+                <input
+                   type="date"
                    className="bg-transparent text-sm text-gray-700 outline-none w-full !p-0 mt-2"
                    value={localStartDate}
                    onChange={(e) => setLocalStartDate(e.target.value)}
@@ -134,8 +134,8 @@ export default function FilterSidebar({
               <span className="text-gray-300 mx-1 mt-2">-</span>
               <div className="flex flex-col flex-1 relative">
                 <span className="text-[10px] uppercase font-bold text-red-400 absolute -top-4 left-0">End Date</span>
-                <input 
-                   type="date" 
+                <input
+                   type="date"
                    className="bg-transparent text-sm text-gray-700 outline-none w-full !p-0 mt-2"
                    value={localEndDate}
                    onChange={(e) => setLocalEndDate(e.target.value)}
@@ -145,12 +145,12 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {/* Price Range */}
+      {}
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Price Range</h4>
-        
+
         <div className="relative h-1.5 w-full bg-red-100 rounded-full mb-6 mt-4">
-          <div 
+          <div
             className="absolute top-0 h-1.5 bg-[#ef4444] rounded-full"
             style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
           />
@@ -175,9 +175,9 @@ export default function FilterSidebar({
         <div className="flex items-center gap-3">
             <div className="flex-1 bg-red-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
                 <span className="text-red-400 font-medium tracking-tight">₹</span>
-                <input 
-                   type="number" 
-                   value={localMinPrice} 
+                <input
+                   type="number"
+                   value={localMinPrice}
                    onChange={(e) => {
                        setLocalMinPrice(e.target.value);
                        setMinVal(Number(e.target.value));
@@ -189,9 +189,9 @@ export default function FilterSidebar({
             <span className="text-gray-300">-</span>
             <div className="flex-1 bg-red-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
                 <span className="text-red-400 font-medium tracking-tight">₹</span>
-                <input 
-                   type="number" 
-                   value={localMaxPrice} 
+                <input
+                   type="number"
+                   value={localMaxPrice}
                    onChange={(e) => {
                        setLocalMaxPrice(e.target.value);
                        setMaxVal(Number(e.target.value));
@@ -203,11 +203,11 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {/* Category */}
+      {}
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Category</h4>
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowCatDropdown(!showCatDropdown)}
             className="w-full bg-red-50 text-gray-500 text-sm px-4 py-3 rounded-xl flex items-center justify-between mb-3 hover:bg-red-100 transition-colors"
           >
@@ -217,12 +217,12 @@ export default function FilterSidebar({
             </div>
             <ChevronDown className="w-5 h-5 flex-shrink-0 text-red-500" />
           </button>
-          
+
           {showCatDropdown && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-48 overflow-auto">
               {categories.map(c => (
-                <div 
-                  key={c} 
+                <div
+                  key={c}
                   className="px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 cursor-pointer flex justify-between items-center"
                   onClick={() => {
                     toggleCategory(c);
@@ -235,15 +235,15 @@ export default function FilterSidebar({
             </div>
           )}
         </div>
-        
+
         {localCategories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {localCategories.map(cat => (
               <span key={cat} className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-sm">
-                <X 
-                  className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-700" 
+                <X
+                  className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-700"
                   onClick={() => toggleCategory(cat)}
-                /> 
+                />
                 {cat}
               </span>
             ))}
@@ -251,11 +251,11 @@ export default function FilterSidebar({
         )}
       </div>
 
-      {/* Location */}
+      {}
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Location</h4>
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowCityDropdown(!showCityDropdown)}
             className="w-full bg-red-50 text-gray-500 text-sm px-4 py-3 rounded-xl flex items-center justify-between mb-3 hover:bg-red-100 transition-colors"
           >
@@ -265,12 +265,12 @@ export default function FilterSidebar({
             </div>
             <ChevronDown className="w-5 h-5 flex-shrink-0 text-red-500" />
           </button>
-          
+
           {showCityDropdown && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-48 overflow-auto">
               {cities.map(c => (
-                <div 
-                  key={c} 
+                <div
+                  key={c}
                   className="px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 cursor-pointer flex justify-between items-center"
                   onClick={() => {
                     toggleCity(c);
@@ -288,10 +288,10 @@ export default function FilterSidebar({
           <div className="flex flex-wrap gap-2 mt-2">
             {localCities.map(city => (
               <span key={city} className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full text-sm">
-                <X 
-                  className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-700" 
+                <X
+                  className="w-4 h-4 text-red-500 cursor-pointer hover:text-red-700"
                   onClick={() => toggleCity(city)}
-                /> 
+                />
                 {city}
               </span>
             ))}
@@ -300,13 +300,13 @@ export default function FilterSidebar({
       </div>
 
       <div className="flex gap-2 mt-2">
-        <button 
+        <button
           onClick={handleClear}
           className="flex-[1] bg-gray-100 text-gray-700 py-3.5 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-colors"
         >
           Clear
         </button>
-        <button 
+        <button
           onClick={handleApply}
           className="flex-[2] bg-[#0b101e] text-white py-3.5 rounded-xl text-sm font-semibold hover:bg-black transition-colors"
         >

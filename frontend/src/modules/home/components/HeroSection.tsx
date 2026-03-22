@@ -8,8 +8,6 @@ export default function HeroSection() {
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-
-
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchText.trim()) {
       navigate(`/events?search=${encodeURIComponent(searchText.trim())}`);
@@ -55,7 +53,7 @@ export default function HeroSection() {
             className="bg-gray-900/90 border border-gray-700 backdrop-blur-sm text-white hover:bg-black px-6 py-2.5 rounded-full font-medium transition-colors">
             Browse all events
           </button>
-          <button 
+          <button
             onClick={() => {
               if (!searchText.trim()) {
                 setShowError(true);

@@ -11,7 +11,7 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
   const [isOtherDropdownOpen, setIsOtherDropdownOpen] = useState(false);
   const [organizationName, setOrganizationName] = useState("");
   const [otp, setOtp] = useState("");
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,9 +52,9 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
       setErrors({ ...errors, api: "Please enter a valid 6-digit OTP" });
       return;
     }
-    
+
     if (!validate()) return;
-    
+
     setSubmitting(true);
     setErrors({});
     try {
@@ -81,14 +81,12 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
         {isOrganizer ? "Set up your organizer profile to start creating and managing events." : "Let's complete the registration"}
       </p>
 
-
       <div className="w-full flex flex-col mb-4">
         <label className="text-sm font-medium text-gray-700 mb-2">Email</label>
         <div className="w-full border border-gray-200 bg-transparent rounded-xl px-4 py-3 text-sm text-gray-500 cursor-not-allowed">
           {email || "johnsmith@example.com"}
         </div>
       </div>
-
 
       <div className="w-full grid grid-cols-2 gap-4 mb-4">
         <div className="flex flex-col">
@@ -139,38 +137,37 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
         {errors.dob && <span className="text-red-500 text-xs mt-1">{errors.dob}</span>}
       </div>
 
-
       <div className="w-full flex flex-col mb-4 relative">
         <label className="text-sm font-medium text-gray-700 mb-2">Gender</label>
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => { setGender("Male"); setErrors({ ...errors, gender: "" }) }}
             className={`py-3 rounded-xl border text-sm font-medium transition-colors ${
-              gender === "Male" 
-                ? "bg-[#e53e5d] text-white border-transparent" 
+              gender === "Male"
+                ? "bg-[#e53e5d] text-white border-transparent"
                 : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
             }`}
           >
             Male
           </button>
-          
+
           <button
             onClick={() => { setGender("Female"); setErrors({ ...errors, gender: "" }) }}
             className={`py-3 rounded-xl border text-sm font-medium transition-colors ${
-              gender === "Female" 
-                ? "bg-[#e53e5d] text-white border-transparent" 
+              gender === "Female"
+                ? "bg-[#e53e5d] text-white border-transparent"
                 : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
             }`}
           >
             Female
           </button>
-          
+
           <div className="relative">
             <button
               onClick={() => setIsOtherDropdownOpen(!isOtherDropdownOpen)}
               className={`w-full py-3 px-3 flex items-center justify-between rounded-xl border text-sm font-medium transition-colors ${
-                gender === "Other" 
-                  ? "bg-[#e53e5d] text-white border-transparent" 
+                gender === "Other"
+                  ? "bg-[#e53e5d] text-white border-transparent"
                   : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
               }`}
             >
@@ -180,7 +177,7 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
 
             {isOtherDropdownOpen && (
               <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
-                <button 
+                <button
                   onClick={() => { setGender("Other"); setIsOtherDropdownOpen(false); setErrors({ ...errors, gender: "" }) }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
@@ -192,7 +189,6 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
         </div>
         {errors.gender && <span className="text-red-500 text-xs mt-1">{errors.gender}</span>}
       </div>
-
 
       <div className="w-full flex flex-col mb-8 mt-2">
         <label className="text-sm font-medium text-gray-700 mb-2">Verification Code</label>
@@ -208,7 +204,7 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
         </div>
       )}
 
-      <button 
+      <button
         onClick={handleRegister}
         disabled={otp.length !== 6 || submitting}
         className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl font-medium text-sm transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"

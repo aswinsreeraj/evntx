@@ -43,9 +43,9 @@ export default function OrganizerManagementPage() {
   const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
   const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
 
-  const { data } = useOrganizers({ 
-    page, 
-    limit, 
+  const { data } = useOrganizers({
+    page,
+    limit,
     ...(searchFilter && { search: searchFilter }),
     ...(statusFilter !== "all" && { status: statusFilter })
   });
@@ -107,8 +107,8 @@ export default function OrganizerManagementPage() {
 
   return (
     <AdminLayout title="Organizer List">
-      
-      {/* Utility Bar */}
+
+      {}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 mt-6">
         <div className="relative w-full sm:w-80">
           <input
@@ -177,7 +177,7 @@ export default function OrganizerManagementPage() {
                   <td className="px-6 py-4 text-center">{org.wallet_balance ?? 0}</td>
                   <td className="px-6 py-4 text-center">{org.total_revenue_generated ?? 0}</td>
                   <td className="px-6 py-4 text-center">
-                    <span 
+                    <span
                       className={`inline-block px-4 py-1.5 rounded-full text-xs text-white ${
                         org.is_active ? "bg-[#0ec3c5]" : "bg-[#e53e5d]"
                       }`}
@@ -219,7 +219,7 @@ export default function OrganizerManagementPage() {
           </div>
         </div>
       </div>
-      
+
       <div className="flex justify-end mt-4">
         <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
           Download as CSV

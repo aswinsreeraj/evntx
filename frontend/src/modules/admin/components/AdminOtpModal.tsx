@@ -15,7 +15,7 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [resending, setResending] = useState(false);
@@ -49,7 +49,7 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
       setError("Please enter a complete 6-digit OTP");
       return;
     }
-    
+
     setLoading(true);
     try {
       await authApi.verifyOtp(email, otp);
@@ -91,17 +91,16 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
           />
         </div>
 
-
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center relative min-h-[500px]">
-          
-          <button 
+
+          <button
             onClick={onClose}
             className="absolute top-6 left-6 text-gray-400 hover:text-gray-600 transition"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <button 
+          <button
             onClick={onClose}
             className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition"
           >
@@ -128,12 +127,12 @@ export default function AdminOtpModal({ isOpen, onClose, email }: Props) {
               <label className="text-sm font-medium text-gray-700 mb-2">
                 One-Time Password
               </label>
-              <OTPInput 
-                value={otp} 
+              <OTPInput
+                value={otp}
                 onChange={(val: string) => {
                   setOtp(val);
                   setError("");
-                }} 
+                }}
               />
               {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
             </div>
