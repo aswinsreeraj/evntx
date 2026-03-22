@@ -36,7 +36,7 @@ export default function EventCarousel({ title, events }: Props) {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {events.map((event, index) => (
-            <div key={event.id || index} className="min-w-[300px] md:min-w-[350px] snap-start flex-shrink-0">
+            <div key={event.id || event.ID || event.slug || event.Slug || index} className="min-w-[300px] md:min-w-[350px] snap-start flex-shrink-0">
               <EventCard event={event} />
             </div>
           ))}

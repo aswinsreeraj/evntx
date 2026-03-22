@@ -29,14 +29,18 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
     })
 
     const pricing = getTicketPricingForEvent(booking.event_title)
-    const baseTypes = Array.from(new Set([...pricing.map((item) => item.ticketType), ...grouped.keys()]))
 
-    return baseTypes.map((ticketType) => ({
-      ticketType,
-      ownedCount: grouped.get(ticketType) ?? 0,
-      cancelCount: 0,
-      price: pricing.find((item) => item.ticketType === ticketType)?.price ?? 0,
-    }))
+    return Array.from(grouped.entries()).map(([ticketType, count]) => {
+      const priceItem = pricing.find((item) => item.ticketType === ticketType)
+      const price = priceItem ? priceItem.price : (booking.total_amount / tickets.length) || 0
+
+      return {
+        ticketType,
+        ownedCount: count,
+        cancelCount: 0,
+        price,
+      }
+    })
   }, [booking, tickets])
 
   const [selection, setSelection] = useState<CancellationSelection[]>([])
@@ -63,74 +67,74 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
     <Modal
       open={open}
       onClose={onClose}
-      className="relative w-[min(94vw,640px)] rounded-[28px] bg-white px-9 pb-10 pt-6 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
+      className="relative w-[min(94vw,480px)] rounded-[20px] bg-white px-6 pb-6 pt-5 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
     >
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-6 top-6 rounded-full p-1 text-[#e6e6e6] transition hover:bg-[#f7f7f7]"
+        className="absolute right-4 top-4 rounded-full p-1 text-[#e6e6e6] transition hover:bg-[#f7f7f7]"
       >
-        <X className="h-8 w-8" />
+        <X className="h-5 w-5" />
       </button>
 
       <div className="flex flex-col items-center">
-        <div className="mt-5 flex h-28 w-28 items-center justify-center rounded-full">
-          <AlertTriangle className="h-24 w-24 fill-[#ff1717] text-[#ff1717]" strokeWidth={1.6} />
+        <div className="mt-2 flex h-16 w-16 items-center justify-center rounded-full">
+          <AlertTriangle className="h-14 w-14 fill-[#ff1717] text-[#ff1717]" strokeWidth={1.6} />
         </div>
 
-        <h2 className="mt-3 text-[2.5rem] font-semibold text-[#111111]">Cancel Tickets</h2>
-        <p className="mt-2 text-center text-[1.35rem] text-[#5b6069]">
+        <h2 className="mt-2 text-xl font-semibold text-[#111111]">Cancel Tickets</h2>
+        <p className="mt-1 text-center text-sm text-[#5b6069]">
           Select the tickets you want to cancel for <span className="font-semibold">{booking?.event_title}</span>
         </p>
 
-        <div className="mt-7 flex w-full flex-col gap-4">
+        <div className="mt-4 flex w-full flex-col gap-3">
           {selection.map((item) => (
             <div
               key={item.ticketType}
-              className="grid items-center gap-4 rounded-[18px] border border-[#ffc9cf] px-4 py-5 md:grid-cols-[1fr_auto_auto]"
+              className="grid items-center gap-3 rounded-xl border border-[#ffc9cf] px-3 py-3 md:grid-cols-[1fr_auto_auto]"
             >
-              <div className="text-[1.7rem] font-medium text-[#111111]">{item.ticketType}</div>
+              <div className="text-sm font-medium text-[#111111]">{item.ticketType}</div>
 
-              <div className="flex items-center gap-3 text-[1.6rem] text-[#111111]">
+              <div className="flex items-center gap-2 text-sm text-[#111111]">
                 <span>Qty</span>
                 <button
                   type="button"
                   onClick={() => updateCount(item.ticketType, item.cancelCount - 1)}
-                  className="rounded-md bg-[#f7c6cd] px-2 py-1 text-[#111111] transition hover:bg-[#f2b4be]"
+                  className="rounded-md bg-[#f7c6cd] px-1.5 py-0.5 text-[#111111] transition hover:bg-[#f2b4be]"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="min-w-5 text-center">{item.cancelCount}</span>
+                <span className="min-w-4 text-center">{item.cancelCount}</span>
                 <button
                   type="button"
                   onClick={() => updateCount(item.ticketType, item.cancelCount + 1)}
-                  className="rounded-md bg-[#f7c6cd] px-2 py-1 text-[#111111] transition hover:bg-[#f2b4be]"
+                  className="rounded-md bg-[#f7c6cd] px-1.5 py-0.5 text-[#111111] transition hover:bg-[#f2b4be]"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                 </button>
               </div>
 
-              <div className="justify-self-end text-[1.65rem] font-semibold text-[#111111]">
+              <div className="justify-self-end text-sm font-semibold text-[#111111]">
                 {formatCurrency(item.cancelCount * item.price)}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-8 flex w-full items-center justify-between text-[1.95rem]">
-          <span className="text-[#111111]">Total Refund</span>
+        <div className="mt-5 flex w-full items-center justify-between text-base">
+          <span className="text-[#111111]">Estimated Refund</span>
           <span className="font-semibold text-[#ff1717]">{formatCurrency(totalRefund)}</span>
         </div>
 
-        <div className="mt-6 flex w-full items-center gap-3 rounded-[18px] border border-[#ffb9c1] bg-[#fff3f5] px-4 py-4 text-[1.35rem] text-[#ef3650]">
-          <Info className="h-5 w-5 fill-[#ef3650] text-white" />
+        <div className="mt-4 flex w-full items-center gap-2 rounded-xl border border-[#ffb9c1] bg-[#fff3f5] px-3 py-2.5 text-xs text-[#ef3650]">
+          <Info className="h-4 w-4 fill-[#ef3650] text-white flex-shrink-0" />
           <span>Refunds are deposited to the wallet.</span>
         </div>
 
-        <div className="mt-8 flex w-full flex-col gap-3">
+        <div className="mt-5 flex w-full flex-col gap-2">
           <button
             type="button"
-            disabled={totalRefund === 0}
+            disabled={selection.every(s => s.cancelCount === 0)}
             onClick={() =>
               onConfirm(
                 selection
@@ -142,15 +146,15 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
                   })),
               )
             }
-            className="rounded-[18px] bg-[#ff1717] px-6 py-4 text-[1.6rem] font-semibold text-white transition hover:bg-[#e41212] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-[#ff1717] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#e41212] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Proceed to Cancel
+            Cancel Selected
           </button>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-[18px] border border-[#111111] px-6 py-4 text-[1.6rem] font-semibold text-[#111111] transition hover:bg-[#f7f7f7]"
+            className="rounded-xl border border-[#111111] px-5 py-2.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f7f7f7]"
           >
             Keep Tickets
           </button>

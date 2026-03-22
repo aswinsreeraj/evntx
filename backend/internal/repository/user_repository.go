@@ -7,6 +7,8 @@ type UserRepository interface {
 	FindByEmail(email string) (*domain.User, error)
 	FindByID(id string) (*domain.User, error)
 	Update(user *domain.User) error
+	GetOrganizerDetails(userID string) (*domain.OrganizerDetail, error)
+	UpsertOrganizerDetails(detail *domain.OrganizerDetail) error
 	Search(
 		search string,
 		status string,

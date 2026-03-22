@@ -1,7 +1,6 @@
 package http
 
 import (
-	"net/http"
 	"regexp"
 
 	"github.com/aswinsreeraj/evntx/pkg/logger"
@@ -35,14 +34,14 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 	var req otpRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid email format")
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid email format"))
 		return
 	}
 
 	isNewUser, err := h.authUsecase.RequestEmailOTP(req.Email)
 	if err != nil {
 		msg := getAuthErrorMsg(err, "Failed to generate OTP")
-		response.Error(c, http.StatusInternalServerError, apiErrors.InvalidRequestBody, msg)
+		response.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, msg))
 		return
 	}
 
@@ -61,7 +60,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	var req otpVerifyRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
@@ -80,7 +79,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 	if err != nil {
 		msg := getAuthErrorMsg(err, "Invalid or expired OTP")
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, msg)
+		response.AppError(c, apiErrors.New(401, apiErrors.InvalidOTP, msg))
 		return
 	}
 
@@ -108,13 +107,13 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req refreshRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
 	access, err := h.authUsecase.RefreshToken(req.RefreshToken)
 	if err != nil {
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Invalid refresh token")
+		response.AppError(c, apiErrors.New(401, apiErrors.SessionExpired, "Invalid or expired refresh token"))
 		return
 	}
 
@@ -127,12 +126,12 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	var req refreshRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
 	if err := h.authUsecase.Logout(req.RefreshToken); err != nil {
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, "Failed to logout")
+		response.AppError(c, apiErrors.New(401, apiErrors.UnauthorizedAccess, "Failed to logout"))
 		return
 	}
 
@@ -147,7 +146,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	var req googleLoginRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
@@ -160,7 +159,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	if err != nil {
 		logger.Log.Error().Msgf("AuthUsecase.GoogleLogin failed: %v", err)
 		msg := getAuthErrorMsg(err, "Invalid Google token")
-		response.Error(c, http.StatusUnauthorized, apiErrors.UnauthorizedAccess, msg)
+		response.AppError(c, apiErrors.New(401, apiErrors.UnauthorizedAccess, msg))
 		return
 	}
 
@@ -184,13 +183,13 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var req registerRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
 	nameRegex := regexp.MustCompile(`^[a-zA-Z\s]+$`)
 	if !nameRegex.MatchString(req.Name) {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "First name and Last name can only contain alphabets and spaces")
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Name can only contain alphabets and spaces"))
 		return
 	}
 
@@ -208,7 +207,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	if err != nil {
 		msg := getAuthErrorMsg(err, "Invalid OTP or registration failed")
-		response.Error(c, http.StatusUnauthorized, apiErrors.InvalidOTP, msg)
+		response.AppError(c, apiErrors.New(401, apiErrors.InvalidOTP, msg))
 		return
 	}
 

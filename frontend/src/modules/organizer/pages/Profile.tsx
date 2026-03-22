@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../auth/store/authStore";
-import { Edit2, X, ChevronDown, Plus } from "lucide-react";
+import { Edit2, ChevronDown, Plus } from "lucide-react";
 import { userApi } from "../../user/api";
 import OrganizerLayout from "../components/OrganizerLayout";
+import { useNavigate } from "react-router-dom";
 
 export default function OrganizerProfile() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -13,8 +15,8 @@ export default function OrganizerProfile() {
   const [mobile, setMobile] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState("");
-  const [locations, setLocations] = useState<string[]>([]);
   const [organizationName, setOrganizationName] = useState("");
+  const [address, setAddress] = useState("");
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,10 +38,10 @@ export default function OrganizerProfile() {
         setMobile(data.mobile || "");
         setDob(data.dob || "");
         setGender(data.gender || "Male");
-        setLocations(data.locations || []);
         if (data.organization_name) {
           setOrganizationName(data.organization_name);
         }
+        setAddress(data.address || "");
         if (data.profile_image) {
           setProfileImage(`${import.meta.env.VITE_API_BASE_URL}${data.profile_image}`);
         }
@@ -75,6 +77,9 @@ export default function OrganizerProfile() {
     if (!organizationName.trim() || organizationName.trim().length < 2) {
       newErrors.organizationName = "Organization name is required";
     }
+    if (!address.trim() || address.trim().length < 5) {
+      newErrors.address = "Address is required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -92,8 +97,9 @@ export default function OrganizerProfile() {
         mobile,
         dob,
         gender,
-        locations,
         organization_name: organizationName,
+        address,
+        locations: [],
       });
       setSuccessMsg("Profile updated successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -129,7 +135,11 @@ export default function OrganizerProfile() {
       <div className="py-10 px-10 max-w-5xl">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Profile Management</h1>
-          <button className="bg-[#e53e5d] hover:bg-[#d03550] text-white px-5 py-2.5 flex items-center gap-2 rounded-xl text-sm font-medium transition-colors shadow-sm">
+          <button
+            type="button"
+            onClick={() => navigate("/organizer/events/create")}
+            className="bg-[#e53e5d] hover:bg-[#d03550] text-white px-5 py-2.5 flex items-center gap-2 rounded-xl text-sm font-medium transition-colors shadow-sm"
+          >
             <Plus className="w-4 h-4" />
             Create Event
           </button>
@@ -296,39 +306,13 @@ export default function OrganizerProfile() {
                   </div>
 
                   <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-2">Address / Locations</label>
-                    <div className="flex gap-4 mb-2">
-                      <div className="relative w-full">
-                        <select
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val && !locations.includes(val)) setLocations([...locations, val]);
-                            e.target.value = "";
-                          }}
-                          className="w-full appearance-none border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-                        >
-                          <option value="">Select a location to add...</option>
-                          <option value="Kochi">Kochi</option>
-                          <option value="Bangalore">Bangalore</option>
-                          <option value="Mumbai">Mumbai</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                      </div>
-
-                      <div className="flex gap-4 w-full">
-                        {locations.map(loc => (
-                          <div key={loc} className="flex-1 flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3 bg-white">
-                            <span className="text-sm font-medium text-gray-700">{loc}</span>
-                            <button
-                              onClick={() => setLocations(locations.filter(l => l !== loc))}
-                              className="hover:bg-gray-100 rounded-full p-0.5"
-                            >
-                              <X className="w-4 h-4 text-[#e53e5d]" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <label className="block text-sm text-gray-600 mb-2">Address</label>
+                    <textarea
+                      value={address}
+                      onChange={(e) => { setAddress(e.target.value); setErrors({ ...errors, address: "" }) }}
+                      className={`w-full min-h-[110px] border ${errors.address ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:ring-1 ${errors.address ? 'focus:ring-red-400 focus:border-red-500' : 'focus:ring-gray-400 focus:border-gray-400'}`}
+                    />
+                    {errors.address && <span className="text-red-500 text-xs mt-1 block">{errors.address}</span>}
                   </div>
 
                 </div>

@@ -1,14 +1,15 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
+	"github.com/google/uuid"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -19,10 +20,41 @@ import (
 
 type OrganizerHandler struct {
 	eventUsecase *usecase.EventUsecase
+	userUsecase  *usecase.UserUsecase
 }
 
-func NewOrganizerHandler(u *usecase.EventUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: u}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu}
+}
+
+func (h *OrganizerHandler) GetProfile(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	user, organizerDetail, _, err := h.userUsecase.GetProfile(userID)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrResourceNotFound)
+		return
+	}
+
+	orgName := ""
+	address := ""
+	if organizerDetail != nil {
+		orgName = organizerDetail.OrganizationName
+		address = organizerDetail.Address
+	}
+
+	response.Success(c, "Organizer profile retrieved successfully", gin.H{
+		"id":                user.ID,
+		"name":              user.Name,
+		"email":             user.Email,
+		"mobile":            user.Mobile,
+		"dob":               user.Dob,
+		"gender":            user.Gender,
+		"profile_image":     user.ProfileImage,
+		"locations":         user.Locations,
+		"organization_name": orgName,
+		"address":           address,
+	})
 }
 
 type detailsInput struct {
@@ -52,7 +84,7 @@ type createEventRequest struct {
 	VenueName     string           `json:"venue_name" binding:"required"`
 	Category      string           `json:"category"`
 	StartTime     time.Time        `json:"start_time" binding:"required"`
-	EndTime       time.Time        `json:"end_time" binding:"required"`
+	EndTime       time.Time        `json:"end_time"`
 	Tags          []string         `json:"tags"`
 	CoverImageURL string           `json:"cover_image_url"`
 	Details       detailsInput     `json:"details" binding:"required"`
@@ -66,7 +98,7 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 	var req createEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Log.Error().Err(err).Msg("Invalid JSON or validation error")
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
@@ -84,7 +116,6 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 		VenueName:     req.VenueName,
 		Category:      req.Category,
 		StartTime:     req.StartTime,
-		EndTime:       req.EndTime,
 		Tags:          tagsStr,
 		CoverImageURL: req.CoverImageURL,
 	}
@@ -118,7 +149,8 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 
 	eventID, err := h.eventUsecase.CreateEvent(c.Request.Context(), organizerID, event, details, tickets, personnels)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidStateTransition, err.Error())
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidStateTransition, err.Error()))
+		fmt.Println("Error here", err)
 		return
 	}
 
@@ -176,7 +208,7 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 	var req updateEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Log.Error().Err(err).Msg("Invalid JSON or validation error")
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
@@ -277,24 +309,19 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "EVT_004") {
-			response.Error(c, http.StatusForbidden, "EVT_004", "Forbidden action")
+			response.AppError(c, apiErrors.New(403, apiErrors.ForbiddenAction, "Forbidden action"))
 			return
 		} else if strings.Contains(errMsg, "EVT_006") {
-			response.Error(c, http.StatusConflict, "EVT_006", "Event cannot be updated in current state")
+			response.AppError(c, apiErrors.New(409, apiErrors.InvalidStateTransition, "Event cannot be updated in current state"))
 			return
 		}
-		// Generic Bad Request for others (e.g. constraints)
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, errMsg)
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, errMsg))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Event updated successfully",
-		"data": gin.H{
-			"event_id": eventID,
-			"status":   "draft",
-		},
+	response.Success(c, "Event updated successfully", gin.H{
+		"event_id": eventID,
+		"status":   "draft",
 	})
 }
 
@@ -306,23 +333,19 @@ func (h *OrganizerHandler) SubmitEventHandler(c *gin.Context) {
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "EVT_004") {
-			response.Error(c, http.StatusForbidden, "EVT_004", "Forbidden action")
+			response.AppError(c, apiErrors.New(403, apiErrors.ForbiddenAction, "Forbidden action"))
 			return
 		} else if strings.Contains(errMsg, "EVT_006") {
-			response.Error(c, http.StatusConflict, "EVT_006", "Event cannot be submitted in current state")
+			response.AppError(c, apiErrors.New(409, apiErrors.InvalidStateTransition, "Event cannot be submitted in current state"))
 			return
 		}
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, errMsg)
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, errMsg))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Event submitted for approval",
-		"data": gin.H{
-			"event_id": eventID,
-			"status":   "pending",
-		},
+	response.Success(c, "Event submitted for approval", gin.H{
+		"event_id": eventID,
+		"status":   "pending",
 	})
 }
 
@@ -331,13 +354,13 @@ func (h *OrganizerHandler) UploadImage(c *gin.Context) {
 
 	file, err := c.FormFile("image")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Image file is required")
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Image file is required"))
 		return
 	}
 
 	dirPath := "assets/events/" + organizerID
 	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to create directory")
+		response.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -349,16 +372,12 @@ func (h *OrganizerHandler) UploadImage(c *gin.Context) {
 	imageURL := "/" + filePath
 
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
-		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to save image")
+		response.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to save image"))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Image uploaded successfully",
-		"data": gin.H{
-			"url": imageURL,
-		},
+	response.Success(c, "Image uploaded successfully", gin.H{
+		"url": imageURL,
 	})
 }
 
@@ -368,13 +387,45 @@ func (h *OrganizerHandler) GetMyEvents(c *gin.Context) {
 
 	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), organizerID, status)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch events")
+		response.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    events,
+	response.Success(c, "Events fetched successfully", gin.H{
+		"events": events,
+	})
+}
+
+func (h *OrganizerHandler) GetEvent(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	slug := c.Param("slug")
+
+	event, details, personnels, tickets, err := h.eventUsecase.GetOrganizerEvent(slug, organizerID)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrResourceNotFound)
+		return
+	}
+
+	host := gin.H(nil)
+	user, organizerDetail, _, userErr := h.userUsecase.GetProfile(organizerID)
+	if userErr == nil && user != nil {
+		hostName := user.Name
+		if organizerDetail != nil && organizerDetail.OrganizationName != "" {
+			hostName = organizerDetail.OrganizationName
+		}
+		host = gin.H{
+			"name":   hostName,
+			"role":   "Event Organizer",
+			"avatar": user.ProfileImage,
+		}
+	}
+
+	response.Success(c, "Event fetched successfully", gin.H{
+		"event":        event,
+		"details":      details,
+		"personnels":   personnels,
+		"ticket_types": tickets,
+		"host":         host,
 	})
 }
 
@@ -386,15 +437,12 @@ func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "EVT_004") {
-			response.Error(c, http.StatusForbidden, "EVT_004", "Forbidden action")
+			response.AppError(c, apiErrors.New(403, apiErrors.ForbiddenAction, "Forbidden action"))
 			return
 		}
-		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, errMsg)
+		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, errMsg))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Event deleted successfully",
-	})
+	response.Success(c, "Event deleted successfully", nil)
 }

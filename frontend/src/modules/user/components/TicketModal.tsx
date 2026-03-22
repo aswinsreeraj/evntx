@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import Modal from "../../../shared/ui/Modal"
 import type { EnrichedBooking } from "../userDashboardData"
 import type { TicketRecord } from "../userDashboardData"
+import { useAuthStore } from "../../auth/store/authStore"
 
 type Props = {
   booking: EnrichedBooking | null
@@ -51,12 +52,12 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
     <Modal
       open={open}
       onClose={onClose}
-      className="relative w-[min(94vw,640px)] rounded-[28px] bg-white px-8 pb-10 pt-6 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
+      className="relative w-[min(90vw,520px)] rounded-[24px] bg-white px-6 pb-8 pt-5 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
     >
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-6 top-6 rounded-full p-1 text-[#d9d9d9] transition hover:bg-[#f7f7f7]"
+        className="absolute right-5 top-5 rounded-full p-1 text-[#d9d9d9] transition hover:bg-[#f7f7f7]"
       >
         <X className="h-8 w-8" />
       </button>
@@ -69,7 +70,7 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
               const nextIndex = tickets.findIndex((ticket) => ticket.ticket_id === event.target.value)
               setActiveIndex(nextIndex >= 0 ? nextIndex : 0)
             }}
-            className="w-full appearance-none rounded-2xl border border-[#d9e1ea] px-6 py-4 text-xl text-[#2a2f36] outline-none"
+            className="w-full appearance-none rounded-xl border border-[#d9e1ea] px-4 py-3 text-lg text-[#2a2f36] outline-none"
           >
             {tickets.map((ticket) => (
               <option key={ticket.ticket_id} value={ticket.ticket_id}>
@@ -99,8 +100,8 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
 
             <div className="space-y-5 px-6 py-6">
               <div>
-                <h3 className="text-[2rem] font-semibold leading-tight">{booking.event_title}</h3>
-                <div className="mt-3 flex items-center gap-2 text-lg text-[#f0f2f5]">
+                <h3 className="text-xl font-semibold leading-tight">{booking.event_title}</h3>
+                <div className="mt-2 flex items-center gap-2 text-base text-[#f0f2f5]">
                   <MapPin className="h-5 w-5 text-[#ff4d5f]" />
                   <span>{booking.venue}</span>
                 </div>
@@ -108,20 +109,20 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
 
               <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-left">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.08em] text-[#8d949e]">Date</p>
-                  <p className="mt-1 text-[1.9rem]">{booking.dateBadge}</p>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Date</p>
+                  <p className="mt-1 text-lg">{booking.dateBadge}</p>
                 </div>
                 <div>
-                  <p className="text-sm uppercase tracking-[0.08em] text-[#8d949e]">Time</p>
-                  <p className="mt-1 text-[1.9rem]">{booking.timeLabel}</p>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Time</p>
+                  <p className="mt-1 text-lg">{booking.timeLabel}</p>
                 </div>
                 <div>
-                  <p className="text-sm uppercase tracking-[0.08em] text-[#8d949e]">Ticket Type</p>
-                  <p className="mt-1 text-[1.9rem] font-semibold">{activeTicket?.ticket_type ?? "General"}</p>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket Type</p>
+                  <p className="mt-1 text-lg font-semibold">{activeTicket?.ticket_type ?? "General"}</p>
                 </div>
                 <div>
-                  <p className="text-sm uppercase tracking-[0.08em] text-[#8d949e]">Ticket ID</p>
-                  <p className="mt-1 text-[1.9rem]">{activeTicket?.ticket_code ?? booking.booking_id.slice(0, 4)}</p>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket ID</p>
+                  <p className="mt-1 text-lg">{activeTicket?.ticket_code ?? booking.booking_id.slice(0, 4)}</p>
                 </div>
               </div>
             </div>
@@ -133,8 +134,8 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
 
             <div className="flex items-end justify-between px-6 py-6">
               <div>
-                <p className="text-[1.8rem] text-white">John Smith</p>
-                <p className="mt-1 text-[1.45rem] text-[#7b838e]">Booking ID: {booking.booking_id}</p>
+                <p className="text-lg text-white">{useAuthStore.getState().user?.name || "Attendee"}</p>
+                <p className="mt-0.5 text-sm text-[#7b838e]">Booking ID: {booking.booking_id}</p>
               </div>
               <TicketQr value={`${booking.booking_id}-${activeTicket?.ticket_id ?? "ticket"}`} />
             </div>
@@ -153,12 +154,12 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
         <button
           type="button"
           onClick={() => window.print()}
-          className="w-full rounded-[18px] bg-[#ef3650] px-6 py-4 text-[1.55rem] font-semibold text-white transition hover:bg-[#d92f47]"
+          className="w-full rounded-[16px] bg-[#ef3650] px-4 py-3 text-lg font-semibold text-white transition hover:bg-[#d92f47]"
         >
           Download Tickets
         </button>
 
-        <div className="flex items-center gap-4 text-[1.25rem] text-[#111111]">
+        <div className="flex items-center gap-3 text-base text-[#111111]">
           <span>Share with Friends</span>
           <a
             href={shareLink}

@@ -41,6 +41,11 @@ export const adminApi = {
     return response.data.data;
   },
 
+  async getEventBySlug(slug: string) {
+    const response = await api.get(`/admin/events/slug/${slug}`);
+    return response.data.data;
+  },
+
   async approveEvent(eventId: string) {
     const response = await api.patch(`/admin/events/${eventId}/approve`);
     return response.data;

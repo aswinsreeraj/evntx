@@ -73,19 +73,23 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		ID:          bookingID,
 		UserID:      userID,
 		EventID:     eventID,
-		Status:      "reserved",
+		Status:      "confirmed",
 		TotalAmount: totalAmount,
 		ExpiresAt:   expiresAt,
 		CreatedAt:   now,
 	}
 
-	// 3. Trigger Repository Transaction
 	err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
 	if err != nil {
 		if err.Error() == "EVT_009: Ticket sold out" {
 			return nil, errors.New("EVT_009: Tickets sold out") // Match required message exactly
 		}
 		return nil, err
+	}
+
+	if event.Status == "approved" {
+		_ = u.eventRepo.UpdateEventStatus(ctx, eventID, "live")
+		logger.Log.Info().Str("event_id", eventID).Msg("updated event status to live on first booking")
 	}
 
 	logger.Log.Info().
@@ -135,8 +139,8 @@ func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, pag
 	return bookings, total, nil
 }
 
-func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, eventID string, status string) ([]domain.TicketWithEvent, error) {
-	tickets, err := u.bookingRepo.GetUserTickets(ctx, userID, eventID, status)
+func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
+	tickets, err := u.bookingRepo.GetUserTickets(ctx, userID, eventID, bookingID, status)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +148,7 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 	logger.Log.Info().
 		Str("user_id", userID).
 		Str("event_filter", eventID).
+		Str("booking_filter", bookingID).
 		Str("status_filter", status).
 		Time("timestamp", time.Now()).
 		Msg("user_tickets_fetched")
@@ -151,3 +156,18 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 	return tickets, nil
 }
 
+func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
+	err := u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
+	if err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("booking_id", bookingID).
+		Str("user_id", userID).
+		Int("items_count", len(items)).
+		Time("timestamp", time.Now()).
+		Msg("booking_cancelled_partially")
+
+	return nil
+}

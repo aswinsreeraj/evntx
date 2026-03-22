@@ -8,17 +8,24 @@ import (
 )
 
 type UserModel struct {
-	ID               string   `gorm:"type:uuid;primaryKey"`
-	Name             string
-	Email            string   `gorm:"uniqueIndex"`
-	Mobile           string
-	Dob              string
-	Gender           string
-	ProfileImage     string
+	ID            string `gorm:"type:uuid;primaryKey"`
+	Name          string
+	Email         string `gorm:"uniqueIndex"`
+	Mobile        string
+	Dob           string
+	Gender        string
+	ProfileImage  string
+	Locations     []string `gorm:"serializer:json"`
+	IsActive      bool
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type OrganizerDetailModel struct {
+	UserID           string `gorm:"type:uuid;primaryKey"`
 	OrganizationName string
-	Locations        []string `gorm:"serializer:json"`
-	IsActive         bool
-	EmailVerified    bool
+	Address          string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -33,17 +40,16 @@ func NewUserGormRepository(db *gorm.DB) *userGormRepository {
 
 func (r *userGormRepository) Create(user *domain.User) error {
 	model := UserModel{
-		ID:               user.ID,
-		Name:             user.Name,
-		Email:            user.Email,
-		Mobile:           user.Mobile,
-		Dob:              user.Dob,
-		Gender:           user.Gender,
-		ProfileImage:     user.ProfileImage,
-		OrganizationName: user.OrganizationName,
-		Locations:        user.Locations,
-		IsActive:         user.IsActive,
-		EmailVerified:    user.EmailVerified,
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Mobile:        user.Mobile,
+		Dob:           user.Dob,
+		Gender:        user.Gender,
+		ProfileImage:  user.ProfileImage,
+		Locations:     user.Locations,
+		IsActive:      user.IsActive,
+		EmailVerified: user.EmailVerified,
 	}
 
 	return r.db.Create(&model).Error
@@ -63,10 +69,9 @@ func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {
 		Email:         model.Email,
 		Mobile:        model.Mobile,
 		Dob:           model.Dob,
-		Gender:           model.Gender,
-		ProfileImage:     model.ProfileImage,
-		OrganizationName: model.OrganizationName,
-		Locations:        model.Locations,
+		Gender:        model.Gender,
+		ProfileImage:  model.ProfileImage,
+		Locations:     model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -88,10 +93,9 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 		Email:         model.Email,
 		Mobile:        model.Mobile,
 		Dob:           model.Dob,
-		Gender:           model.Gender,
-		ProfileImage:     model.ProfileImage,
-		OrganizationName: model.OrganizationName,
-		Locations:        model.Locations,
+		Gender:        model.Gender,
+		ProfileImage:  model.ProfileImage,
+		Locations:     model.Locations,
 		IsActive:      model.IsActive,
 		EmailVerified: model.EmailVerified,
 		CreatedAt:     model.CreatedAt,
@@ -102,20 +106,44 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 func (r *userGormRepository) Update(user *domain.User) error {
 	return r.db.Model(&UserModel{}).
 		Where("id = ?", user.ID).
-		Select("name", "email", "mobile", "dob", "gender", "profile_image", "organization_name", "locations", "is_active", "email_verified", "updated_at").
+		Select("name", "email", "mobile", "dob", "gender", "profile_image", "locations", "is_active", "email_verified", "updated_at").
 		Updates(UserModel{
-			Name:             user.Name,
-			Email:            user.Email,
-			Mobile:           user.Mobile,
-			Dob:              user.Dob,
-			Gender:           user.Gender,
-			ProfileImage:     user.ProfileImage,
-			OrganizationName: user.OrganizationName,
-			Locations:        user.Locations,
-			IsActive:         user.IsActive,
-			EmailVerified:    user.EmailVerified,
-			UpdatedAt:        time.Now(),
+			Name:          user.Name,
+			Email:         user.Email,
+			Mobile:        user.Mobile,
+			Dob:           user.Dob,
+			Gender:        user.Gender,
+			ProfileImage:  user.ProfileImage,
+			Locations:     user.Locations,
+			IsActive:      user.IsActive,
+			EmailVerified: user.EmailVerified,
+			UpdatedAt:     time.Now(),
 		}).Error
+}
+
+func (r *userGormRepository) GetOrganizerDetails(userID string) (*domain.OrganizerDetail, error) {
+	var model OrganizerDetailModel
+
+	if err := r.db.Where("user_id = ?", userID).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.OrganizerDetail{
+		UserID:           model.UserID,
+		OrganizationName: model.OrganizationName,
+		Address:          model.Address,
+	}, nil
+}
+
+func (r *userGormRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail) error {
+	model := OrganizerDetailModel{
+		UserID:           detail.UserID,
+		OrganizationName: detail.OrganizationName,
+		Address:          detail.Address,
+		UpdatedAt:        time.Now(),
+	}
+
+	return r.db.Where("user_id = ?", detail.UserID).Assign(model).FirstOrCreate(&model).Error
 }
 
 func (r *userGormRepository) Search(
@@ -130,10 +158,8 @@ func (r *userGormRepository) Search(
 
 	query := r.db.Model(&UserModel{})
 
-	
 	query = query.Where(
-		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?)",
-		domain.RoleAdmin,
+		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id)",
 	)
 
 	if search != "" {
@@ -167,19 +193,18 @@ func (r *userGormRepository) Search(
 	users := make([]domain.User, 0)
 	for _, m := range models {
 		users = append(users, domain.User{
-			ID:               m.ID,
-			Name:             m.Name,
-			Email:            m.Email,
-			Mobile:           m.Mobile,
-			Dob:              m.Dob,
-			Gender:           m.Gender,
-			ProfileImage:     m.ProfileImage,
-			OrganizationName: m.OrganizationName,
-			Locations:        m.Locations,
-			IsActive:         m.IsActive,
-			EmailVerified:    m.EmailVerified,
-			CreatedAt:        m.CreatedAt,
-			UpdatedAt:        m.UpdatedAt,
+			ID:            m.ID,
+			Name:          m.Name,
+			Email:         m.Email,
+			Mobile:        m.Mobile,
+			Dob:           m.Dob,
+			Gender:        m.Gender,
+			ProfileImage:  m.ProfileImage,
+			Locations:     m.Locations,
+			IsActive:      m.IsActive,
+			EmailVerified: m.EmailVerified,
+			CreatedAt:     m.CreatedAt,
+			UpdatedAt:     m.UpdatedAt,
 		})
 	}
 
@@ -195,13 +220,35 @@ func (r *userGormRepository) SearchOrganizers(
 
 	var models []struct {
 		UserModel
-		TotalEvents int64
+		OrganizationName string
+		Address          string
+		TotalEvents      int64
+		TotalBookings    int64
+		TotalRevenue     float64
 	}
 	var total int64
 
 	query := r.db.Table("user_models").
-		Select("user_models.*, COALESCE((SELECT COUNT(id) FROM event_models WHERE event_models.organizer_id = user_models.id), 0) as total_events").
-		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer)
+		Select(`
+			user_models.*,
+			organizer_detail_models.organization_name,
+			organizer_detail_models.address,
+			COALESCE((
+				SELECT COUNT(e.id) FROM event_models e WHERE e.organizer_id = user_models.id::text
+			), 0) AS total_events,
+			COALESCE((
+				SELECT COUNT(b.id) FROM booking_models b
+				JOIN event_models e ON e.id = b.event_id
+				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_bookings,
+			COALESCE((
+				SELECT SUM(b.total_amount) FROM booking_models b
+				JOIN event_models e ON e.id = b.event_id
+				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_revenue
+		`).
+		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
+		Joins("LEFT JOIN organizer_detail_models ON organizer_detail_models.user_id::uuid = user_models.id")
 
 	if search != "" {
 		query = query.Where(
@@ -234,24 +281,20 @@ func (r *userGormRepository) SearchOrganizers(
 	for _, m := range models {
 		orgs = append(orgs, domain.OrganizerDetails{
 			User: domain.User{
-				ID:               m.ID,
-				Name:             m.Name,
-				Email:            m.Email,
-				Mobile:           m.Mobile,
-				Dob:              m.Dob,
-				Gender:           m.Gender,
-				ProfileImage:     m.ProfileImage,
-				OrganizationName: m.OrganizationName,
-				Locations:        m.Locations,
-				IsActive:         m.IsActive,
-				EmailVerified:    m.EmailVerified,
-				CreatedAt:        m.CreatedAt,
-				UpdatedAt:        m.UpdatedAt,
+				ID:        m.ID,
+				Name:      m.Name,
+				Email:     m.Email,
+				IsActive:  m.IsActive,
+				CreatedAt: m.CreatedAt,
 			},
-			TotalBookings: 0,
+			OrganizerDetail: domain.OrganizerDetail{
+				OrganizationName: m.OrganizationName,
+				Address:          m.Address,
+			},
+			TotalBookings: m.TotalBookings,
 			TotalEvents:   m.TotalEvents,
 			WalletBalance: 0,
-			TotalRevenue:  0,
+			TotalRevenue:  int64(m.TotalRevenue),
 		})
 	}
 

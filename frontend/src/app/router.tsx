@@ -25,7 +25,7 @@ export const router = createBrowserRouter([
             { path: "/login", element: <HomePage /> },
             {   path: "/profile",
                 element: (
-                    <ProtectedRoute>
+                    <ProtectedRoute roles={["goer"]}>
                         <ProfilePage />
                     </ProtectedRoute>
                 ),  
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
             {
                 path: "/profile/bookings",
                 element: (
-                    <ProtectedRoute>
+                    <ProtectedRoute roles={["goer"]}>
                         <MyBookingsPage />
                     </ProtectedRoute>
                 ),
@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
             {
                 path: "/profile/calendar",
                 element: (
-                    <ProtectedRoute>
+                    <ProtectedRoute roles={["goer"]}>
                         <CalendarPage />
                     </ProtectedRoute>
                 ),

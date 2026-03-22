@@ -3,6 +3,7 @@ import { Bell, Search, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   children: ReactNode;
@@ -14,6 +15,19 @@ export default function AdminLayout({ children, title }: Props) {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { logout } = useAuthStore();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const platformLinks = [
     { name: "Dashboard", path: "/admin/dashboard" },
@@ -119,10 +133,48 @@ export default function AdminLayout({ children, title }: Props) {
               <Bell className="w-5 h-5" fill="currentColor" />
             </button>
 
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowProfileMenu((current) => !current)}
+                className="w-8 h-8 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center overflow-hidden"
+              >
+                 <User className="w-5 h-5" fill="currentColor" />
+              </button>
 
-            <button className="w-8 h-8 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center overflow-hidden">
-               <User className="w-5 h-5" fill="currentColor" />
-            </button>
+              {showProfileMenu ? (
+                <div className="absolute right-0 top-12 w-52 rounded-2xl border border-gray-100 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)] z-99">
+                  {[
+                    { label: "Users", to: "/admin/users" },
+                    { label: "Organizers", to: "/admin/organizers" },
+                    { label: "Events", to: "/admin/events" },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        navigate(item.to);
+                      }}
+                      className="flex w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#111827] transition hover:bg-[#f8fafc]"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      tokenManager.clearToken();
+                      navigate("/admin/login");
+                    }}
+                    className="flex w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[#e53e5d] transition hover:bg-[#fff4f5]"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 

@@ -1,5 +1,5 @@
 import { Minus, Plus, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import Modal from "../../../shared/ui/Modal"
 import { useEvent } from "../hooks"
@@ -14,9 +14,15 @@ export default function EventBookingPage() {
   const { eventId } = useParams()
   const navigate = useNavigate()
   const { data, isLoading } = useEvent(eventId!)
-  const { user } = useAuthStore()
+  const { user, roles } = useAuthStore()
 
   const displayEvent = buildDisplayEvent(eventId ?? "", data)
+  
+  useEffect(() => {
+    if (user && roles && roles.some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin")) {
+      navigate(`/events/${eventId}`, { replace: true })
+    }
+  }, [user, roles, navigate, eventId])
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
     Object.fromEntries(displayEvent.ticketTypes.map((ticket) => [ticket.name, 0])),
   )
@@ -62,7 +68,7 @@ export default function EventBookingPage() {
 
       if (hasTicketIds) {
         const response = await eventsApi.reserveTickets({
-          eventId,
+          eventId: displayEvent.id,
           tickets: selectedTickets.map((ticket) => ({
             ticket_type_id: ticket.id!,
             quantity: ticket.quantity,
@@ -105,10 +111,10 @@ export default function EventBookingPage() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-10 md:py-12">
-        <section className="overflow-hidden rounded-[28px] border border-[#e8e8e8] bg-white shadow-[0_18px_48px_rgba(15,23,42,0.12)]">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
+        <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
           <div className="grid md:grid-cols-[1.1fr_1fr]">
-            <div className="min-h-[240px] bg-[#111827]">
+            <div className="min-h-[180px] bg-[#111827]">
               <img
                 src={displayEvent.coverImageUrl}
                 alt={displayEvent.title}
@@ -116,34 +122,34 @@ export default function EventBookingPage() {
               />
             </div>
 
-            <div className="flex flex-col justify-center gap-3 p-8">
-              <h1 className="max-w-md text-3xl font-semibold tracking-tight text-[#111111]">
+            <div className="flex flex-col justify-center gap-2 p-6">
+              <h1 className="max-w-md text-lg font-semibold tracking-tight text-[#111111]">
                 {displayEvent.title}
               </h1>
-              <p className="text-xl text-[#8d949e]">{displayEvent.dateLabel}</p>
-              <p className="text-xl text-[#8d949e]">{displayEvent.timeLabel}</p>
-              <p className="text-xl text-[#8d949e]">{displayEvent.displayLocation}</p>
+              <p className="text-sm text-[#8d949e]">{displayEvent.dateLabel}</p>
+              <p className="text-sm text-[#8d949e]">{displayEvent.timeLabel}</p>
+              <p className="text-sm text-[#8d949e]">{displayEvent.displayLocation}</p>
             </div>
           </div>
         </section>
 
-        <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <div className="text-center">
-            <h2 className="text-4xl font-semibold tracking-tight text-[#111111]">Ticket Selection</h2>
-            {isLoading ? <p className="mt-2 text-sm text-[#8d949e]">Loading event details...</p> : null}
+            <h2 className="text-xl font-semibold tracking-tight text-[#111111]">Ticket Selection</h2>
+            {isLoading ? <p className="mt-1 text-xs text-[#8d949e]">Loading event details...</p> : null}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {ticketRows.map((ticket) => (
               <div
                 key={ticket.name}
-                className="grid items-center gap-4 rounded-[18px] border border-[#ffc8cf] bg-white px-6 py-5 text-[#111111] md:grid-cols-[1.4fr_1fr_auto]"
+                className="grid items-center gap-3 rounded-xl border border-[#ffc8cf] bg-white px-4 py-3 text-[#111111] md:grid-cols-[1.4fr_1fr_auto]"
               >
-                <div className="text-[1.75rem] font-medium">{ticket.name}</div>
-                <div className="text-left text-[1.75rem] font-semibold text-[#ff445d] md:text-center">
+                <div className="text-sm font-medium">{ticket.name}</div>
+                <div className="text-left text-sm font-semibold text-[#ff445d] md:text-center">
                   Price: {formatCurrency(ticket.price)}
                 </div>
-                <div className="ml-auto flex items-center gap-4 text-2xl">
+                <div className="ml-auto flex items-center gap-3 text-sm">
                   <span className="text-[#111111]">Qty</span>
                   <button
                     type="button"
@@ -151,9 +157,9 @@ export default function EventBookingPage() {
                     className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
                     onClick={() => updateQuantity(ticket.name, ticket.quantity - 1, ticket.availableQuantity)}
                   >
-                    <Minus className="h-5 w-5" />
+                    <Minus className="h-4 w-4" />
                   </button>
-                  <span className="inline-flex min-w-10 items-center justify-center rounded-md bg-[#ffd9df] px-3 py-1 text-[1.75rem] font-medium text-[#111111]">
+                  <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-[#ffd9df] px-2 py-0.5 text-sm font-medium text-[#111111]">
                     {ticket.quantity}
                   </span>
                   <button
@@ -162,7 +168,7 @@ export default function EventBookingPage() {
                     className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
                     onClick={() => updateQuantity(ticket.name, ticket.quantity + 1, ticket.availableQuantity)}
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -170,7 +176,7 @@ export default function EventBookingPage() {
           </div>
 
           <div className="flex justify-end">
-            <div className="text-right text-2xl font-semibold text-[#111111]">
+            <div className="text-right text-base font-semibold text-[#111111]">
               Total Amount: {formatCurrency(totalAmount)}
             </div>
           </div>
@@ -178,7 +184,7 @@ export default function EventBookingPage() {
           <button
             type="button"
             disabled={totalAmount === 0}
-            className="rounded-[18px] bg-[#111827] px-8 py-5 text-2xl font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleProceed}
           >
             Proceed to Payment
@@ -194,59 +200,59 @@ export default function EventBookingPage() {
             setError(null)
           }
         }}
-        className="relative w-[min(92vw,400px)] rounded-[28px] bg-white px-8 pb-8 pt-6 shadow-[0_28px_90px_rgba(15,23,42,0.22)]"
+        className="relative w-[min(92vw,380px)] rounded-2xl bg-white px-5 pb-5 pt-4 shadow-[0_28px_90px_rgba(15,23,42,0.22)]"
       >
         <button
           type="button"
           aria-label="Close checkout"
-          className="absolute right-5 top-5 rounded-full p-1 text-[#111111] transition hover:bg-[#f5f5f5]"
+          className="absolute right-4 top-4 rounded-full p-1 text-[#111111] transition hover:bg-[#f5f5f5]"
           onClick={() => setCheckoutOpen(false)}
         >
-          <X className="h-7 w-7" />
+          <X className="h-5 w-5" />
         </button>
 
-        <div className="flex flex-col items-center gap-6">
-          <h2 className="text-[2rem] font-medium text-[#111111]">Checkout</h2>
+        <div className="flex flex-col items-center gap-4">
+          <h2 className="text-base font-medium text-[#111111]">Checkout</h2>
 
-          <div className="w-full rounded-[22px] border border-[#dfdfdf] bg-white px-4 py-5 shadow-[0_10px_30px_rgba(17,24,39,0.08)]">
-            <h3 className="text-center text-[1.8rem] font-medium text-[#111111]">Order Summary</h3>
+          <div className="w-full rounded-xl border border-[#dfdfdf] bg-white px-4 py-3 shadow-sm">
+            <h3 className="text-center text-sm font-medium text-[#111111]">Order Summary</h3>
 
-            <div className="mt-4 flex flex-col items-center gap-4">
+            <div className="mt-3 flex flex-col items-center gap-3">
               <img
                 src={displayEvent.coverImageUrl}
                 alt={displayEvent.title}
-                className="h-32 w-28 rounded-[18px] object-cover shadow-sm"
+                className="h-24 w-20 rounded-xl object-cover shadow-sm"
               />
-              <div className="text-center text-[1.95rem] font-medium leading-tight text-[#111111]">
+              <div className="text-center text-sm font-medium leading-tight text-[#111111]">
                 {displayEvent.title}
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-3 text-[1.35rem]">
+            <div className="mt-3 flex flex-col gap-2 text-sm">
               {selectedTickets.map((ticket) => (
-                <div key={ticket.name} className="flex items-center justify-between gap-4 text-[#8d949e]">
+                <div key={ticket.name} className="flex items-center justify-between gap-3 text-[#8d949e]">
                   <span>{ticket.quantity}x {ticket.name}</span>
                   <span>{formatCurrency(ticket.amount)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="my-4 border-t border-[#d9d9d9]" />
+            <div className="my-3 border-t border-[#d9d9d9]" />
 
-            <div className="flex flex-col gap-2 text-[1.35rem] text-[#8d949e]">
-              <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-1.5 text-sm text-[#8d949e]">
+              <div className="flex items-center justify-between gap-3">
                 <span>Order Amount</span>
                 <span>{formatCurrency(totalAmount)}</span>
               </div>
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-3">
                 <span>Platform fee (5%)</span>
                 <span>{formatCurrency(platformFee)}</span>
               </div>
             </div>
 
-            <div className="my-4 border-t border-[#d9d9d9]" />
+            <div className="my-3 border-t border-[#d9d9d9]" />
 
-            <div className="flex items-center justify-between gap-4 text-[1.7rem] font-semibold">
+            <div className="flex items-center justify-between gap-3 text-base font-semibold">
               <span className="text-[#111111]">Total Amount</span>
               <span className="text-[#ff445d]">{formatCurrency(finalAmount)}</span>
             </div>
@@ -260,7 +266,7 @@ export default function EventBookingPage() {
 
           <button
             type="button"
-            className="w-full rounded-[18px] bg-[#090c44] px-6 py-4 text-[1.7rem] font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
             onClick={handlePayment}
             disabled={isSubmitting}
           >

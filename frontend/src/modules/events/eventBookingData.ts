@@ -19,6 +19,10 @@ export type DisplayEvent = {
   durationLabel: string
   priceLabel: string
   description?: string
+  venueName: string
+  venueAddress: string
+  mapUrl: string
+  termsAndConditions: string
   about?: {
     subtitle: string
     content: string[]
@@ -82,6 +86,22 @@ const fallbackEvent = {
   ticket_types: fallbackTicketTypes,
 }
 
+const resolveAssetUrl = (value?: string) => {
+  if (!value) return value
+  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("data:")) {
+    return value
+  }
+
+  const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? ""
+  if (!baseUrl) return value
+
+  if (value.startsWith("/")) {
+    return `${baseUrl}${value}`
+  }
+
+  return `${baseUrl}/${value}`
+}
+
 export const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -121,18 +141,46 @@ const formatDurationLabel = (startTime?: string, endTime?: string) => {
 export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent => {
   const rawEvent = payload?.event ?? payload ?? {}
   const rawDetails = payload?.details ?? {}
-  const rawPersonnels = payload?.personnels ?? payload?.personnel ?? rawEvent.personnel ?? fallbackEvent.personnel
-  const rawTicketTypes = payload?.ticket_types ?? rawEvent.ticket_types ?? fallbackEvent.ticket_types
+  const rawPersonnels = payload?.personnels ?? payload?.personnel ?? rawEvent.personnel ?? rawEvent.Personnels ?? []
+  const rawTicketTypes = payload?.ticket_types ?? rawEvent.ticket_types ?? rawEvent.TicketTypes ?? []
 
-  const startTime = rawEvent.start_time ?? rawEvent.startTime ?? "2026-02-21T19:00:00Z"
-  const endTime = rawEvent.end_time ?? rawEvent.endTime
-  const venue = rawEvent.venue_name ?? rawDetails.venue_name ?? rawEvent.venue ?? fallbackEvent.venue
-  const city = rawEvent.city ?? rawDetails.city ?? fallbackEvent.city
+  const startTime = rawEvent.start_time ?? rawEvent.StartTime ?? rawEvent.startTime ?? "2026-02-21T19:00:00Z"
+  const endTime = rawEvent.end_time ?? rawEvent.EndTime ?? rawEvent.endTime
+  const venue =
+    rawEvent.venue_name ??
+    rawEvent.VenueName ??
+    rawDetails.venue_name ??
+    rawDetails.venue_address ??
+    rawDetails.VenueAddress ??
+    rawEvent.venue ??
+    fallbackEvent.venue
+  const city = rawEvent.city ?? rawEvent.City ?? rawDetails.city ?? fallbackEvent.city
+  const hostSource = payload?.host ?? rawEvent.host ?? null
+  const personnel =
+    Array.isArray(rawPersonnels) && rawPersonnels.length > 0
+      ? rawPersonnels.map((person: any) => ({
+          name: person.name ?? person.Name,
+          role: person.role ?? person.Role,
+          avatar:
+            resolveAssetUrl(person.avatar ?? person.image ?? person.Image ?? fallbackEvent.personnel[0]?.avatar) ??
+            fallbackEvent.personnel[0]?.avatar ??
+            fallbackEvent.host.avatar,
+        }))
+      : []
+  const ticketTypes =
+    Array.isArray(rawTicketTypes) && rawTicketTypes.length > 0
+      ? rawTicketTypes.map((ticket: any) => ({
+          id: ticket.id ?? ticket.ID,
+          name: ticket.name ?? ticket.Name,
+          price: Number(ticket.price ?? ticket.Price ?? 0),
+          availableQuantity: ticket.available_quantity ?? ticket.AvailableQuantity,
+        }))
+      : fallbackTicketTypes
 
   return {
-    id: rawEvent.id ?? rawEvent.slug ?? eventId,
-    title: rawEvent.title ?? fallbackEvent.title,
-    coverImageUrl: rawEvent.cover_image_url ?? rawEvent.coverImageUrl ?? fallbackEvent.cover_image_url,
+    id: rawEvent.id ?? rawEvent.ID ?? rawEvent.slug ?? rawEvent.Slug ?? eventId,
+    title: rawEvent.title ?? rawEvent.Title ?? fallbackEvent.title,
+    coverImageUrl: resolveAssetUrl(rawEvent.cover_image_url ?? rawEvent.CoverImageURL ?? rawEvent.coverImageUrl ?? fallbackEvent.cover_image_url) ?? fallbackEvent.cover_image_url,
     city,
     venue,
     startTime,
@@ -142,22 +190,27 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
     displayLocation: venue || city,
     durationLabel: rawEvent.duration ?? formatDurationLabel(startTime, endTime),
     priceLabel: rawEvent.price ?? fallbackEvent.price,
-    description: rawDetails.description ?? rawEvent.description ?? fallbackEvent.description,
-    about: rawDetails.about
-      ? rawDetails.about
-      : {
-          subtitle: rawDetails.subtitle ?? fallbackEvent.about.subtitle,
-          content: rawDetails.content ?? fallbackEvent.about.content,
-        },
-    host: rawEvent.host ?? fallbackEvent.host,
-    personnel: Array.isArray(rawPersonnels) && rawPersonnels.length > 0 ? rawPersonnels : fallbackEvent.personnel,
-    ticketTypes: Array.isArray(rawTicketTypes) && rawTicketTypes.length > 0
-      ? rawTicketTypes.map((ticket: any) => ({
-          id: ticket.id,
-          name: ticket.name,
-          price: Number(ticket.price ?? 0),
-          availableQuantity: ticket.available_quantity,
-        }))
-      : fallbackTicketTypes,
+    description: rawDetails.description ?? rawDetails.Description ?? rawEvent.description ?? rawEvent.Description ?? fallbackEvent.description,
+    venueName: rawEvent.venue_name ?? rawEvent.VenueName ?? venue,
+    venueAddress: rawDetails.venue_address ?? rawDetails.VenueAddress ?? "",
+    mapUrl: rawDetails.map_url ?? rawDetails.MapURL ?? "",
+    termsAndConditions: rawDetails.terms_and_conditions ?? rawDetails.TermsAndConditions ?? "",
+    about: {
+      subtitle: rawEvent.title ?? rawEvent.Title ?? fallbackEvent.about.subtitle,
+      content: [
+        rawDetails.description ?? rawDetails.Description ?? rawEvent.description ?? rawEvent.Description ?? fallbackEvent.description,
+      ],
+    },
+    host: hostSource
+      ? {
+          name: hostSource.name ?? hostSource.Name ?? fallbackEvent.host.name,
+          role: hostSource.role ?? hostSource.Role ?? fallbackEvent.host.role,
+          avatar:
+            resolveAssetUrl(hostSource.avatar ?? hostSource.image ?? hostSource.Image ?? fallbackEvent.host.avatar) ??
+            fallbackEvent.host.avatar,
+        }
+      : undefined,
+    personnel: personnel.length > 0 ? personnel : undefined,
+    ticketTypes,
   }
 }

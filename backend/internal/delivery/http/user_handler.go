@@ -1,7 +1,6 @@
 package http
 
 import (
-	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -27,13 +26,13 @@ func NewUserHandler(userUsecase *usecase.UserUsecase, bookingUsecase *usecase.Bo
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID := c.GetString("user_id")
 
-	user, err := h.userUsecase.GetProfile(userID)
+	user, orgDetail, roles, err := h.userUsecase.GetProfile(userID)
 	if err != nil {
-		apiResponse.Error(c, http.StatusNotFound, apiErrors.ResourceNotFound, "User not found")
+		apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
 		return
 	}
 
-	apiResponse.Success(c, "Profile retrieved successfully", gin.H{
+	resp := gin.H{
 		"id":            user.ID,
 		"name":          user.Name,
 		"email":         user.Email,
@@ -42,7 +41,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		"gender":        user.Gender,
 		"profile_image": user.ProfileImage,
 		"locations":     user.Locations,
-	})
+		"roles":         roles,
+	}
+
+	if orgDetail != nil {
+		resp["organization_name"] = orgDetail.OrganizationName
+		resp["address"] = orgDetail.Address
+	}
+
+	apiResponse.Success(c, "Profile retrieved successfully", resp)
 }
 
 type updateProfileRequest struct {
@@ -51,6 +58,7 @@ type updateProfileRequest struct {
 	Dob              string   `json:"dob"`
 	Gender           string   `json:"gender"`
 	OrganizationName string   `json:"organization_name"`
+	Address          string   `json:"address"`
 	Locations        []string `json:"locations"`
 }
 
@@ -59,18 +67,18 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	var req updateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
 	nameRegex := regexp.MustCompile(`^[a-zA-Z\s]+$`)
 	if !nameRegex.MatchString(req.Name) {
-		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Name can only contain alphabets and spaces")
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Name can only contain alphabets and spaces"))
 		return
 	}
 
-	if err := h.userUsecase.UpdateProfile(userID, req.Name, req.Mobile, req.Dob, req.Gender, req.OrganizationName, req.Locations); err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile")
+	if err := h.userUsecase.UpdateProfile(userID, req.Name, req.Mobile, req.Dob, req.Gender, req.OrganizationName, req.Address, req.Locations); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -78,7 +86,6 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) AdminListUsers(c *gin.Context) {
-
 	search := c.Query("search")
 	status := c.Query("status")
 	pageStr := c.DefaultQuery("page", "1")
@@ -89,13 +96,13 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 
 	users, total, err := h.userUsecase.AdminSearchUsers(search, status, page, limit)
 	if err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to retrieve users")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
-	response := make([]gin.H, 0)
+	resp := make([]gin.H, 0, len(users))
 	for _, u := range users {
-		response = append(response, gin.H{
+		resp = append(resp, gin.H{
 			"id":         u.ID,
 			"name":       u.Name,
 			"email":      u.Email,
@@ -105,7 +112,7 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Users retrieved successfully", gin.H{
-		"users": response,
+		"users": resp,
 		"pagination": gin.H{
 			"page":  page,
 			"limit": limit,
@@ -119,17 +126,16 @@ type updateStatusRequest struct {
 }
 
 func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
-
 	userID := c.Param("id")
 
 	var req updateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
 		return
 	}
 
 	if err := h.userUsecase.AdminUpdateUserStatus(userID, req.IsActive); err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update user status")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -147,39 +153,30 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 
 	orgs, total, err := h.userUsecase.AdminSearchOrganizers(search, status, page, limit)
 	if err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to retrieve organizers")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
-	response := make([]gin.H, 0)
+	resp := make([]gin.H, 0, len(orgs))
 	for _, u := range orgs {
-		response = append(response, gin.H{
-			"id":                     u.ID,
-			"name":                   u.Name,
-			"email":                  u.Email,
-			"mobile":                 u.Mobile,
-			"dob":                    u.Dob,
-			"gender":                 u.Gender,
-			"organization_name":      u.OrganizationName,
-			"profile_image":          u.ProfileImage,
-			"is_active":              u.IsActive,
-			"total_bookings":         u.TotalBookings,
-			"total_events":           u.TotalEvents,
-			"wallet_balance":         u.WalletBalance,
+		resp = append(resp, gin.H{
+			"id":                      u.ID,
+			"name":                    u.Name,
+			"email":                   u.Email,
+			"is_active":               u.IsActive,
+			"total_bookings":          u.TotalBookings,
+			"total_events":            u.TotalEvents,
+			"wallet_balance":          u.WalletBalance,
 			"total_revenue_generated": u.TotalRevenue,
-			"created_at":             u.CreatedAt,
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"organizers": response,
-			"pagination": gin.H{
-				"total": total,
-				"page":  page,
-				"limit": limit,
-			},
+	apiResponse.Success(c, "Organizers retrieved successfully", gin.H{
+		"organizers": resp,
+		"pagination": gin.H{
+			"total": total,
+			"page":  page,
+			"limit": limit,
 		},
 	})
 }
@@ -203,7 +200,7 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 
 	bookings, total, err := h.bookingUsecase.GetUserBookings(c.Request.Context(), userID, page, limit, status)
 	if err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch bookings")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -222,16 +219,12 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Bookings fetched successfully",
-		"data": gin.H{
-			"bookings": responseBookings,
-			"pagination": gin.H{
-				"page":  page,
-				"limit": limit,
-				"total": total,
-			},
+	apiResponse.Success(c, "Bookings fetched successfully", gin.H{
+		"bookings": responseBookings,
+		"pagination": gin.H{
+			"page":  page,
+			"limit": limit,
+			"total": total,
 		},
 	})
 }
@@ -240,11 +233,12 @@ func (h *UserHandler) GetMyTicketsHandler(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	eventID := c.Query("event_id")
+	bookingID := c.Query("booking_id")
 	status := c.Query("status")
 
-	tickets, err := h.bookingUsecase.GetUserTickets(c.Request.Context(), userID, eventID, status)
+	tickets, err := h.bookingUsecase.GetUserTickets(c.Request.Context(), userID, eventID, bookingID, status)
 	if err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to fetch tickets")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -261,28 +255,23 @@ func (h *UserHandler) GetMyTicketsHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Tickets fetched successfully",
-		"data": gin.H{
-			"tickets": responseTickets,
-		},
+	apiResponse.Success(c, "Tickets fetched successfully", gin.H{
+		"tickets": responseTickets,
 	})
 }
-
 
 func (h *UserHandler) UploadProfileImage(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	file, err := c.FormFile("profile_image")
 	if err != nil {
-		apiResponse.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Image file is required")
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Image file is required"))
 		return
 	}
 
 	dirPath := "assets/images/" + userID
 	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to create directory")
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
 
@@ -290,12 +279,12 @@ func (h *UserHandler) UploadProfileImage(c *gin.Context) {
 	imageURL := "/" + filepath
 
 	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to save image")
+		apiResponse.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to save image"))
 		return
 	}
 
 	if err := h.userUsecase.UploadProfileImage(userID, imageURL); err != nil {
-		apiResponse.Error(c, http.StatusInternalServerError, apiErrors.InternalServerError, "Failed to update profile image")
+		apiResponse.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to update profile image"))
 		return
 	}
 

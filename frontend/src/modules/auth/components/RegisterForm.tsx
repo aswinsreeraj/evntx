@@ -59,10 +59,10 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
     setErrors({});
     try {
       const name = `${firstName} ${lastName}`.trim();
-      const role = isOrganizer ? "organizer" : "goer";
+      const role = isOrganizer ? "organizer" : undefined;
       await authApi.register(email, otp, name, dob, gender, role, isOrganizer ? organizationName : undefined);
       if (onClose) onClose();
-      window.location.href = isOrganizer ? "/organizer/profile" : "/profile";
+      window.location.href = isOrganizer ? "/organizer/profile" : "/";
     } catch (e: any) {
       console.error(e);
       setErrors({ api: e.response?.data?.message || "Failed to register. Invalid OTP or request." });

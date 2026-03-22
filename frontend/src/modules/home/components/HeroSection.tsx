@@ -1,8 +1,21 @@
-import { Search, MapPin } from "lucide-react";
+import { useState, useRef } from "react";
+import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function HeroSection() {
   const navigate = useNavigate();
+  const [searchText, setSearchText] = useState("");
+  const [showError, setShowError] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchText.trim()) {
+      navigate(`/events?search=${encodeURIComponent(searchText.trim())}`);
+    }
+  };
+
   return (
     <div className="relative bg-black w-full h-[500px]">
       <div
@@ -20,10 +33,17 @@ export default function HeroSection() {
           Concerts, tech conferences, workshops and more.
         </p>
 
-        <div className="bg-white rounded-full flex items-center p-2 w-full max-w-2xl shadow-lg">
+        <div className={`bg-white rounded-full flex items-center p-2 w-full max-w-2xl shadow-lg transition-all border-2 ${showError ? "border-red-500 animate-pulse" : "border-transparent"}`}>
           <Search className="w-6 h-6 text-gray-400 ml-4" />
           <input
+            ref={inputRef}
             type="text"
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              if (showError) setShowError(false);
+            }}
+            onKeyDown={handleSearch}
             placeholder="Search events, city, category"
             className="flex-1 bg-transparent border-none outline-none px-4 py-2 text-gray-800 placeholder-gray-500 text-lg"
           />
@@ -35,9 +55,18 @@ export default function HeroSection() {
             className="bg-gray-900/90 border border-gray-700 backdrop-blur-sm text-white hover:bg-black px-6 py-2.5 rounded-full font-medium transition-colors">
             Browse all events
           </button>
-          <button className="bg-gray-900/90 border border-gray-700 backdrop-blur-sm text-white hover:bg-black px-6 py-2.5 rounded-full font-medium flex items-center gap-2 transition-colors">
-            <MapPin className="w-4 h-4" />
-            Browse by location
+          <button 
+            onClick={() => {
+              if (!searchText.trim()) {
+                setShowError(true);
+                inputRef.current?.focus();
+              } else {
+                navigate(`/events?search=${encodeURIComponent(searchText.trim())}`);
+              }
+            }}
+            className="bg-gray-900/90 border border-gray-700 backdrop-blur-sm text-white hover:bg-black px-6 py-2.5 rounded-full font-medium flex items-center gap-2 transition-colors">
+            <Search className="w-4 h-4" />
+            Search
           </button>
         </div>
       </div>

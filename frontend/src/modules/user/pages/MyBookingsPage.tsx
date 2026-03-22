@@ -69,8 +69,18 @@ export default function MyBookingsPage() {
   const filteredBookings = enrichedBookings.filter((booking) => booking.bookingStatus === activeTab)
 
   const ensureDraft = (bookingId: string) => {
-    const current = draftFeedback[bookingId] ?? feedbackMap[bookingId] ?? { rating: 0, comment: "" }
-    setDraftFeedback((state) => ({ ...state, [bookingId]: current }))
+    setDraftFeedback((state) => {
+      if (state[bookingId]) {
+        const nextState = { ...state }
+        delete nextState[bookingId]
+        return nextState
+      }
+
+      return {
+        ...state,
+        [bookingId]: feedbackMap[bookingId] ?? { rating: 0, comment: "" },
+      }
+    })
   }
 
   const updateDraft = (bookingId: string, nextDraft: FeedbackRecord) => {
@@ -84,13 +94,18 @@ export default function MyBookingsPage() {
     const next = { ...feedbackMap, [bookingId]: current }
     setFeedbackMap(next)
     saveFeedbackMap(next)
+    setDraftFeedback((state) => {
+      const nextState = { ...state }
+      delete nextState[bookingId]
+      return nextState
+    })
   }
 
   const openTickets = async (booking: EnrichedBooking) => {
     setLoadingTickets(booking.booking_id)
 
     try {
-      const apiTickets = await userApi.getMyTickets(booking.event_id)
+      const apiTickets = await userApi.getMyTickets(undefined, booking.booking_id)
       const tickets =
         apiTickets.length > 0
           ? apiTickets
@@ -113,7 +128,7 @@ export default function MyBookingsPage() {
     setLoadingCancellation(booking.booking_id)
 
     try {
-      const apiTickets = await userApi.getMyTickets(booking.event_id)
+      const apiTickets = await userApi.getMyTickets(undefined, booking.booking_id)
       const tickets =
         apiTickets.length > 0
           ? apiTickets
@@ -129,45 +144,26 @@ export default function MyBookingsPage() {
     }
   }
 
-  const handleConfirmCancellation = (
+  const handleConfirmCancellation = async (
     selection: Array<{ ticketType: string; cancelCount: number; refundAmount: number }>,
   ) => {
     if (!cancellationModal) return
 
-    const { booking, tickets } = cancellationModal
-    const remainingTickets = [...tickets]
+    const { booking } = cancellationModal
 
-    selection.forEach((item) => {
-      let remainingToRemove = item.cancelCount
-
-      for (let index = remainingTickets.length - 1; index >= 0 && remainingToRemove > 0; index -= 1) {
-        if (remainingTickets[index].ticket_type === item.ticketType) {
-          remainingTickets.splice(index, 1)
-          remainingToRemove -= 1
-        }
-      }
-    })
-
-    const totalRefund = selection.reduce((sum, item) => sum + item.refundAmount, 0)
-
-    setEventTickets((current) => ({
-      ...current,
-      [booking.booking_id]: remainingTickets,
+    const items = selection.map(s => ({
+      ticket_type: s.ticketType,
+      quantity: s.cancelCount
     }))
 
-    setBookings((current) =>
-      current
-        .map((item) =>
-          item.booking_id === booking.booking_id
-            ? {
-                ...item,
-                ticket_count: Math.max(0, item.ticket_count - selection.reduce((sum, entry) => sum + entry.cancelCount, 0)),
-                total_amount: Math.max(0, item.total_amount - totalRefund),
-              }
-            : item,
-        )
-        .filter((item) => item.ticket_count > 0),
-    )
+    try {
+      await userApi.cancelBooking(booking.booking_id, { items })
+
+      const data = await userApi.getMyBookings()
+      setBookings(data.length > 0 ? data : [])
+    } catch {
+      // silently handle - booking may already be cancelled
+    }
 
     setCancellationModal(null)
   }
@@ -175,13 +171,13 @@ export default function MyBookingsPage() {
   return (
     <UserDashboardShell>
       <div className="pb-10">
-        <div className="mb-8 flex items-center gap-8 text-[2rem]">
+        <div className="mb-5 flex items-center gap-5 text-xl">
           {(["upcoming", "finished"] as const).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`border-b-2 px-2 pb-3 capitalize transition ${
+              className={`border-b-2 px-2 pb-2 capitalize transition ${
                 activeTab === tab ? "border-[#ff445d] text-[#111111]" : "border-transparent text-[#6d6d6d]"
               }`}
             >
@@ -197,54 +193,70 @@ export default function MyBookingsPage() {
             </div>
           ) : null}
 
+          {!loading && filteredBookings.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm text-center">
+              <h3 className="text-xl font-medium text-gray-900 mb-2">
+                {activeTab === "upcoming" ? "No upcoming events" : "No completed events"}
+              </h3>
+              <p className="text-gray-500">
+                {activeTab === "upcoming" 
+                  ? "You don't have any upcoming bookings yet." 
+                  : "You haven't attended any events yet."}
+              </p>
+            </div>
+          )}
+
           {!loading && filteredBookings.map((booking) => {
             const savedFeedback = feedbackMap[booking.booking_id]
             const currentDraft = draftFeedback[booking.booking_id] ?? savedFeedback ?? { rating: 0, comment: "" }
-            const showFeedbackForm = booking.bookingStatus === "finished" && (!savedFeedback || draftFeedback[booking.booking_id])
+            const showFeedbackForm = booking.bookingStatus === "finished" && !!draftFeedback[booking.booking_id]
 
             return (
               <div
                 key={booking.booking_id}
-                className="overflow-hidden rounded-[28px] border border-[#ececec] bg-white shadow-[0_12px_36px_rgba(15,23,42,0.08)]"
+                className="overflow-hidden rounded-[20px] border border-[#ececec] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
               >
-                <div className="grid md:grid-cols-[370px_1fr]">
-                  <div className="relative min-h-[190px]">
+                <div className="grid md:grid-cols-[200px_1fr]">
+                  <div className="relative min-h-[150px]">
                     <img src={booking.coverImageUrl} alt={booking.event_title} className="h-full w-full object-cover" />
-                    <div className="absolute left-5 top-5 rounded-2xl bg-[#9d7a7a]/80 px-4 py-2 text-[1.55rem] text-white backdrop-blur-sm">
+                    <div className="absolute left-3 top-3 rounded-xl bg-[#9d7a7a]/80 px-3 py-1.5 text-sm text-white backdrop-blur-sm">
                       {booking.dateBadge}
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-between gap-6 p-8">
+                  <div className="flex flex-col justify-between gap-4 p-5">
                     <div>
-                      <h2 className="text-[2rem] font-semibold text-[#111827]">{booking.event_title}</h2>
-                      <p className="mt-1 text-[1.45rem] text-[#111827]">{booking.timeLabel}</p>
-                      <div className="mt-2 flex items-center gap-2 text-[1.35rem] text-[#5d6573]">
-                        <MapPin className="h-5 w-5 text-[#ff445d]" />
+                      <h2 className="text-xl font-semibold leading-tight text-[#111827]">{booking.event_title}</h2>
+                      <p className="mt-1 text-base text-[#111827]">{booking.timeLabel}</p>
+                      <div className="mt-2 flex items-center gap-2 text-sm text-[#5d6573]">
+                        <MapPin className="h-4 w-4 text-[#ff445d]" />
                         <span>{booking.venue}</span>
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-3">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         {booking.tags.map((tag) => (
-                          <span key={tag} className="rounded-full bg-[#efefef] px-4 py-1.5 text-[1.15rem] text-[#5b6069]">
+                          <span key={tag} className="rounded-full bg-[#efefef] px-3 py-1 text-xs text-[#5b6069]">
                             {tag}
                           </span>
                         ))}
+                        <span className="rounded-full bg-[#ff445d]/10 px-3 py-1 text-xs font-medium text-[#ff445d]">
+                          {booking.ticket_count} Ticket{booking.ticket_count !== 1 ? "s" : ""}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-4">
+                    <div className="flex flex-wrap items-center justify-end gap-3">
                       {booking.bookingStatus === "upcoming" ? (
                         <button
                           type="button"
                           onClick={() => void openCancellation(booking)}
-                          className="text-[1.45rem] text-[#ff2020] transition hover:opacity-80"
+                          className="text-sm font-medium text-[#ff2020] transition hover:opacity-80"
                         >
                           {loadingCancellation === booking.booking_id ? "Loading..." : "Cancel Ticket"}
                         </button>
                       ) : savedFeedback ? (
                         <button
                           type="button"
-                          className="rounded-[18px] border border-[#111827] px-6 py-3 text-[1.4rem] text-[#111827] transition hover:bg-[#f7f7f7]"
+                          className="rounded-2xl border border-[#111827] px-5 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-[#f7f7f7]"
                           onClick={() => ensureDraft(booking.booking_id)}
                         >
                           Edit Review
@@ -252,7 +264,7 @@ export default function MyBookingsPage() {
                       ) : (
                         <button
                           type="button"
-                          className="rounded-[18px] border border-[#111827] px-6 py-3 text-[1.4rem] text-[#111827] transition hover:bg-[#f7f7f7]"
+                          className="rounded-2xl border border-[#111827] px-5 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-[#f7f7f7]"
                           onClick={() => ensureDraft(booking.booking_id)}
                         >
                           Write Review
@@ -262,14 +274,14 @@ export default function MyBookingsPage() {
                       <button
                         type="button"
                         onClick={() => void openTickets(booking)}
-                        className="rounded-[18px] bg-[#111827] px-6 py-3 text-[1.4rem] text-white transition hover:bg-black"
+                        className="rounded-xl bg-[#111827] px-4 py-2 text-sm font-medium text-white transition hover:bg-black"
                       >
                         {loadingTickets === booking.booking_id ? "Loading..." : booking.ticket_count > 1 ? "View Tickets" : "View Ticket"}
                       </button>
 
                       <Link
                         to={`/events/${booking.event_id}`}
-                        className="rounded-[18px] bg-[#111827] px-6 py-3 text-[1.4rem] text-white transition hover:bg-black"
+                        className="rounded-2xl bg-[#111827] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-black"
                       >
                         View Event
                       </Link>
@@ -278,8 +290,8 @@ export default function MyBookingsPage() {
                 </div>
 
                 {showFeedbackForm ? (
-                  <div className="border-t border-[#ececec] px-8 py-6">
-                    <div className="mb-5 flex items-center gap-2">
+                  <div className="border-t border-[#ececec] px-6 py-5">
+                    <div className="mb-4 flex items-center gap-2">
                       {Array.from({ length: 5 }, (_, index) => index + 1).map((value) => (
                         <button
                           key={value}
@@ -288,7 +300,7 @@ export default function MyBookingsPage() {
                           className="text-[#111111]"
                         >
                           <Star
-                            className={`h-8 w-8 ${value <= currentDraft.rating ? "fill-[#111111] text-[#111111]" : "text-[#111111]"}`}
+                            className={`h-6 w-6 ${value <= currentDraft.rating ? "fill-[#111111] text-[#111111]" : "text-[#111111]"}`}
                           />
                         </button>
                       ))}
@@ -300,14 +312,14 @@ export default function MyBookingsPage() {
                         updateDraft(booking.booking_id, { ...currentDraft, comment: event.target.value })
                       }
                       placeholder="Write your feedback here..."
-                      className="min-h-[120px] w-full resize-none rounded-2xl border border-transparent px-2 py-2 text-[1.5rem] text-[#6e7480] outline-none"
+                      className="min-h-[96px] w-full resize-none rounded-2xl border border-transparent px-2 py-2 text-sm text-[#6e7480] outline-none"
                     />
 
                     <div className="mt-4 flex justify-end">
                       <button
                         type="button"
                         onClick={() => submitFeedback(booking.booking_id)}
-                        className="rounded-[18px] bg-[#111827] px-8 py-3 text-[1.4rem] text-white transition hover:bg-black"
+                        className="rounded-xl bg-[#111827] px-5 py-2 text-sm font-medium text-white transition hover:bg-black"
                       >
                         Submit Feedback
                       </button>
