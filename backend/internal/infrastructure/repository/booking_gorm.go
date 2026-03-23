@@ -53,17 +53,14 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 			for _, reqTicket := range tickets {
 				var ticketModel TicketTypeModel
 
-				// 1. Fetch current version and inventory without pessimistic lock
 				if err := tx.Where("id = ?", reqTicket.TicketTypeID).First(&ticketModel).Error; err != nil {
 					return err
 				}
 
-				// Validate inventory
 				if ticketModel.AvailableQuantity < reqTicket.Quantity {
 					return errors.New("EVT_009: Ticket sold out")
 				}
 
-				// 2. Optimistic update with version check
 				res := tx.Model(&TicketTypeModel{}).
 					Where("id = ? AND version = ? AND available_quantity >= ?", ticketModel.ID, ticketModel.Version, reqTicket.Quantity).
 					Updates(map[string]interface{}{
@@ -86,12 +83,11 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 				}
 			}
 
-			// 3. Create the booking record
 			bookingModel := BookingModel{
 				ID:          booking.ID,
 				UserID:      booking.UserID,
 				EventID:     booking.EventID,
-				Status:      booking.Status, // should be "reserved"
+				Status:      booking.Status,
 				TotalAmount: booking.TotalAmount,
 				ExpiresAt:   booking.ExpiresAt.Unix(),
 				CreatedAt:   booking.CreatedAt.Unix(),
@@ -101,7 +97,6 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 				return err
 			}
 
-			// 4. Create the booking ticket associations and individual physical tickets
 			for _, ticket := range tickets {
 				btModel := BookingTicketModel{
 					BookingID:    ticket.BookingID,
@@ -112,7 +107,6 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 					return err
 				}
 
-				// 5. Generate actual distinct physical units resolving frontend mapping loops
 				for i := 0; i < ticket.Quantity; i++ {
 					newTktId := uuid.New().String()
 					tktModel := TicketModel{
@@ -168,13 +162,11 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 				continue
 			}
 
-			// Find TicketTypeModel by name and event_id
 			var tt TicketTypeModel
 			if err := tx.Where("name = ? AND event_id = ?", item.TicketType, bm.EventID).First(&tt).Error; err != nil {
 				return errors.New("invalid ticket type")
 			}
 
-			// Ensure user actually has enough valid tickets of this type
 			var tM []TicketModel
 			if err := tx.Where("booking_id = ? AND ticket_type_id = ? AND status != 'cancelled'", bookingID, tt.ID).
 				Limit(item.Quantity).
@@ -186,7 +178,6 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 				return errors.New("not enough tickets to cancel")
 			}
 
-			// Cancel exactly item.Quantity physical tickets
 			var idsToCancel []string
 			for _, t := range tM {
 				idsToCancel = append(idsToCancel, t.ID)
@@ -196,14 +187,12 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 				return err
 			}
 
-			// Reduce Quantity in booking_ticket_models
 			if err := tx.Model(&BookingTicketModel{}).
 				Where("booking_id = ? AND ticket_type_id = ?", bookingID, tt.ID).
 				Update("quantity", gorm.Expr("quantity - ?", item.Quantity)).Error; err != nil {
 				return err
 			}
 
-			// Restore TicketTypeModel available inventory
 			if err := tx.Model(&TicketTypeModel{}).
 				Where("id = ?", tt.ID).
 				Update("available_quantity", gorm.Expr("available_quantity + ?", item.Quantity)).Error; err != nil {
@@ -213,7 +202,6 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			totalRefund += tt.Price * float64(item.Quantity)
 		}
 
-		// Reduce total amount
 		if totalRefund > 0 {
 			if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).
 				Update("total_amount", gorm.Expr("total_amount - ?", totalRefund)).Error; err != nil {
@@ -221,7 +209,6 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			}
 		}
 
-		// Check if any valid tickets remain. If not, cancel the booking entirely.
 		var remainingTickets int64
 		if err := tx.Model(&TicketModel{}).Where("booking_id = ? AND status != 'cancelled'", bookingID).Count(&remainingTickets).Error; err != nil {
 			return err
@@ -241,7 +228,6 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 	var expiredBookings []BookingModel
 	var returnedBookings []domain.Booking
 
-	// Fetch up to 100 expired bookings
 	err := r.db.WithContext(ctx).Where("status = ? AND expires_at < ?", "reserved", time.Now().Unix()).
 		Limit(100).
 		Find(&expiredBookings).Error
@@ -252,18 +238,15 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 
 	for _, bm := range expiredBookings {
 		err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-			// Update status to 'expired'
 			if err := tx.Model(&BookingModel{}).Where("id = ?", bm.ID).Update("status", "expired").Error; err != nil {
 				return err
 			}
 
-			// Fetch ticket relations
 			var bTickets []BookingTicketModel
 			if err := tx.Where("booking_id = ?", bm.ID).Find(&bTickets).Error; err != nil {
 				return err
 			}
 
-			// Restore ticket quantities
 			for _, bt := range bTickets {
 				if err := tx.Model(&TicketTypeModel{}).
 					Where("id = ?", bt.TicketTypeID).
@@ -317,6 +300,9 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		TotalAmount    float64
 		TicketCount    int
 		CreatedAt      int64
+		CoverImageURL  string
+		VenueName      string
+		Tags           string
 	}
 
 	err := query.Select(`
@@ -328,6 +314,9 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		booking_models.status, 
 		booking_models.total_amount, 
 		booking_models.created_at, 
+		event_models.cover_image_url,
+		event_models.venue_name,
+		event_models.tags,
 		COALESCE(SUM(booking_ticket_models.quantity), 0) AS ticket_count
 	`).
 		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
@@ -354,6 +343,9 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 			TotalAmount:    r.TotalAmount,
 			TicketCount:    r.TicketCount,
 			CreatedAt:      time.Unix(r.CreatedAt, 0),
+			CoverImageURL:  r.CoverImageURL,
+			VenueName:      r.VenueName,
+			Tags:           r.Tags,
 		})
 	}
 
@@ -361,11 +353,11 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 }
 
 func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
-	query := r.db.WithContext(ctx).Table("tickets").
-		Joins("JOIN booking_models ON booking_models.id = tickets.booking_id").
+	query := r.db.WithContext(ctx).Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
 		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
-		Joins("JOIN ticket_type_models ON ticket_type_models.id = tickets.ticket_type_id").
-		Where("booking_models.user_id = ?" , userID)
+		Joins("JOIN ticket_type_models ON ticket_type_models.id = ticket_models.ticket_type_id").
+		Where("booking_models.user_id = ?", userID)
 
 	if bookingID != "" {
 		query = query.Where("booking_models.id = ?", bookingID)
@@ -374,9 +366,9 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 		query = query.Where("event_models.id = ?", eventID)
 	}
 	if status != "" {
-		query = query.Where("tickets.status = ?", status)
+		query = query.Where("ticket_models.status = ?", status)
 	} else {
-		query = query.Where("tickets.status != ?", "cancelled")
+		query = query.Where("ticket_models.status != ?", "cancelled")
 	}
 
 	var results []struct {
@@ -387,17 +379,17 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 		TicketType  string
 		Status      string
 		CheckedInAt *int64
-		CreatedAt   int64 `gorm:"column:created_at"` // order reference if tickets table has it, else order by booking_models
+		CreatedAt   int64 `gorm:"column:created_at"`
 	}
 
 	err := query.Select(`
-		tickets.id AS ticket_id,
-		tickets.ticket_code,
+		ticket_models.id AS ticket_id,
+		ticket_models.ticket_code,
 		event_models.id AS event_id,
 		event_models.title AS event_title,
 		ticket_type_models.name AS ticket_type,
-		tickets.status,
-		tickets.checked_in_at,
+		ticket_models.status,
+		ticket_models.checked_in_at,
 		booking_models.created_at AS created_at
 	`).
 		Order("booking_models.created_at DESC").

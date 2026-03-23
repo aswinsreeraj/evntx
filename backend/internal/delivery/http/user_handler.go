@@ -4,6 +4,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
@@ -103,11 +104,13 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 	resp := make([]gin.H, 0, len(users))
 	for _, u := range users {
 		resp = append(resp, gin.H{
-			"id":         u.ID,
-			"name":       u.Name,
-			"email":      u.Email,
-			"is_active":  u.IsActive,
-			"created_at": u.CreatedAt,
+			"id":             u.ID,
+			"name":           u.Name,
+			"email":          u.Email,
+			"is_active":      u.IsActive,
+			"total_bookings": u.TotalBookings,
+			"wallet_balance": u.WalletBalance,
+			"created_at":     u.CreatedAt,
 		})
 	}
 
@@ -216,6 +219,9 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 			"total_amount":     b.TotalAmount,
 			"ticket_count":     b.TicketCount,
 			"created_at":       b.CreatedAt,
+			"coverImageUrl":    b.CoverImageURL,
+			"venue":            b.VenueName,
+			"tags":             strings.Split(b.Tags, ","),
 		})
 	}
 

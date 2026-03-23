@@ -33,6 +33,9 @@ type BookingWithEvent struct {
 	TotalAmount    float64
 	TicketCount    int
 	CreatedAt      time.Time
+	CoverImageURL  string
+	VenueName      string
+	Tags           string
 }
 
 type TicketWithEvent struct {

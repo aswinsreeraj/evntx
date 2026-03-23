@@ -115,7 +115,6 @@ func main() {
 	if err != nil {
 		logger.Log.Warn().Msg("failed to create assets/images directory")
 	}
-	router.Static("/assets", "./assets")
 
 	// User endpoints
 	userGroup := router.Group("/users")

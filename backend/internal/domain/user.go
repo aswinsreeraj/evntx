@@ -33,3 +33,8 @@ type OrganizerDetails struct {
 	WalletBalance int64 `json:"wallet_balance"`
 	TotalRevenue  int64 `json:"total_revenue"`
 }
+type AdminUserDetails struct {
+	User
+	TotalBookings int64 `json:"total_bookings"`
+	WalletBalance int64 `json:"wallet_balance"`
+}

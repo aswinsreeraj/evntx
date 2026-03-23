@@ -39,7 +39,6 @@ func Error(c *gin.Context, status int, code, message string) {
 	})
 }
 
-// AppError safely unwraps and responds with a custom AppError, or defaults to 500 if unknown.
 func AppError(c *gin.Context, err error) {
 	var appErr *pkgerrors.AppError
 	if errors.As(err, &appErr) {
@@ -47,6 +46,5 @@ func AppError(c *gin.Context, err error) {
 		return
 	}
 
-	// Fallback for unknown errors
 	Error(c, http.StatusInternalServerError, pkgerrors.InternalServerError, "Internal server error")
 }

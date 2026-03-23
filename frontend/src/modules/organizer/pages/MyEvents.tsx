@@ -140,7 +140,8 @@ export default function MyEvents() {
                         ) : (
                            <button
                               onClick={() => navigate(`/organizer/events/${event.id}/edit`)}
-                              className="w-full border border-gray-800 text-gray-900 hover:bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                              disabled={event.status?.toLowerCase() === 'live'}
+                              className="w-full border border-gray-800 text-gray-900 hover:bg-gray-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
                            >
                               Edit Event
                            </button>

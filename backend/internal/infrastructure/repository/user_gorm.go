@@ -151,12 +151,22 @@ func (r *userGormRepository) Search(
 	status string,
 	page int,
 	limit int,
-) ([]domain.User, int64, error) {
+) ([]domain.AdminUserDetails, int64, error) {
 
-	var models []UserModel
+	var results []struct {
+		UserModel
+		TotalBookings int64
+	}
 	var total int64
 
-	query := r.db.Model(&UserModel{})
+	query := r.db.Table("user_models").
+		Select(`
+			user_models.*,
+			COALESCE((
+				SELECT COUNT(b.id) FROM booking_models b
+				WHERE b.user_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_bookings
+		`)
 
 	query = query.Where(
 		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id)",
@@ -164,16 +174,16 @@ func (r *userGormRepository) Search(
 
 	if search != "" {
 		query = query.Where(
-			"name ILIKE ? OR email ILIKE ?",
+			"user_models.name ILIKE ? OR user_models.email ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)
 	}
 
 	if status == "active" {
-		query = query.Where("is_active = ?", true)
+		query = query.Where("user_models.is_active = ?", true)
 	} else if status == "suspended" || status == "inactive" {
-		query = query.Where("is_active = ?", false)
+		query = query.Where("user_models.is_active = ?", false)
 	}
 
 	query.Count(&total)
@@ -181,30 +191,34 @@ func (r *userGormRepository) Search(
 	offset := (page - 1) * limit
 
 	err := query.
-		Order("created_at DESC").
+		Order("user_models.created_at DESC").
 		Limit(limit).
 		Offset(offset).
-		Find(&models).Error
+		Find(&results).Error
 
 	if err != nil {
 		return nil, 0, err
 	}
 
-	users := make([]domain.User, 0)
-	for _, m := range models {
-		users = append(users, domain.User{
-			ID:            m.ID,
-			Name:          m.Name,
-			Email:         m.Email,
-			Mobile:        m.Mobile,
-			Dob:           m.Dob,
-			Gender:        m.Gender,
-			ProfileImage:  m.ProfileImage,
-			Locations:     m.Locations,
-			IsActive:      m.IsActive,
-			EmailVerified: m.EmailVerified,
-			CreatedAt:     m.CreatedAt,
-			UpdatedAt:     m.UpdatedAt,
+	users := make([]domain.AdminUserDetails, 0, len(results))
+	for _, res := range results {
+		users = append(users, domain.AdminUserDetails{
+			User: domain.User{
+				ID:            res.ID,
+				Name:          res.Name,
+				Email:         res.Email,
+				Mobile:        res.Mobile,
+				Dob:           res.Dob,
+				Gender:        res.Gender,
+				ProfileImage:  res.ProfileImage,
+				Locations:     res.Locations,
+				IsActive:      res.IsActive,
+				EmailVerified: res.EmailVerified,
+				CreatedAt:     res.CreatedAt,
+				UpdatedAt:     res.UpdatedAt,
+			},
+			TotalBookings: res.TotalBookings,
+			WalletBalance: 0,
 		})
 	}
 

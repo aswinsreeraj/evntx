@@ -14,6 +14,7 @@ export default function EventForm() {
   const [category, setCategory] = useState("Comedy");
   const [startTime, setStartTime] = useState("");
   const [endTime] = useState("");
+  const [status, setStatus] = useState("draft");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
@@ -26,6 +27,7 @@ export default function EventForm() {
   const [mapUrl, setMapUrl] = useState("");
 
   const [entryType, setEntryType] = useState("Paid");
+  const [freeQuantity, setFreeQuantity] = useState(0);
   const [description, setDescription] = useState("");
   const [terms, setTerms] = useState("");
 
@@ -60,6 +62,10 @@ export default function EventForm() {
               setTags(event.tags.split(',').filter(Boolean));
             }
 
+            if (event.status) {
+              setStatus(event.status);
+            }
+
             if (event.cover_image_url) {
               setCoverImagePreview(`${import.meta.env.VITE_API_BASE_URL || ""}${event.cover_image_url}`);
             }
@@ -75,12 +81,18 @@ export default function EventForm() {
             }
 
             if (ticket_types && ticket_types.length > 0) {
-              setTickets(ticket_types.map((t: any) => ({
-                id: t.id,
-                name: t.name,
-                price: t.price,
-                total_quantity: t.total_quantity
-              })));
+              if (ticket_types.length === 1 && Number(ticket_types[0].price) === 0) {
+                setEntryType("Free");
+                setFreeQuantity(ticket_types[0].total_quantity);
+              } else {
+                setEntryType("Paid");
+                setTickets(ticket_types.map((t: any) => ({
+                    id: t.id,
+                    name: t.name,
+                    price: t.price,
+                    total_quantity: t.total_quantity
+                  })));
+              }
             }
 
             if (personnels && personnels.length > 0) {
@@ -135,8 +147,8 @@ export default function EventForm() {
     setTickets(newTickets);
   };
 
-  const totalCapacity = tickets.reduce((acc, t) => acc + (Number(t.total_quantity) || 0), 0);
-  const totalPrice = tickets.reduce((acc, t) => acc + ((Number(t.price) || 0) * (Number(t.total_quantity) || 0)), 0);
+  const totalCapacity = entryType === "Free" ? Number(freeQuantity) : tickets.reduce((acc, t) => acc + (Number(t.total_quantity) || 0), 0);
+  const totalPrice = entryType === "Free" ? 0 : tickets.reduce((acc, t) => acc + ((Number(t.price) || 0) * (Number(t.total_quantity) || 0)), 0);
 
   const handleAddPersonnel = () => {
     setPersonnel([...personnel, { name: "", role: "", image: "", profile_link: "" }]);
@@ -168,6 +180,14 @@ export default function EventForm() {
     setSubmitting(true);
     setErrorMsg("");
 
+    const now = new Date();
+    const stDate = new Date(startTime);
+    if (stDate < now) {
+      setErrorMsg("Event start time cannot be in the past");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       let finalCoverUrl = "";
       if (coverImageFile) {
@@ -182,8 +202,9 @@ export default function EventForm() {
         category,
         start_time: new Date(startTime).toISOString(),
         end_time: endTime ? new Date(endTime).toISOString() : new Date(startTime).toISOString(),
-        tags,
-        cover_image_url: finalCoverUrl || coverImagePreview,
+        tags: tags,
+        cover_image_url: finalCoverUrl || (coverImagePreview ? coverImagePreview.replace(import.meta.env.VITE_API_BASE_URL || "", "") : ""),
+        status: (isEditMode && status.toLowerCase() === "approved") ? "draft" : status,
         details: {
           description,
           venue_address: venueAddress,
@@ -191,11 +212,13 @@ export default function EventForm() {
           total_capacity: totalCapacity,
           terms_and_conditions: terms,
         },
-        ticket_types: tickets.map(t => ({
-          ...t,
-          price: Number(t.price),
-          total_quantity: Number(t.total_quantity)
-        })),
+        ticket_types: entryType === "Free" 
+          ? [{ name: "Free Entry", price: 0, total_quantity: Number(freeQuantity) }]
+          : tickets.map(t => ({
+              ...t,
+              price: Number(t.price),
+              total_quantity: Number(t.total_quantity)
+            })),
         key_personnel: personnel,
       };
 
@@ -277,6 +300,7 @@ export default function EventForm() {
                       <input
                         type="datetime-local"
                         required
+                        min={new Date().toISOString().slice(0, 16)}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
@@ -342,14 +366,15 @@ export default function EventForm() {
                      <input type="text" required placeholder="JLN Stadium" value={venueName} onChange={e => setVenueName(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" />
                 </div>
                 <div>
-                     <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">Venue Location</label>
-                     <select required value={city} onChange={e => setCity(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400">
-                         <option value="">Select city</option>
-                         <option value="Kochi">Kochi</option>
-                         <option value="Bangalore">Bangalore</option>
-                         <option value="Mumbai">Mumbai</option>
-                         <option value="Delhi">Delhi</option>
-                     </select>
+                     <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase text-left">Venue Location (City)</label>
+                     <input 
+                       type="text" 
+                       required 
+                       placeholder="e.g. Kochi" 
+                       value={city} 
+                       onChange={e => setCity(e.target.value)} 
+                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                     />
                 </div>
               </div>
               <div className="mb-6">
@@ -373,6 +398,28 @@ export default function EventForm() {
                   </label>
               </div>
           </div>
+
+          {entryType === "Free" && (
+              <div className="pt-6 border-t border-gray-100">
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                          <div>
+                              <label className="block text-sm font-bold text-gray-900 tracking-wide mb-1 uppercase">Total Capacity</label>
+                              <p className="text-xs text-gray-500 mb-4">Set the maximum number of people who can attend for free.</p>
+                              <input 
+                                type="number" 
+                                required 
+                                min="1" 
+                                placeholder="e.g. 500" 
+                                value={freeQuantity || ''} 
+                                onChange={e => setFreeQuantity(Number(e.target.value))} 
+                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                              />
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          )}
 
           {entryType === "Paid" && (
               <div className="pt-6 border-t border-gray-100">
@@ -400,31 +447,35 @@ export default function EventForm() {
                                       <input type="text" required placeholder="Premium" value={ticket.name} onChange={e => updateTicket(idx, "name", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
                                   </div>
                               </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                      <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Price (₹)</label>
-                                      <input type="number" required min="0" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
-                                  </div>
-                                  <div>
-                                      <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Quantity</label>
-                                      <input type="number" required min="1" placeholder="100" value={ticket.total_quantity || ''} onChange={e => updateTicket(idx, "total_quantity", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none focus:border-gray-400" />
-                                  </div>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 mt-6">
-                      <div>
-                          <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Capacity</label>
-                          <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 font-semibold">{totalCapacity}</div>
-                          <p className="text-[10px] text-gray-400 mt-2">Automatically calculated based on the ticket categories provided.</p>
-                      </div>
-                      <div>
-                          <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Price Value</label>
-                          <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 font-semibold">₹ {totalPrice.toLocaleString()}</div>
-                      </div>
-                  </div>
+                               <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                       <div className="flex justify-between items-center mb-1.5">
+                                           <label className="block text-[11px] font-bold text-gray-500 tracking-wider uppercase">Price (₹)</label>
+                                       </div>
+                                       <input type="number" required min="1" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
+                                   </div>
+                                   <div>
+                                       <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Quantity</label>
+                                       <input type="number" required min="1" placeholder="100" value={ticket.total_quantity || ''} onChange={e => updateTicket(idx, "total_quantity", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none focus:border-gray-400" />
+                                   </div>
+                               </div>
+                           </div>
+                       ))}
+                   </div>
+ 
+                   <div className="grid grid-cols-2 gap-6 mt-6">
+                       <div>
+                           <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Capacity</label>
+                           <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 font-semibold">{totalCapacity}</div>
+                           <p className="text-[10px] text-gray-400 mt-2">Automatically calculated based on the ticket categories provided.</p>
+                       </div>
+                       <div>
+                           <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Price Value</label>
+                           <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 font-semibold">
+                               ₹ {totalPrice.toLocaleString()}
+                           </div>
+                       </div>
+                   </div>
               </div>
           )}
 

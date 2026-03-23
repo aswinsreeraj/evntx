@@ -180,10 +180,13 @@ func (u *EventUsecase) CreateEvent(
 	}
 
 	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("organizer_id", organizerID).
-		Time("timestamp", now).
-		Msg("event_created")
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", "").
+		Str("to", "draft").
+		Str("actor_id", organizerID).
+		Msg("")
 
 	return eventID, nil
 }
@@ -207,7 +210,7 @@ func (u *EventUsecase) UpdateEvent(
 		return errors.New("EVT_004: Forbidden action")
 	}
 
-	if event.Status != "draft" && event.Status != "rejected" {
+	if event.Status != "draft" && event.Status != "rejected" && event.Status != "approved" {
 		return errors.New("EVT_006: Event cannot be updated in current state")
 	}
 
@@ -243,6 +246,18 @@ func (u *EventUsecase) UpdateEvent(
 	now := time.Now()
 	eventUpdates["updated_at"] = now
 	detailsUpdates["updated_at"] = now
+ 
+	if event.Status == "approved" {
+		eventUpdates["status"] = "draft"
+		logger.Log.Info().
+			Str("event", "event_state_changed").
+			Str("entity", "event").
+			Str("entity_id", eventID).
+			Str("from", "approved").
+			Str("to", "draft").
+			Str("actor_id", organizerID).
+			Msg("")
+	}
 
 	for i := range ticketUpdates {
 		if ticketUpdates[i].ID == "" {
@@ -297,12 +312,13 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 	}
 
 	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("organizer_id", organizerID).
-		Str("previous_status", event.Status).
-		Str("new_status", "pending").
-		Time("timestamp", time.Now()).
-		Msg("event_submitted_for_approval")
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "pending").
+		Str("actor_id", organizerID).
+		Msg("")
 
 	return nil
 }
@@ -323,12 +339,13 @@ func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID
 	}
 
 	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("admin_id", adminID).
-		Str("previous_status", event.Status).
-		Str("new_status", "approved").
-		Time("timestamp", time.Now()).
-		Msg("event_approved")
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "approved").
+		Str("actor_id", adminID).
+		Msg("")
 
 	return nil
 }
@@ -349,13 +366,13 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 	}
 
 	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("admin_id", adminID).
-		Str("reason", reason).
-		Str("previous_status", event.Status).
-		Str("new_status", "rejected").
-		Time("timestamp", time.Now()).
-		Msg("event_rejected")
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "rejected").
+		Str("actor_id", adminID).
+		Msg("")
 
 	return nil
 }

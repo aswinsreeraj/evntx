@@ -381,7 +381,7 @@ export default function EventManagementPage() {
                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
                     disabled={!evt.slug && !evt.id}
                     onClick={() => {
-                      navigate(`/events/${evt.slug ?? evt.id}`);
+                      navigate(`/events/${evt.slug || evt.id}`);
                       setOpenDropdownId(null);
                       setDropdownPosition(null);
                     }}

@@ -80,7 +80,21 @@ export default function EventCard({ event }: Props) {
               </span>
             ))}
           </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-50 flex justify-between items-center">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Price From</span>
+            <span className="text-sm font-bold text-[#e53e5d]">
+              {event.min_price > 0 ? `₹${event.min_price}` : "Free"}
+            </span>
+          </div>
         </div>
+        {event.available_capacity <= 0 && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+            <span className="bg-[#0b101e] text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg transform -rotate-12 translate-y-4">
+              SOLD OUT
+            </span>
+          </div>
+        )}
       </div>
     </Link>
   )
