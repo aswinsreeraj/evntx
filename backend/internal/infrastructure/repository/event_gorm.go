@@ -22,9 +22,11 @@ type EventModel struct {
 	EndTime       int64
 	Tags          string
 	Status        string
-	CoverImageURL string
-	CreatedAt     int64
-	UpdatedAt     int64
+	CoverImageURL     string
+	MinPrice          float64 `gorm:"->"`
+	AvailableCapacity int     `gorm:"->"`
+	CreatedAt         int64
+	UpdatedAt         int64
 }
 
 type EventDetailsModel struct {
@@ -91,7 +93,9 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 		Select("COALESCE(MIN(ticket_type_models.price), 0), COALESCE(MAX(ticket_type_models.price), 0)").
 		Row().Scan(&globalMin, &globalMax)
 
-	query := r.db.Model(&EventModel{}).Where("status IN ?", []string{"live", "approved"})
+	query := r.db.Model(&EventModel{}).
+		Select("event_models.*, COALESCE((SELECT MIN(price) FROM ticket_type_models WHERE event_id = event_models.id), 0) as min_price, COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
+		Where("status IN ?", []string{"live", "approved"})
 
 	if city != "" {
 		cities := strings.Split(city, ",")
@@ -140,7 +144,6 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 
 	query.Count(&total)
 
-	// Fallback: if user specified city but no events were found, fetch all events ignoring city
 	if total == 0 && city != "" {
 		query = r.db.Model(&EventModel{}).Where("status IN ?", []string{"live", "approved"})
 		
@@ -219,11 +222,13 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 			VenueName:     m.VenueName,
 			Category:      m.Category,
 			StartTime:     time.Unix(m.StartTime, 0),
-			EndTime:       time.Unix(m.EndTime, 0),
-			Tags:          m.Tags,
-			CoverImageURL: m.CoverImageURL,
-			CreatedAt:     time.Unix(m.CreatedAt, 0),
-			UpdatedAt:     time.Unix(m.UpdatedAt, 0),
+			EndTime:           time.Unix(m.EndTime, 0),
+			Tags:              m.Tags,
+			CoverImageURL:     m.CoverImageURL,
+			MinPrice:          m.MinPrice,
+			AvailableCapacity: m.AvailableCapacity,
+			CreatedAt:         time.Unix(m.CreatedAt, 0),
+			UpdatedAt:         time.Unix(m.UpdatedAt, 0),
 		})
 	}
 

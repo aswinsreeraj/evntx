@@ -4,7 +4,7 @@ interface CategorySectionProps {
 }
 
 export default function CategorySection({ activeCategory, onCategoryChange }: CategorySectionProps) {
-  const categories = ["All", "Music", "Tech", "Business", "Arts", "Sports"];
+  const categories = ["All", "Comedy", "Music", "Workshop", "Conference"];
 
   return (
     <section className="max-w-7xl mx-auto px-6 mt-16">

@@ -32,6 +32,7 @@ export interface CreateEventPayload {
   end_time: string;
   tags?: string[];
   cover_image_url?: string;
+  status?: string;
   details: EventDetailsInput;
   ticket_types: TicketInput[];
   key_personnel?: PersonnelInput[];
@@ -46,6 +47,7 @@ export interface UpdateEventPayload {
   end_time?: string;
   tags?: string[];
   cover_image_url?: string;
+  status?: string;
   details?: Partial<EventDetailsInput>;
   ticket_types?: TicketInput[];
   key_personnel?: PersonnelInput[];

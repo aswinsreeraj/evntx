@@ -102,7 +102,7 @@ func (u *UserUsecase) AdminSearchUsers(
 	status string,
 	page int,
 	limit int,
-) ([]domain.User, int64, error) {
+) ([]domain.AdminUserDetails, int64, error) {
 	return u.repo.Search(search, status, page, limit)
 }
 

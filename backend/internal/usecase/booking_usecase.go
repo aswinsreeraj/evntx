@@ -24,7 +24,6 @@ func NewBookingUsecase(bookingRepo repository.BookingRepository, eventRepo repos
 }
 
 func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, eventID string, requests []domain.TicketRequest) (*domain.Booking, error) {
-	// 1. Fetch Event and validate state
 	event, err := u.eventRepo.GetEventByID(eventID)
 	if err != nil {
 		return nil, errors.New("event not found")
@@ -34,13 +33,11 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		return nil, errors.New("EVT_012: Event not live")
 	}
 
-	// 2. Fetch ticket types to calculate total amount
 	ticketTypes, err := u.eventRepo.GetTicketTypesByEventID(eventID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a map for quick lookup
 	ticketMap := make(map[string]domain.TicketType)
 	for _, tt := range ticketTypes {
 		ticketMap[tt.ID] = tt
@@ -66,7 +63,6 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	}
 
 	now := time.Now()
-	// Booking expiration: 10 minutes
 	expiresAt := now.Add(10 * time.Minute)
 
 	booking := &domain.Booking{
@@ -82,24 +78,32 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
 	if err != nil {
 		if err.Error() == "EVT_009: Ticket sold out" {
-			return nil, errors.New("EVT_009: Tickets sold out") // Match required message exactly
+			return nil, errors.New("EVT_009: Tickets sold out")
 		}
 		return nil, err
 	}
 
 	if event.Status == "approved" {
 		_ = u.eventRepo.UpdateEventStatus(ctx, eventID, "live")
-		logger.Log.Info().Str("event_id", eventID).Msg("updated event status to live on first booking")
+		logger.Log.Info().
+			Str("event", "event_state_changed").
+			Str("entity", "event").
+			Str("entity_id", eventID).
+			Str("from", "approved").
+			Str("to", "live").
+			Str("actor_id", userID).
+			Msg("")
 	}
 
 	logger.Log.Info().
+		Str("event", "booking_reserved").
 		Str("booking_id", booking.ID).
 		Str("user_id", booking.UserID).
 		Str("event_id", booking.EventID).
+		Interface("tickets", requests).
 		Float64("total_amount", booking.TotalAmount).
 		Time("expires_at", booking.ExpiresAt).
-		Time("timestamp", now).
-		Msg("booking_reserved")
+		Msg("")
 
 	return booking, nil
 }

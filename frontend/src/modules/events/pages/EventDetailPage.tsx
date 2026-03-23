@@ -142,22 +142,36 @@ export default function EventDetailPage() {
               <div className="bg-[#fcf3f4] rounded-xl p-4 mb-4 flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700">Price From</span>
                 <span className="text-sm font-bold text-[#e53e5d]">
-                  {displayEvent.ticketTypes[0] ? formatCurrency(displayEvent.ticketTypes[0].price) : `₹ ${displayEvent.priceLabel || "N/A"}`}
+                  {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0 
+                    ? formatCurrency(Math.min(...displayEvent.ticketTypes.map(t => t.price)))
+                    : `₹ ${displayEvent.priceLabel || "N/A"}`}
                 </span>
               </div>
-
-              <button
-                className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-colors"
-                onClick={() => {
-                  if (useAuthStore.getState().isAuthenticated) {
-                    navigate(`/events/${eventId}/book`)
-                  } else {
-                    useAuthStore.getState().openAuthModal("goer")
-                  }
-                }}
-              >
-                Continue to Booking
-              </button>
+              
+              {(() => {
+                const isSoldOut = displayEvent.ticketTypes?.length > 0 && 
+                                 displayEvent.ticketTypes.every(t => (t.availableQuantity ?? 0) <= 0);
+                
+                return (
+                  <button
+                    disabled={isSoldOut}
+                    className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
+                      isSoldOut 
+                        ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "bg-[#0b101e] hover:bg-black text-white"
+                    }`}
+                    onClick={() => {
+                      if (useAuthStore.getState().isAuthenticated) {
+                        navigate(`/events/${eventId}/book`)
+                      } else {
+                        useAuthStore.getState().openAuthModal("goer")
+                      }
+                    }}
+                  >
+                    {isSoldOut ? "Sold Out" : "Continue to Booking"}
+                  </button>
+                );
+              })()}
             </div>
           )}
 

@@ -14,9 +14,11 @@ type Event struct {
 	EndTime       time.Time `json:"end_time"`
 	Tags          string    `json:"tags"`
 	Status        string    `json:"status"`
-	CoverImageURL string    `json:"cover_image_url"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	CoverImageURL     string    `json:"cover_image_url"`
+	MinPrice          float64   `json:"min_price"`
+	AvailableCapacity int       `json:"available_capacity"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type AdminEventDetails struct {

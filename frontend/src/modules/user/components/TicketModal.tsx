@@ -45,13 +45,6 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
       onClose={onClose}
       className="relative w-[min(90vw,520px)] rounded-[24px] bg-white px-6 pb-8 pt-5 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute right-5 top-5 rounded-full p-1 text-[#d9d9d9] transition hover:bg-[#f7f7f7]"
-      >
-        <X className="h-8 w-8" />
-      </button>
 
       <div className="mx-auto flex max-w-[470px] flex-col items-center gap-6">
         <div className="relative w-full">
@@ -148,6 +141,58 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
           >
             <ChevronRight className="h-12 w-12" />
           </button>
+        </div>
+
+        <div id="tickets-print-only" className="hidden print:block">
+          {tickets.map((t, idx) => (
+             <div key={idx} className="page-break relative w-full max-w-[470px] mx-auto mb-10 overflow-hidden rounded-[32px] bg-[#0b101e] pb-1 shadow-2xl">
+               <div className="relative aspect-[16/9] w-full overflow-hidden">
+                 <img
+                   src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
+                   alt={booking.event_title}
+                   className="h-full w-full object-cover opacity-60"
+                 />
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 text-center p-6">
+                    <h2 className="text-3xl font-bold tracking-tight text-white mb-2">{booking.event_title}</h2>
+                    <p className="text-sm font-medium text-white/90">{booking.event_city}</p>
+                 </div>
+               </div>
+               
+               <div className="bg-white px-8 pb-8 pt-10 text-[#111111]">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-left mb-8">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Date</p>
+                      <p className="mt-1 text-lg">{formatDateBadge(booking.event_start_time)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Time</p>
+                      <p className="mt-1 text-lg">{formatEventTime(booking.event_start_time)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket Type</p>
+                      <p className="mt-1 text-lg font-semibold">{t.ticket_type ?? "General"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket ID</p>
+                      <p className="mt-1 text-lg">{t.ticket_code ?? booking.booking_id.slice(0, 4)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="relative mt-2 border-t border-dotted border-gray-200">
+                    <div className="absolute -left-12 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-[#0b101e]" />
+                    <div className="absolute -right-12 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-[#0b101e]" />
+                  </div>
+
+                  <div className="flex items-end justify-between pt-6">
+                    <div>
+                      <p className="text-lg text-gray-900 font-bold">{useAuthStore.getState().user?.name || "Attendee"}</p>
+                      <p className="mt-0.5 text-xs text-[#7b838e]">Booking ID: {booking.booking_id}</p>
+                    </div>
+                    <TicketQr value={`${booking.booking_id}-${t.ticket_id ?? "ticket"}`} />
+                  </div>
+               </div>
+             </div>
+          ))}
         </div>
 
         <button

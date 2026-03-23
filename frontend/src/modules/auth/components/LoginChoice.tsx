@@ -2,7 +2,7 @@ import { useState } from "react"
 import { GoogleLogin } from "@react-oauth/google"
 import { authApi } from "../api"
 
-export default function LoginChoice({ setView, setEmail, isOrganizer }: any) {
+export default function LoginChoice({ setView, setEmail, isOrganizer, onClose }: any) {
   const [localEmail, setLocalEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -13,6 +13,7 @@ export default function LoginChoice({ setView, setEmail, isOrganizer }: any) {
     try {
       if (credentialResponse.credential) {
         await authApi.googleLogin(credentialResponse.credential);
+        if (typeof onClose === 'function') onClose();
         window.location.href = isOrganizer ? "/organizer/profile" : "/";
       } else {
         setErrorMsg("Google login failed. No credential received.");

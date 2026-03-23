@@ -14,7 +14,7 @@ type UserRepository interface {
 		status string,
 		page int,
 		limit int,
-	) ([]domain.User, int64, error)
+	) ([]domain.AdminUserDetails, int64, error)
 	SearchOrganizers(
 		search string,
 		status string,

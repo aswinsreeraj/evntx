@@ -51,21 +51,25 @@ export default function EventBookingPage() {
   }
 
   const handleProceed = () => {
-    if (totalAmount === 0) return
+    if (selectedTickets.length === 0) return
     setError(null)
-    setCheckoutOpen(true)
+    if (totalAmount > 0) {
+      setCheckoutOpen(true)
+    } else {
+      handlePayment()
+    }
   }
-
+ 
   const handlePayment = async () => {
     if (!eventId || selectedTickets.length === 0) return
-
+ 
     setIsSubmitting(true)
     setError(null)
-
+ 
     try {
       const hasTicketIds = selectedTickets.every((ticket) => ticket.id)
       let bookingId = `BK-${Date.now()}`
-
+ 
       if (hasTicketIds) {
         const response = await eventsApi.reserveTickets({
           eventId: displayEvent.id,
@@ -74,10 +78,10 @@ export default function EventBookingPage() {
             quantity: ticket.quantity,
           })),
         })
-
+ 
         bookingId = response.booking_id
       }
-
+ 
       saveBookingConfirmation({
         bookingId,
         eventId,
@@ -97,7 +101,7 @@ export default function EventBookingPage() {
         })),
         createdAt: new Date().toISOString(),
       })
-
+ 
       navigate(`/events/${eventId}/confirmation`)
     } catch (paymentError: any) {
       setError(
@@ -108,7 +112,7 @@ export default function EventBookingPage() {
       setIsSubmitting(false)
     }
   }
-
+ 
   return (
     <div className="bg-white">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
@@ -121,7 +125,7 @@ export default function EventBookingPage() {
                 className="h-full w-full object-cover"
               />
             </div>
-
+ 
             <div className="flex flex-col justify-center gap-2 p-6">
               <h1 className="max-w-md text-lg font-semibold tracking-tight text-[#111111]">
                 {displayEvent.title}
@@ -132,13 +136,13 @@ export default function EventBookingPage() {
             </div>
           </div>
         </section>
-
+ 
         <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <div className="text-center">
             <h2 className="text-xl font-semibold tracking-tight text-[#111111]">Ticket Selection</h2>
             {isLoading ? <p className="mt-1 text-xs text-[#8d949e]">Loading event details...</p> : null}
           </div>
-
+ 
           <div className="flex flex-col gap-3">
             {ticketRows.map((ticket) => (
               <div
@@ -174,20 +178,20 @@ export default function EventBookingPage() {
               </div>
             ))}
           </div>
-
+ 
           <div className="flex justify-end">
             <div className="text-right text-base font-semibold text-[#111111]">
               Total Amount: {formatCurrency(totalAmount)}
             </div>
           </div>
-
+ 
           <button
             type="button"
-            disabled={totalAmount === 0}
+            disabled={selectedTickets.length === 0 || isSubmitting}
             className="rounded-xl bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleProceed}
           >
-            Proceed to Payment
+            {isSubmitting ? "Processing..." : (totalAmount > 0 ? "Proceed to Payment" : "Confirm Booking")}
           </button>
         </section>
       </div>
