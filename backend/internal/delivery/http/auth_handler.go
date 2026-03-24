@@ -2,6 +2,7 @@ package http
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 
@@ -20,7 +21,7 @@ func NewAuthHandler(u *usecase.AuthUsecase) *AuthHandler {
 }
 
 func getAuthErrorMsg(err error, defaultMsg string) string {
-	if err != nil && err.Error() == "Account has been blocked. Please send a mail to admin at admin@evntx.com" {
+	if err != nil && strings.HasPrefix(err.Error(), "Account has been blocked. Please send a mail to admin at") {
 		return err.Error()
 	}
 	return defaultMsg
