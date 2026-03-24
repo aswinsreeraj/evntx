@@ -639,7 +639,9 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
 	var models []EventModel
 	query := r.db.Model(&EventModel{}).
-		Select("event_models.*, (SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason").
+		Select("event_models.*, " +
+			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason, " +
+			"COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("organizer_id = ?", organizerID)
 
 	if status != "" && status != "All" && status != "all" {
@@ -666,6 +668,7 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 			EndTime:       time.Unix(m.EndTime, 0),
 			Tags:          m.Tags,
 			CoverImageURL: m.CoverImageURL,
+			AvailableCapacity: m.AvailableCapacity,
 			RejectionReason: m.RejectionReason,
 			CreatedAt:     time.Unix(m.CreatedAt, 0),
 			UpdatedAt:     time.Unix(m.UpdatedAt, 0),

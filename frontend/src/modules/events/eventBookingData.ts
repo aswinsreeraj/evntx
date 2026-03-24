@@ -3,6 +3,7 @@ export type EventTicketOption = {
   name: string
   price: number
   availableQuantity?: number
+  totalQuantity?: number
 }
 
 export type DisplayEvent = {
@@ -38,6 +39,8 @@ export type DisplayEvent = {
     avatar: string
   }>
   ticketTypes: EventTicketOption[]
+  availableCapacity?: number
+  totalCapacity?: number
 }
 
 const fallbackTicketTypes: EventTicketOption[] = [
@@ -174,6 +177,7 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
           name: ticket.name ?? ticket.Name,
           price: Number(ticket.price ?? ticket.Price ?? 0),
           availableQuantity: ticket.available_quantity ?? ticket.AvailableQuantity,
+          totalQuantity: ticket.total_quantity ?? ticket.TotalQuantity,
         }))
       : fallbackTicketTypes
 
@@ -212,5 +216,7 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
       : undefined,
     personnel: personnel.length > 0 ? personnel : undefined,
     ticketTypes,
+    availableCapacity: rawDetails.available_capacity ?? rawDetails.AvailableCapacity,
+    totalCapacity: rawDetails.total_capacity ?? rawDetails.TotalCapacity,
   }
 }

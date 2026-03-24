@@ -141,6 +141,11 @@ export default function MyEvents() {
                               })}
                            </p>
                            <p className="text-[13px] text-gray-500 flex items-center gap-1.5 mt-2"><MapPin className="w-3.5 h-3.5" /> {event.venue_name}, {event.city}</p>
+                           {event.available_capacity !== undefined && (
+                              <p className="text-[12px] text-[#e53e5d] flex items-center gap-1.5 mt-2 font-semibold bg-red-50 w-fit px-2.5 py-1 rounded-lg border border-red-100">
+                                 Tickets left: {event.available_capacity}
+                              </p>
+                           )}
                         </div>
                         <div className="mt-4 flex items-center justify-between">
                            <div className="flex items-center gap-4">

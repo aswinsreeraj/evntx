@@ -144,39 +144,54 @@ export default function EventBookingPage() {
           </div>
  
           <div className="flex flex-col gap-3">
-            {ticketRows.map((ticket) => (
+            {ticketRows.map((ticket) => {
+              const isSoldOut = ticket.availableQuantity === 0;
+              return (
               <div
                 key={ticket.name}
-                className="grid items-center gap-3 rounded-xl border border-[#ffc8cf] bg-white px-4 py-3 text-[#111111] md:grid-cols-[1.4fr_1fr_auto]"
+                className={`grid items-center gap-3 rounded-xl border px-4 py-3 text-[#111111] md:grid-cols-[1.4fr_1fr_auto] ${
+                  isSoldOut ? "border-gray-200 bg-gray-50 opacity-80" : "border-[#ffc8cf] bg-white"
+                }`}
               >
-                <div className="text-sm font-medium">{ticket.name}</div>
-                <div className="text-left text-sm font-semibold text-[#ff445d] md:text-center">
+                <div className="text-sm font-medium flex items-center gap-2">
+                  {ticket.name}
+                  {isSoldOut && (
+                     <span className="text-[10px] font-bold uppercase tracking-wider text-white bg-gray-400 px-2 py-0.5 rounded-md">Sold Out</span>
+                  )}
+                </div>
+                <div className={`text-left text-sm font-semibold md:text-center ${isSoldOut ? "text-gray-500" : "text-[#ff445d]"}`}>
                   Price: {formatCurrency(ticket.price)}
                 </div>
                 <div className="ml-auto flex items-center gap-3 text-sm">
-                  <span className="text-[#111111]">Qty</span>
-                  <button
-                    type="button"
-                    aria-label={`Decrease ${ticket.name} tickets`}
-                    className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
-                    onClick={() => updateQuantity(ticket.name, ticket.quantity - 1, ticket.availableQuantity)}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-[#ffd9df] px-2 py-0.5 text-sm font-medium text-[#111111]">
-                    {ticket.quantity}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Increase ${ticket.name} tickets`}
-                    className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
-                    onClick={() => updateQuantity(ticket.name, ticket.quantity + 1, ticket.availableQuantity)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+                  {isSoldOut ? (
+                    <span className="text-gray-400 font-medium text-sm pr-2">Unavailable</span>
+                  ) : (
+                    <>
+                      <span className="text-[#111111]">Qty</span>
+                      <button
+                        type="button"
+                        aria-label={`Decrease ${ticket.name} tickets`}
+                        className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
+                        onClick={() => updateQuantity(ticket.name, ticket.quantity - 1, ticket.availableQuantity)}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="inline-flex min-w-8 items-center justify-center rounded-md bg-[#ffd9df] px-2 py-0.5 text-sm font-medium text-[#111111]">
+                        {ticket.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Increase ${ticket.name} tickets`}
+                        className="rounded-full p-1 text-[#111111] transition hover:bg-[#f7f7f7]"
+                        onClick={() => updateQuantity(ticket.name, ticket.quantity + 1, ticket.availableQuantity)}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
  
           <div className="flex justify-end">
