@@ -1,15 +1,26 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { organizerApi } from "../api";
 import { X, ChevronDown, MapPin, Loader2 } from "lucide-react";
 
 export default function MyEvents() {
    const navigate = useNavigate();
+   const location = useLocation();
    const [events, setEvents] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
    const [statusFilter, setStatusFilter] = useState("All");
+   const [toast, setToast] = useState<string | null>(null);
    const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Completed"];
+
+   useEffect(() => {
+      if (location.state?.toastMessage) {
+         setToast(location.state.toastMessage);
+         window.history.replaceState({}, document.title);
+         const timer = setTimeout(() => setToast(null), 4000);
+         return () => clearTimeout(timer);
+      }
+   }, [location]);
 
    const loadEvents = async () => {
       setLoading(true);
@@ -71,6 +82,15 @@ export default function MyEvents() {
 
    return (
       <OrganizerLayout activeTab="My Events">
+         {toast && (
+            <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50">
+               <span className="w-2 h-2 rounded-full bg-green-400"></span>
+               <span className="text-sm font-medium">{toast}</span>
+               <button onClick={() => setToast(null)} className="ml-4 text-gray-400 hover:text-white">
+                  <X className="w-4 h-4" />
+               </button>
+            </div>
+         )}
          <div className="py-10 px-4 lg:px-10 max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                <h1 className="text-2xl font-bold text-gray-900">Browse through your events</h1>

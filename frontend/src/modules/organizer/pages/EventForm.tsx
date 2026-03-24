@@ -228,7 +228,9 @@ export default function EventForm() {
         await organizerApi.createEvent(payload as CreateEventPayload);
       }
 
-      navigate("/organizer/profile");
+      navigate("/organizer/events", { 
+        state: { toastMessage: isEditMode ? "Event successfully updated!" : "Event successfully created!" } 
+      });
 
     } catch (err: any) {
       console.error(err);
