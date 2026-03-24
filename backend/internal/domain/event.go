@@ -17,6 +17,7 @@ type Event struct {
 	CoverImageURL     string    `json:"cover_image_url"`
 	MinPrice          float64   `json:"min_price"`
 	AvailableCapacity int       `json:"available_capacity"`
+	RejectionReason   string    `json:"rejection_reason,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

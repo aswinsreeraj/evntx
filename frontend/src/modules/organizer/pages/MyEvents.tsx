@@ -11,6 +11,8 @@ export default function MyEvents() {
    const [loading, setLoading] = useState(true);
    const [statusFilter, setStatusFilter] = useState("All");
    const [toast, setToast] = useState<string | null>(null);
+   const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
+   const [selectedReason, setSelectedReason] = useState("");
    const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Completed"];
 
    useEffect(() => {
@@ -174,6 +176,17 @@ export default function MyEvents() {
                               Submit for Approval
                            </button>
                         )}
+                        {(event.status || "").toLowerCase() === "rejected" && event.rejection_reason && (
+                           <button
+                              onClick={() => {
+                                 setSelectedReason(event.rejection_reason);
+                                 setRejectionModalOpen(true);
+                              }}
+                              className="w-full border border-red-500 text-red-500 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                           >
+                              Show Reason
+                           </button>
+                        )}
                         <button
                            onClick={() => handleDelete(event.id)}
                            className="w-full text-[#e53e5d] hover:text-[#d03550] text-sm font-semibold mt-3 p-1"
@@ -185,6 +198,29 @@ export default function MyEvents() {
                ))}
             </div>
          </div>
+
+         {rejectionModalOpen && (
+            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+               <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                   <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                       <h3 className="text-lg font-bold text-gray-900">Rejection Reason</h3>
+                       <button onClick={() => setRejectionModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                           <X className="w-5 h-5" />
+                       </button>
+                   </div>
+                   <div className="p-6">
+                       <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm leading-relaxed border border-red-100">
+                           {selectedReason}
+                       </div>
+                   </div>
+                   <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                       <button onClick={() => setRejectionModalOpen(false)} className="bg-gray-900 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors">
+                           Close
+                       </button>
+                   </div>
+               </div>
+            </div>
+         )}
       </OrganizerLayout>
    );
 }

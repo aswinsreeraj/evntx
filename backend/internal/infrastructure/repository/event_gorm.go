@@ -25,6 +25,7 @@ type EventModel struct {
 	CoverImageURL     string
 	MinPrice          float64 `gorm:"->"`
 	AvailableCapacity int     `gorm:"->"`
+	RejectionReason   string  `gorm:"->"`
 	CreatedAt         int64
 	UpdatedAt         int64
 }
@@ -637,7 +638,9 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 
 func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
 	var models []EventModel
-	query := r.db.Model(&EventModel{}).Where("organizer_id = ?", organizerID)
+	query := r.db.Model(&EventModel{}).
+		Select("event_models.*, (SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason").
+		Where("organizer_id = ?", organizerID)
 
 	if status != "" && status != "All" && status != "all" {
 		query = query.Where("status = ?", strings.ToLower(status))
@@ -663,6 +666,7 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 			EndTime:       time.Unix(m.EndTime, 0),
 			Tags:          m.Tags,
 			CoverImageURL: m.CoverImageURL,
+			RejectionReason: m.RejectionReason,
 			CreatedAt:     time.Unix(m.CreatedAt, 0),
 			UpdatedAt:     time.Unix(m.UpdatedAt, 0),
 		})
