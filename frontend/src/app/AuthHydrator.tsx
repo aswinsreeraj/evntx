@@ -12,7 +12,7 @@ export default function AuthHydrator() {
       return;
     }
 
-    const currentUserId = user?.id ?? "__anonymous__";
+    const currentUserId = user?.id ?? "__anonymous";
     if (hydratedUserIdRef.current === currentUserId) {
       return;
     }
