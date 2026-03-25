@@ -100,19 +100,14 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 
 func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
-	logger.Log.Info().Msgf("Verifying email: %s", email)
-
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
-		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
+		logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed")
 		return nil, nil, "", "", err
 	}
 
-	logger.Log.Info().Msgf("Stored OTP hash: %s", storedOTP.OTPHash)
-	logger.Log.Info().Msgf("Raw OTP received: %s", rawOTP)
-
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
-		logger.Log.Warn().Msgf("Compare failed: %v", err)
+		logger.Log.Warn().Str("email", email).Msg("OTP verification failed: invalid code")
 		return nil, nil, "", "", err
 	}
 
@@ -178,16 +173,14 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 
 func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organizationName, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
-	logger.Log.Info().Msgf("Registering user: %s", email)
-
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
-		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
+		logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed during registration")
 		return nil, nil, "", "", err
 	}
 
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
-		logger.Log.Warn().Msgf("Compare failed: %v", err)
+		logger.Log.Warn().Str("email", email).Msg("OTP verification failed during registration")
 		return nil, nil, "", "", err
 	}
 

@@ -283,12 +283,6 @@ func (u *EventUsecase) UpdateEvent(
 		return err
 	}
 
-	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("organizer_id", organizerID).
-		Time("timestamp", now).
-		Msg("event_updated")
-
 	return nil
 }
 
@@ -396,12 +390,6 @@ func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, even
 		logger.Log.Error().Err(err).Msg("Failed to delete event")
 		return err
 	}
-
-	logger.Log.Info().
-		Str("event_id", eventID).
-		Str("organizer_id", organizerID).
-		Time("timestamp", time.Now()).
-		Msg("event_deleted")
 
 	return nil
 }

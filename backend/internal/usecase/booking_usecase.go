@@ -133,13 +133,6 @@ func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, pag
 		return nil, 0, err
 	}
 
-	logger.Log.Info().
-		Str("user_id", userID).
-		Int("page", page).
-		Int("limit", limit).
-		Time("timestamp", time.Now()).
-		Msg("user_bookings_fetched")
-
 	return bookings, total, nil
 }
 
@@ -148,14 +141,6 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Log.Info().
-		Str("user_id", userID).
-		Str("event_filter", eventID).
-		Str("booking_filter", bookingID).
-		Str("status_filter", status).
-		Time("timestamp", time.Now()).
-		Msg("user_tickets_fetched")
 
 	return tickets, nil
 }
