@@ -8,6 +8,7 @@ import (
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -36,7 +37,7 @@ func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interfac
 	}
 
 	if event.Status != "approved" && event.Status != "live" {
-		return nil, nil, nil, nil, errors.New("event not found")
+		return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
 	}
 
 	details, err := u.repo.GetEventDetails(event.ID)
@@ -64,7 +65,7 @@ func (u *EventUsecase) GetOrganizerEvent(slug string, organizerID string) (inter
 	}
 
 	if event.OrganizerID != organizerID {
-		return nil, nil, nil, nil, errors.New("event not found")
+		return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
 	}
 
 	details, err := u.repo.GetEventDetails(event.ID)
@@ -203,20 +204,20 @@ func (u *EventUsecase) UpdateEvent(
 
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
-		return errors.New("event not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	if event.OrganizerID != organizerID {
-		return errors.New("EVT_004: Forbidden action")
+		return apiErrors.ErrForbiddenAction
 	}
 
 	if event.Status != "draft" && event.Status != "rejected" && event.Status != "approved" {
-		return errors.New("EVT_006: Event cannot be updated in current state")
+		return apiErrors.ErrInvalidStateTransition
 	}
 
 	details, err := u.repo.GetEventDetails(eventID)
 	if err != nil {
-		return errors.New("event details not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	capacity := details.TotalCapacity
@@ -289,15 +290,15 @@ func (u *EventUsecase) UpdateEvent(
 func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID string, eventID string) error {
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
-		return errors.New("event not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	if event.OrganizerID != organizerID {
-		return errors.New("EVT_004: Forbidden action")
+		return apiErrors.ErrForbiddenAction
 	}
 
 	if event.Status != "draft" && event.Status != "rejected" {
-		return errors.New("EVT_006: Event cannot be submitted in current state")
+		return apiErrors.ErrInvalidStateTransition
 	}
 
 	err = u.repo.UpdateEventStatus(ctx, eventID, "pending")
@@ -320,11 +321,11 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID string) error {
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
-		return errors.New("event not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	if event.Status == "approved" || event.Status == "live" || event.Status == "completed" {
-		return errors.New("EVT_006: Event cannot be approved in current state")
+		return apiErrors.ErrInvalidStateTransition
 	}
 
 	err = u.repo.ApproveEvent(ctx, eventID)
@@ -347,11 +348,11 @@ func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID
 func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID string, reason string) error {
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
-		return errors.New("event not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	if event.Status == "rejected" || event.Status == "completed" {
-		return errors.New("EVT_006: Event cannot be rejected in current state")
+		return apiErrors.ErrInvalidStateTransition
 	}
 
 	err = u.repo.RejectEvent(ctx, eventID, adminID, reason)
@@ -378,11 +379,11 @@ func (u *EventUsecase) GetOrganizerEvents(ctx context.Context, organizerID strin
 func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, eventID string) error {
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
-		return errors.New("event not found")
+		return apiErrors.ErrResourceNotFound
 	}
 
 	if event.OrganizerID != organizerID {
-		return errors.New("EVT_004: Forbidden action")
+		return apiErrors.ErrForbiddenAction
 	}
 
 	err = u.repo.DeleteEvent(ctx, eventID)
