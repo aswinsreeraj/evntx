@@ -66,3 +66,30 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 16mm;
+  }
+
+  body > * {
+    display: none !important;
+  }
+
+  #tickets-print-root {
+    display: block !important;
+  }
+
+  .ticket-print-page {
+    break-after: page;
+    page-break-after: always;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ticket-print-page:last-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
