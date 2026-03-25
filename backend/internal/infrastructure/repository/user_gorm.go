@@ -8,9 +8,9 @@ import (
 )
 
 type UserModel struct {
-	ID            string   `gorm:"type:uuid;primaryKey"`
+	ID            string `gorm:"type:uuid;primaryKey"`
 	Name          string
-	Email         string   `gorm:"uniqueIndex"`
+	Email         string `gorm:"uniqueIndex"`
 	Mobile        string
 	Dob           string
 	Gender        string
@@ -20,6 +20,14 @@ type UserModel struct {
 	EmailVerified bool
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+type OrganizerDetailModel struct {
+	UserID           string `gorm:"type:uuid;primaryKey"`
+	OrganizationName string
+	Address          string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type userGormRepository struct {
@@ -113,36 +121,69 @@ func (r *userGormRepository) Update(user *domain.User) error {
 		}).Error
 }
 
+func (r *userGormRepository) GetOrganizerDetails(userID string) (*domain.OrganizerDetail, error) {
+	var model OrganizerDetailModel
+
+	if err := r.db.Where("user_id = ?", userID).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.OrganizerDetail{
+		UserID:           model.UserID,
+		OrganizationName: model.OrganizationName,
+		Address:          model.Address,
+	}, nil
+}
+
+func (r *userGormRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail) error {
+	model := OrganizerDetailModel{
+		UserID:           detail.UserID,
+		OrganizationName: detail.OrganizationName,
+		Address:          detail.Address,
+		UpdatedAt:        time.Now(),
+	}
+
+	return r.db.Where("user_id = ?", detail.UserID).Assign(model).FirstOrCreate(&model).Error
+}
+
 func (r *userGormRepository) Search(
 	search string,
 	status string,
 	page int,
 	limit int,
-) ([]domain.User, int64, error) {
+) ([]domain.AdminUserDetails, int64, error) {
 
-	var models []UserModel
+	var results []struct {
+		UserModel
+		TotalBookings int64
+	}
 	var total int64
 
-	query := r.db.Model(&UserModel{})
+	query := r.db.Table("user_models").
+		Select(`
+			user_models.*,
+			COALESCE((
+				SELECT COUNT(b.id) FROM booking_models b
+				WHERE b.user_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_bookings
+		`)
 
-	
 	query = query.Where(
-		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?)",
-		domain.RoleAdmin,
+		"NOT EXISTS (SELECT 1 FROM user_role_models WHERE user_role_models.user_id::uuid = user_models.id)",
 	)
 
 	if search != "" {
 		query = query.Where(
-			"name ILIKE ? OR email ILIKE ?",
+			"user_models.name ILIKE ? OR user_models.email ILIKE ?",
 			"%"+search+"%",
 			"%"+search+"%",
 		)
 	}
 
 	if status == "active" {
-		query = query.Where("is_active = ?", true)
+		query = query.Where("user_models.is_active = ?", true)
 	} else if status == "suspended" || status == "inactive" {
-		query = query.Where("is_active = ?", false)
+		query = query.Where("user_models.is_active = ?", false)
 	}
 
 	query.Count(&total)
@@ -150,7 +191,98 @@ func (r *userGormRepository) Search(
 	offset := (page - 1) * limit
 
 	err := query.
-		Order("created_at DESC").
+		Order("user_models.created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&results).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]domain.AdminUserDetails, 0, len(results))
+	for _, res := range results {
+		users = append(users, domain.AdminUserDetails{
+			User: domain.User{
+				ID:            res.ID,
+				Name:          res.Name,
+				Email:         res.Email,
+				Mobile:        res.Mobile,
+				Dob:           res.Dob,
+				Gender:        res.Gender,
+				ProfileImage:  res.ProfileImage,
+				Locations:     res.Locations,
+				IsActive:      res.IsActive,
+				EmailVerified: res.EmailVerified,
+				CreatedAt:     res.CreatedAt,
+				UpdatedAt:     res.UpdatedAt,
+			},
+			TotalBookings: res.TotalBookings,
+			WalletBalance: 0,
+		})
+	}
+
+	return users, total, nil
+}
+
+func (r *userGormRepository) SearchOrganizers(
+	search string,
+	status string,
+	page int,
+	limit int,
+) ([]domain.OrganizerDetails, int64, error) {
+
+	var models []struct {
+		UserModel
+		OrganizationName string
+		Address          string
+		TotalEvents      int64
+		TotalBookings    int64
+		TotalRevenue     float64
+	}
+	var total int64
+
+	query := r.db.Table("user_models").
+		Select(`
+			user_models.*,
+			organizer_detail_models.organization_name,
+			organizer_detail_models.address,
+			COALESCE((
+				SELECT COUNT(e.id) FROM event_models e WHERE e.organizer_id = user_models.id::text
+			), 0) AS total_events,
+			COALESCE((
+				SELECT COUNT(b.id) FROM booking_models b
+				JOIN event_models e ON e.id = b.event_id
+				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_bookings,
+			COALESCE((
+				SELECT SUM(b.total_amount) FROM booking_models b
+				JOIN event_models e ON e.id = b.event_id
+				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+			), 0) AS total_revenue
+		`).
+		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
+		Joins("LEFT JOIN organizer_detail_models ON organizer_detail_models.user_id::uuid = user_models.id")
+
+	if search != "" {
+		query = query.Where(
+			"user_models.name ILIKE ? OR user_models.email ILIKE ?",
+			"%"+search+"%",
+			"%"+search+"%",
+		)
+	}
+
+	if status == "active" {
+		query = query.Where("user_models.is_active = ?", true)
+	} else if status == "suspended" || status == "inactive" {
+		query = query.Where("user_models.is_active = ?", false)
+	}
+
+	query.Count(&total)
+
+	offset := (page - 1) * limit
+	err := query.
+		Order("user_models.created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&models).Error
@@ -159,25 +291,28 @@ func (r *userGormRepository) Search(
 		return nil, 0, err
 	}
 
-	users := make([]domain.User, 0)
+	orgs := make([]domain.OrganizerDetails, 0, len(models))
 	for _, m := range models {
-		users = append(users, domain.User{
-			ID:            m.ID,
-			Name:          m.Name,
-			Email:         m.Email,
-			Mobile:        m.Mobile,
-			Dob:           m.Dob,
-			Gender:        m.Gender,
-			ProfileImage:  m.ProfileImage,
-			Locations:     m.Locations,
-			IsActive:      m.IsActive,
-			EmailVerified: m.EmailVerified,
-			CreatedAt:     m.CreatedAt,
-			UpdatedAt:     m.UpdatedAt,
+		orgs = append(orgs, domain.OrganizerDetails{
+			User: domain.User{
+				ID:        m.ID,
+				Name:      m.Name,
+				Email:     m.Email,
+				IsActive:  m.IsActive,
+				CreatedAt: m.CreatedAt,
+			},
+			OrganizerDetail: domain.OrganizerDetail{
+				OrganizationName: m.OrganizationName,
+				Address:          m.Address,
+			},
+			TotalBookings: m.TotalBookings,
+			TotalEvents:   m.TotalEvents,
+			WalletBalance: 0,
+			TotalRevenue:  int64(m.TotalRevenue),
 		})
 	}
 
-	return users, total, nil
+	return orgs, total, nil
 }
 
 func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {

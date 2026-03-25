@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/pkg/logger"
@@ -39,6 +41,15 @@ func NewAuthUsecase(
 		roleRepo:    roleRepo,
 	}
 }
+
+func getAdminEmail() string {
+	email := os.Getenv("ADMIN_EMAIL")
+	if email == "" {
+		return "admin@evntx.com"
+	}
+	return email
+}
+
 func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 
 	isNewUser := false
@@ -50,11 +61,7 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 			return false, err
 		}
 	} else if !user.IsActive {
-		return false, errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com") // dynamic email for admin, not a static one
-		// either keep a configuration file for the project and load the mail from there, if only one admin is there
-		// fetch admin email from the database, according to the admin role and functions.
-		// each user can have a separate admin url
-		// create a table and add entry to the table for keeping track of blocker users and the email can be assigned to the entry accordingly
+		return false, fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 
 	}
 
@@ -93,19 +100,14 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 
 func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
-	logger.Log.Info().Msgf("Verifying email: %s", email)
-
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
-		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
+		logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed")
 		return nil, nil, "", "", err
 	}
 
-	logger.Log.Info().Msgf("Stored OTP hash: %s", storedOTP.OTPHash)
-	logger.Log.Info().Msgf("Raw OTP received: %s", rawOTP)
-
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
-		logger.Log.Warn().Msgf("Compare failed: %v", err)
+		logger.Log.Warn().Str("email", email).Msg("OTP verification failed: invalid code")
 		return nil, nil, "", "", err
 	}
 
@@ -132,7 +134,7 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 			return nil, nil, "", "", err
 		}
 	} else if !user.IsActive {
-		return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
@@ -169,18 +171,16 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 	return user, roles, accessToken, refreshToken, nil
 }
 
-func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
-
-	logger.Log.Info().Msgf("Registering user: %s", email)
+func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organizationName, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
 
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
-		logger.Log.Warn().Msgf("FindValidOTP failed: %v", err)
+		logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed during registration")
 		return nil, nil, "", "", err
 	}
 
 	if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil {
-		logger.Log.Warn().Msgf("Compare failed: %v", err)
+		logger.Log.Warn().Str("email", email).Msg("OTP verification failed during registration")
 		return nil, nil, "", "", err
 	}
 
@@ -210,7 +210,7 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 		}
 	} else {
 		if !user.IsActive {
-			return nil, nil, "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+			return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 		}
 		user.Name = name
 		user.Dob = dob
@@ -249,6 +249,31 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, userAgent, ip s
 	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
 	if err != nil {
 		roles = []domain.UserRole{}
+	}
+
+	if roleStr == "organizer" {
+		hasOrganizer := false
+		for _, r := range roles {
+			if r == domain.RoleOrganizer {
+				hasOrganizer = true
+				break
+			}
+		}
+		if !hasOrganizer {
+			if err := u.roleRepo.AddRole(user.ID, domain.RoleOrganizer); err == nil {
+				roles = append(roles, domain.RoleOrganizer)
+			}
+		}
+	}
+
+	if roleStr == "organizer" && organizationName != "" {
+		if err := u.userRepo.UpsertOrganizerDetails(&domain.OrganizerDetail{
+			UserID:           user.ID,
+			OrganizationName: organizationName,
+			Address:          "",
+		}); err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 
 	return user, roles, accessToken, refreshToken, nil
@@ -313,7 +338,7 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 			return "", "", err
 		}
 	} else if !user.IsActive {
-		return "", "", errors.New("Account has been blocked. Please send a mail to admin at admin@evntx.com")
+		return "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)

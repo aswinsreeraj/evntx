@@ -4,9 +4,8 @@ import { useAuthStore } from "../modules/auth/store/authStore";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
-    withCredentials: true, 
+    withCredentials: true,
 });
-
 
 api.interceptors.request.use((config) => {
     const token = tokenManager.getToken();
@@ -17,7 +16,6 @@ api.interceptors.request.use((config) => {
 
     return config;
 });
-
 
 api.interceptors.response.use(
     (response) => response,

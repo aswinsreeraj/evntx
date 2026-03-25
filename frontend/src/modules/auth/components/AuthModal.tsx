@@ -11,7 +11,7 @@ type AuthView =
   | "otp-verify"
   | "register"
 
-function AuthModal({ open, onClose }: any) {
+function AuthModal({ open, onClose, isOrganizer = false }: any) {
   const [view, setView] = useState<AuthView>("login-choice")
   const [email, setEmail] = useState("")
 
@@ -20,7 +20,6 @@ function AuthModal({ open, onClose }: any) {
 
       <div className="flex w-full h-full">
 
-
         <div className="hidden md:block w-1/2 h-full bg-gray-100">
           <img
             src="https://images.unsplash.com/photo-1543269865-cbf427effbad?w=800&q=80"
@@ -28,7 +27,6 @@ function AuthModal({ open, onClose }: any) {
             className="h-full w-full object-cover"
           />
         </div>
-
 
         <div className="relative w-full md:w-1/2 p-10 flex flex-col overflow-y-auto scrollbar-hide">
 
@@ -45,11 +43,11 @@ function AuthModal({ open, onClose }: any) {
                 <LoginChoice
                   setView={setView}
                   setEmail={setEmail}
+                  isOrganizer={isOrganizer}
+                  onClose={onClose}
                 />
               </motion.div>
             )}
-
-
 
             {view === "otp-verify" && (
               <motion.div
@@ -62,6 +60,8 @@ function AuthModal({ open, onClose }: any) {
                 <OTPVerify
                   email={email}
                   setView={setView}
+                  isOrganizer={isOrganizer}
+                  onClose={onClose}
                 />
               </motion.div>
             )}
@@ -74,7 +74,7 @@ function AuthModal({ open, onClose }: any) {
                 exit={{ x: -50, opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <RegisterForm email={email} onClose={onClose} />
+                <RegisterForm email={email} onClose={onClose} isOrganizer={isOrganizer} />
               </motion.div>
             )}
 

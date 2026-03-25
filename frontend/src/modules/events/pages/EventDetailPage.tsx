@@ -1,65 +1,54 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
 import { CalendarDays, MapPin, Clock, Hourglass } from "lucide-react";
 import { useState } from "react";
+import { buildDisplayEvent, formatCurrency } from "../eventBookingData";
+import { useAuthStore } from "../../auth/store/authStore";
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
-  const { data } = useEvent(eventId!);
+  const { roles } = useAuthStore();
+  const isOrganizer = roles.includes("organizer");
+  const isAdmin = roles.includes("admin");
+  const { data, isLoading, isError } = useEvent(eventId!, isOrganizer, isAdmin);
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("About");
 
-  const event = {
-    title: "Friday Night at Vapour Ladies Night",
-    cover_image_url: "/assets/images/badass-bollywood.png",
-    date: "Saturday, 21 February 2026",
-    time: "07:00 PM",
-    venue: "JLN Stadium, Kochi",
-    duration: "5 hours 30 minutes",
-    price: "5,000",
-    about: {
-      subtitle: "Saturday Bollywod Dhamaka",
-      content: [
-        "Duis placerat nisl at nisi luctus in rhoncus felis condimentum. Vivamus in augue et sem porttitor scelerisque at ac ex. Nam vel gravida lorem.",
-        "Aliquam ultrices pretium odio nec hendrerit. Curabitur quis massa interdum, condimentum purus eu, bibendum felis. Proin libero ex, maximus et quam ut, volutpat condimentum tellus. Aliquam erat volutpat.",
-        "Ut ipsum eros venenatis eu velit vitae landit bibendum massa.",
-        "Cras id urna a quam viverra egestas sit amet et ante. In hac habitasse platea dictumst. Cras nec blandit nisi. Sed ac massa arcu."
-      ]
-    },
-    host: {
-      name: "Jane Doe",
-      role: "Event Organizer",
-      avatar: "/assets/images/host.jpg"
-    },
-    personnel: [
-      {
-        name: "Joe Smith",
-        role: "Lead Performer",
-        avatar: "/assets/images/perfomer.jpg" 
-      },
-      {
-        name: "DJ Jazee",
-        role: "Professional DJ",
-        avatar: "/assets/images/dj.jpg" 
-      }
-    ]
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center bg-gray-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
-  
-  
-  const displayEvent = data || event;
+  if (isError || !data) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 px-6">
+        <div className="w-full max-w-xl rounded-[24px] border border-[#ececec] bg-white p-8 text-center shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
+          <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[#ff445d]">404</div>
+          <h1 className="mt-3 text-2xl font-semibold text-[#111827]">Event Unavailable</h1>
+          <p className="mt-3 text-sm leading-6 text-[#6b7280]">
+            The event you're looking for is either pending approval, has been removed, or just doesn't exist.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayEvent = buildDisplayEvent(eventId ?? "", data);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
 
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
-            <img 
-              src={displayEvent.cover_image_url} 
-              alt={displayEvent.title} 
-              className="w-full h-full object-cover" 
+            <img
+              src={displayEvent.coverImageUrl}
+              alt={displayEvent.title}
+              className="w-full h-full object-cover"
             />
           </div>
 
@@ -99,54 +88,108 @@ export default function EventDetailPage() {
             )}
             {activeTab === "Venue" && (
               <div className="animate-in fade-in duration-300 text-sm text-gray-700">
-                Venue details will go here.
+                <div className="flex flex-col gap-4">
+                  <div className="font-bold text-base text-gray-900">{displayEvent.venueName}</div>
+                  {displayEvent.venueAddress && <p>{displayEvent.venueAddress}</p>}
+                  {displayEvent.city && <p>{displayEvent.city}</p>}
+                  {displayEvent.mapUrl && (
+                    <a href={displayEvent.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#e53e5d] font-medium hover:underline inline-block mt-2">
+                      View on Map
+                    </a>
+                  )}
+                </div>
               </div>
             )}
             {activeTab === "Terms & Conditions" && (
               <div className="animate-in fade-in duration-300 text-sm text-gray-700">
-                Terms and conditions details will go here.
+                <div className="prose prose-sm max-w-none">
+                  {displayEvent.termsAndConditions ? (
+                    <div className="whitespace-pre-line">{displayEvent.termsAndConditions}</div>
+                  ) : (
+                    <p>No terms and conditions specified for this event.</p>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
 
-
         <div className="lg:col-span-1 flex flex-col gap-6">
-          
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">Book Tickets</h3>
-            
-            <div className="flex flex-col gap-4 mb-8">
-              <div className="flex items-start gap-4 text-sm text-gray-700">
-                <CalendarDays className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.date || new Date(displayEvent.start_time).toLocaleDateString()}</span>
+          {!(useAuthStore.getState().roles || []).some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin") && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-6">Book Tickets</h3>
+
+              <div className="flex flex-col gap-4 mb-8">
+                <div className="flex items-start gap-4 text-sm text-gray-700">
+                  <CalendarDays className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
+                  <span>{displayEvent.dateLabel}</span>
+                </div>
+                <div className="flex items-start gap-4 text-sm text-gray-700">
+                  <Clock className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
+                  <span>{displayEvent.timeLabel}</span>
+                </div>
+                <div className="flex items-start gap-4 text-sm text-gray-700">
+                  <MapPin className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
+                  <span>{displayEvent.displayLocation}</span>
+                </div>
+                <div className="flex items-start gap-4 text-sm text-gray-700">
+                  <Hourglass className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
+                  <span>{displayEvent.durationLabel || "N/A"}</span>
+                </div>
               </div>
-              <div className="flex items-start gap-4 text-sm text-gray-700">
-                <Clock className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.time || new Date(displayEvent.start_time).toLocaleTimeString()}</span>
+
+              <div className="bg-[#fcf3f4] rounded-xl p-4 mb-4 flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Price From</span>
+                <span className="text-sm font-bold text-[#e53e5d]">
+                  {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0 
+                    ? formatCurrency(Math.min(...displayEvent.ticketTypes.map(t => t.price)))
+                    : `₹ ${displayEvent.priceLabel || "N/A"}`}
+                </span>
               </div>
-              <div className="flex items-start gap-4 text-sm text-gray-700">
-                <MapPin className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.venue || displayEvent.city}</span>
-              </div>
-              <div className="flex items-start gap-4 text-sm text-gray-700">
-                <Hourglass className="w-5 h-5 text-[#e53e5d] shrink-0 mt-0.5" />
-                <span>{displayEvent.duration || "N/A"}</span>
-              </div>
+              
+              {(() => {
+                const isSoldOut = displayEvent.ticketTypes?.length > 0 && 
+                                 displayEvent.ticketTypes.every(t => (t.availableQuantity ?? 0) <= 0);
+                
+                const isSellingFast = displayEvent.availableCapacity !== undefined &&
+                                      displayEvent.totalCapacity !== undefined &&
+                                      displayEvent.availableCapacity > 0 && 
+                                      displayEvent.availableCapacity <= displayEvent.totalCapacity * 0.2;
+
+                return (
+                  <div className="flex flex-col gap-3">
+                    {isSellingFast && !isSoldOut && (
+                      <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between">
+                         <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            Selling Fast!
+                         </span>
+                         <span>Only {displayEvent.availableCapacity} left</span>
+                      </div>
+                    )}
+                    <button
+                    disabled={isSoldOut}
+                    className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
+                      isSoldOut 
+                        ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                        : "bg-[#0b101e] hover:bg-black text-white"
+                    }`}
+                    onClick={() => {
+                      if (useAuthStore.getState().isAuthenticated) {
+                        navigate(`/events/${eventId}/book`)
+                      } else {
+                        useAuthStore.getState().openAuthModal("goer")
+                      }
+                    }}
+                  >
+                    {isSoldOut ? "Sold Out" : "Continue to Booking"}
+                  </button>
+                  </div>
+                );
+              })()}
             </div>
-
-            <div className="bg-[#fcf3f4] rounded-xl p-4 mb-4 flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700">Price From</span>
-              <span className="text-sm font-bold text-[#e53e5d]">₹ {displayEvent.price || "N/A"}</span>
-            </div>
-
-            <button className="w-full bg-[#0b101e] hover:bg-black text-white py-3.5 rounded-xl text-sm font-medium transition-colors">
-              Continue to Booking
-            </button>
-          </div>
-
-
+          )}
 
           {displayEvent.host && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -163,7 +206,6 @@ export default function EventDetailPage() {
               </button>
             </div>
           )}
-
 
           {displayEvent.personnel && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

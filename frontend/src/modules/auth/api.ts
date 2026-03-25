@@ -16,7 +16,7 @@ type VerifyOtpResponse = {
 export const authApi = {
     async requestOtp(email: string) {
         const response = await api.post("/auth/otp/request", { email });
-        return response.data; 
+        return response.data;
     },
 
     async verifyOtp(email: string, otp: string, name?: string) {
@@ -28,11 +28,9 @@ export const authApi = {
 
         const data: VerifyOtpResponse = response.data.data;
 
-        
         tokenManager.setToken(data.access_token);
         tokenManager.setRefreshToken(data.refresh_token);
 
-        
         useAuthStore.getState().setAuth(
             {
                 id: data.user.id,
@@ -44,13 +42,15 @@ export const authApi = {
         return response;
     },
 
-    async register(email: string, otp: string, name: string, dob: string, gender: string) {
+    async register(email: string, otp: string, name: string, dob: string, gender: string, role?: string, organization_name?: string) {
         const response = await api.post("/auth/register", {
             email,
             otp,
             name,
             dob,
             gender,
+            role,
+            organization_name,
         });
 
         const data: VerifyOtpResponse = response.data.data;

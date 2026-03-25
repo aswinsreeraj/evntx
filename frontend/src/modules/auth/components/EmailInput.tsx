@@ -27,7 +27,7 @@ export default function EmailInput({ email, setEmail, setView }: any) {
     setLoading(true)
     try {
       const res = await authApi.requestOtp(email)
-      
+
       if (res.data?.is_new_user) {
         setView("register")
       } else {

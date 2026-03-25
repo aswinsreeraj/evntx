@@ -18,3 +18,23 @@ type User struct {
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
+
+type OrganizerDetail struct {
+	UserID           string `json:"user_id"`
+	OrganizationName string `json:"organization_name"`
+	Address          string `json:"address"`
+}
+
+type OrganizerDetails struct {
+	User
+	OrganizerDetail
+	TotalBookings int64 `json:"total_bookings"`
+	TotalEvents   int64 `json:"total_events"`
+	WalletBalance int64 `json:"wallet_balance"`
+	TotalRevenue  int64 `json:"total_revenue"`
+}
+type AdminUserDetails struct {
+	User
+	TotalBookings int64 `json:"total_bookings"`
+	WalletBalance int64 `json:"wallet_balance"`
+}

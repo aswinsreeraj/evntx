@@ -1,15 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../../auth/store/authStore";
-import { tokenManager } from "../../../services/tokenManager";
-import { useNavigate } from "react-router-dom";
 import { Edit2, X, ChevronDown } from "lucide-react";
 import { userApi } from "../api";
+import UserDashboardShell from "../components/UserDashboardShell";
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
-  const navigate = useNavigate();
-
-  const [activeTab, setActiveTab] = useState("Profile");
+  const { user } = useAuthStore();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -52,19 +48,22 @@ export default function ProfilePage() {
     loadProfile();
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    tokenManager.clearToken();
-    navigate("/");
-  };
-
   const validate = () => {
     const newErrors: Record<string, string> = {};
+    const nameRegex = /^[a-zA-Z\s]+$/;
+
     if (!firstName.trim() || firstName.trim().length < 2) {
       newErrors.firstName = "First name must be at least 2 characters";
+    } else if (!nameRegex.test(firstName)) {
+      newErrors.firstName = "First name can only contain alphabets and spaces";
     }
-    if (lastName.trim() && lastName.trim().length < 2) {
-      newErrors.lastName = "Last name must be at least 2 characters";
+
+    if (lastName.trim()) {
+      if (lastName.trim().length < 2) {
+        newErrors.lastName = "Last name must be at least 2 characters";
+      } else if (!nameRegex.test(lastName)) {
+        newErrors.lastName = "Last name can only contain alphabets and spaces";
+      }
     }
     if (mobile && !/^\+?[0-9\s-]{10,15}$/.test(mobile)) {
       newErrors.mobile = "Please enter a valid mobile number";
@@ -116,52 +115,15 @@ export default function ProfilePage() {
     }
   };
 
-  const SidebarItem = ({ label }: { label: string }) => {
-    const isActive = activeTab === label;
-    return (
-      <button
-        onClick={() => setActiveTab(label)}
-        className={`w-full text-center py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-          ? "bg-gray-200 text-gray-900"
-          : "text-gray-700 hover:bg-gray-100"
-          }`}
-      >
-        {label}
-      </button>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pt-8 pb-16">
-      <div className="max-w-[1200px] mx-auto px-6 flex gap-6">
-
-
-        <div className="w-[240px] shrink-0 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col min-h-[600px]">
-          <div className="flex flex-col gap-2 mt-4">
-            <SidebarItem label="Profile" />
-            <SidebarItem label="Bookings" />
-            <SidebarItem label="Calendar" />
-            <SidebarItem label="Wallet" />
-          </div>
-          <div className="mt-auto">
-            <button
-              onClick={handleLogout}
-              className="w-full text-center py-2.5 text-[#e53e5d] text-sm font-medium hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-
-
-        <div className="flex-1 bg-white rounded-3xl p-10 shadow-sm border border-gray-100 min-h-[600px]">
+    <UserDashboardShell>
+      <div className="min-h-[600px] rounded-3xl border border-gray-100 bg-white p-10 shadow-sm">
           {loading ? (
             <div className="w-full h-full flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
           ) : (
             <>
-
 
               <div className="flex flex-col items-center mb-12">
                 <div className="relative group">
@@ -230,7 +192,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-
                 <div>
                   <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Details</h3>
                   <div className="grid grid-cols-2 gap-6 mb-6">
@@ -297,7 +258,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-
 
                   <div className="mb-4">
                     <label className="block text-sm text-gray-600 mb-2">Preferred Location</label>
@@ -373,8 +333,7 @@ export default function ProfilePage() {
               </div>
             </>
           )}
-        </div>
       </div>
-    </div>
+    </UserDashboardShell>
   );
 }
