@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ChevronDown, Mail, MapPin, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, Mail, MapPin } from "lucide-react"
 import { useEffect, useState } from "react"
 import Modal from "../../../shared/ui/Modal"
 import { formatDateBadge, formatEventTime, type BookingRecord } from "../userDashboardData"
@@ -24,8 +24,11 @@ function TicketQr({ value }: { value: string }) {
   )
 }
 
+
+
 export default function TicketModal({ booking, tickets, open, onClose }: Props) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const attendeeName = useAuthStore.getState().user?.name || "Attendee"
 
   useEffect(() => {
     if (open) setActiveIndex(0)
@@ -39,15 +42,108 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
   const shareLink = `https://wa.me/?text=${shareTitle}`
   const emailLink = `mailto:?subject=${shareTitle}&body=${shareTitle}`
 
+  const coverSrc = booking.coverImageUrl?.startsWith("/")
+    ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}`
+    : booking.coverImageUrl
+
+  const handlePrint = () => {
+    const printWindow = document.createElement("iframe")
+    printWindow.style.position = "absolute"
+    printWindow.style.top = "-1000px"
+    printWindow.style.left = "-1000px"
+    document.body.appendChild(printWindow)
+
+    const doc = printWindow.contentDocument || printWindow.contentWindow?.document
+    if (!doc) return
+
+    const ticketsHtml = tickets
+      .map((t) => {
+        const ticketCover = booking.coverImageUrl?.startsWith("/")
+          ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}`
+          : booking.coverImageUrl
+
+        return `
+        <div class="ticket-print-page" style="break-after: page; page-break-after: always; width: 100%; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 20mm; box-sizing: border-box; background: white;">
+          <div style="width: 600px; border-radius: 24px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.18); background: #111821; color: #fff; font-family: system-ui, -apple-system, sans-serif;">
+            ${
+              ticketCover
+                ? `<img src="${ticketCover}" style="width: 100%; height: 200px; object-fit: cover; display: block;" />`
+                : `<div style="width: 100%; height: 200px; background: linear-gradient(135deg,#4b5563,#1f2937); display: flex; alignItems: center; justifyContent: center;"><span style="fontSize: 64px; fontWeight: 700; color: rgba(255,255,255,0.2);">${(booking.event_title || "E")[0].toUpperCase()}</span></div>`
+            }
+            <div style="padding: 24px 32px 20px;">
+              <h2 style="margin: 0; fontSize: 22px; fontWeight: 700;">${booking.event_title}</h2>
+              <p style="margin: 6px 0 0; fontSize: 14px; color: #a0aec0;">${booking.venue || booking.event_city}</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; padding: 0 32px 24px; color: #fff;">
+              <div>
+                <p style="margin: 0; fontSize: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8d949e;">Date</p>
+                <p style="margin: 4px 0 0; fontSize: 17px;">${formatDateBadge(booking.event_start_time)}</p>
+              </div>
+              <div>
+                <p style="margin: 0; fontSize: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8d949e;">Time</p>
+                <p style="margin: 4px 0 0; fontSize: 17px;">${formatEventTime(booking.event_start_time)}</p>
+              </div>
+              <div>
+                <p style="margin: 0; fontSize: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8d949e;">Ticket Type</p>
+                <p style="margin: 4px 0 0; fontSize: 17px; fontWeight: 600;">${t.ticket_type ?? "General"}</p>
+              </div>
+              <div>
+                <p style="margin: 0; fontSize: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #8d949e;">Ticket ID</p>
+                <p style="margin: 4px 0 0; fontSize: 17px;">${t.ticket_code ?? booking.booking_id.slice(0, 4)}</p>
+              </div>
+            </div>
+            <div style="border-top: 2px dashed rgba(255,255,255,0.2); margin: 0 32px; position: relative;">
+              <div style="position: absolute; left: -44px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; background: #fff;"></div>
+              <div style="position: absolute; right: -44px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; background: #fff;"></div>
+            </div>
+            <div style="display: flex; align-items: flex-end; justify-content: space-between; padding: 20px 32px 28px;">
+              <div>
+                <p style="margin: 0; fontSize: 17px; fontWeight: 600; color: #fff;">${attendeeName}</p>
+                <p style="margin: 4px 0 0; fontSize: 12px; color: #7b838e;">Booking ID: ${booking.booking_id}</p>
+              </div>
+              <div style="border-radius: 8px; background: white; padding: 8px;">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${booking.booking_id}-${t.ticket_id}`)}" style="width: 120px; height: 120px;" />
+              </div>
+            </div>
+          </div>
+        </div>`
+      })
+      .join("")
+
+    doc.open()
+    doc.write(`
+      <html>
+        <head>
+          <title>Tickets - ${booking.event_title}</title>
+          <style>
+            @page { size: A4 portrait; margin: 0; }
+            body { margin: 0; padding: 0; }
+            * { box-sizing: border-box; }
+            .ticket-print-page:last-child { break-after: avoid; page-break-after: avoid; }
+          </style>
+        </head>
+        <body>
+          ${ticketsHtml}
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.frameElement.remove(); }, 100);
+            };
+          </script>
+        </body>
+      </html>
+    `)
+    doc.close()
+  }
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       className="relative w-[min(90vw,520px)] rounded-[24px] bg-white px-6 pb-8 pt-5 shadow-[0_24px_80px_rgba(15,23,42,0.24)]"
     >
-
       <div className="mx-auto flex max-w-[470px] flex-col items-center gap-6">
-        <div className="relative w-full">
+        <div className="relative w-full print:hidden">
           <select
             value={activeTicket?.ticket_id ?? ""}
             onChange={(event) => {
@@ -76,9 +172,9 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
           </button>
 
           <div className="relative w-full overflow-hidden rounded-[26px] bg-[#111821] text-white">
-            {booking.coverImageUrl ? (
+            {coverSrc ? (
               <img
-                src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
+                src={coverSrc}
                 alt={booking.event_title}
                 className="h-[200px] w-full object-cover"
               />
@@ -126,7 +222,7 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
 
             <div className="flex items-end justify-between px-6 py-6">
               <div>
-                <p className="text-lg text-white">{useAuthStore.getState().user?.name || "Attendee"}</p>
+                <p className="text-lg text-white">{attendeeName}</p>
                 <p className="mt-0.5 text-sm text-[#7b838e]">Booking ID: {booking.booking_id}</p>
               </div>
               <TicketQr value={`${booking.booking_id}-${activeTicket?.ticket_id ?? "ticket"}`} />
@@ -143,67 +239,15 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
           </button>
         </div>
 
-        <div id="tickets-print-only" className="hidden print:block">
-          {tickets.map((t, idx) => (
-             <div key={idx} className="page-break relative w-full max-w-[470px] mx-auto mb-10 overflow-hidden rounded-[32px] bg-[#0b101e] pb-1 shadow-2xl">
-               <div className="relative aspect-[16/9] w-full overflow-hidden">
-                 <img
-                   src={booking.coverImageUrl?.startsWith("/") ? `${import.meta.env.VITE_API_BASE_URL}${booking.coverImageUrl}` : booking.coverImageUrl}
-                   alt={booking.event_title}
-                   className="h-full w-full object-cover opacity-60"
-                 />
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 text-center p-6">
-                    <h2 className="text-3xl font-bold tracking-tight text-white mb-2">{booking.event_title}</h2>
-                    <p className="text-sm font-medium text-white/90">{booking.event_city}</p>
-                 </div>
-               </div>
-               
-               <div className="bg-white px-8 pb-8 pt-10 text-[#111111]">
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-5 text-left mb-8">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Date</p>
-                      <p className="mt-1 text-lg">{formatDateBadge(booking.event_start_time)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Time</p>
-                      <p className="mt-1 text-lg">{formatEventTime(booking.event_start_time)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket Type</p>
-                      <p className="mt-1 text-lg font-semibold">{t.ticket_type ?? "General"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#8d949e]">Ticket ID</p>
-                      <p className="mt-1 text-lg">{t.ticket_code ?? booking.booking_id.slice(0, 4)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="relative mt-2 border-t border-dotted border-gray-200">
-                    <div className="absolute -left-12 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-[#0b101e]" />
-                    <div className="absolute -right-12 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-[#0b101e]" />
-                  </div>
-
-                  <div className="flex items-end justify-between pt-6">
-                    <div>
-                      <p className="text-lg text-gray-900 font-bold">{useAuthStore.getState().user?.name || "Attendee"}</p>
-                      <p className="mt-0.5 text-xs text-[#7b838e]">Booking ID: {booking.booking_id}</p>
-                    </div>
-                    <TicketQr value={`${booking.booking_id}-${t.ticket_id ?? "ticket"}`} />
-                  </div>
-               </div>
-             </div>
-          ))}
-        </div>
-
         <button
           type="button"
-          onClick={() => window.print()}
-          className="w-full rounded-[16px] bg-[#ef3650] px-4 py-3 text-lg font-semibold text-white transition hover:bg-[#d92f47]"
+          onClick={handlePrint}
+          className="w-full rounded-[16px] bg-[#ef3650] px-4 py-3 text-lg font-semibold text-white transition hover:bg-[#d92f47] print:hidden"
         >
           Download Tickets
         </button>
 
-        <div className="flex items-center gap-3 text-base text-[#111111]">
+        <div className="flex items-center gap-3 text-base text-[#111111] print:hidden">
           <span>Share with Friends</span>
           <a
             href={shareLink}

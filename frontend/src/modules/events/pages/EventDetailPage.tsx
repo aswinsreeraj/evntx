@@ -152,8 +152,23 @@ export default function EventDetailPage() {
                 const isSoldOut = displayEvent.ticketTypes?.length > 0 && 
                                  displayEvent.ticketTypes.every(t => (t.availableQuantity ?? 0) <= 0);
                 
+                const isSellingFast = displayEvent.availableCapacity !== undefined &&
+                                      displayEvent.totalCapacity !== undefined &&
+                                      displayEvent.availableCapacity > 0 && 
+                                      displayEvent.availableCapacity <= displayEvent.totalCapacity * 0.2;
+
                 return (
-                  <button
+                  <div className="flex flex-col gap-3">
+                    {isSellingFast && !isSoldOut && (
+                      <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between">
+                         <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                            Selling Fast!
+                         </span>
+                         <span>Only {displayEvent.availableCapacity} left</span>
+                      </div>
+                    )}
+                    <button
                     disabled={isSoldOut}
                     className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
                       isSoldOut 
@@ -170,6 +185,7 @@ export default function EventDetailPage() {
                   >
                     {isSoldOut ? "Sold Out" : "Continue to Booking"}
                   </button>
+                  </div>
                 );
               })()}
             </div>

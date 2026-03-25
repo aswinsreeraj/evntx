@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -58,7 +59,7 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 				}
 
 				if ticketModel.AvailableQuantity < reqTicket.Quantity {
-					return errors.New("EVT_009: Ticket sold out")
+					return apiErrors.ErrTicketSoldOut
 				}
 
 				res := tx.Model(&TicketTypeModel{}).
@@ -130,7 +131,7 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 			return nil
 		}
 
-		if errors.Is(err, errors.New("EVT_009: Ticket sold out")) || err.Error() == "EVT_009: Ticket sold out" {
+		if errors.Is(err, apiErrors.ErrTicketSoldOut) {
 			return err
 		}
 
@@ -141,18 +142,18 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 		return err
 	}
 
-	return errors.New("EVT_009: Ticket sold out")
+	return apiErrors.ErrTicketSoldOut
 }
 
 func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bm BookingModel
 		if err := tx.Where("id = ? AND user_id = ?", bookingID, userID).First(&bm).Error; err != nil {
-			return errors.New("booking not found")
+			return apiErrors.ErrResourceNotFound
 		}
 
 		if bm.Status != "confirmed" && bm.Status != "reserved" {
-			return errors.New("booking cannot be cancelled")
+			return apiErrors.ErrInvalidStateTransition
 		}
 
 		var totalRefund float64
@@ -164,7 +165,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 
 			var tt TicketTypeModel
 			if err := tx.Where("name = ? AND event_id = ?", item.TicketType, bm.EventID).First(&tt).Error; err != nil {
-				return errors.New("invalid ticket type")
+				return apiErrors.ErrInvalidRequestBody
 			}
 
 			var tM []TicketModel
@@ -175,7 +176,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			}
 
 			if len(tM) < item.Quantity {
-				return errors.New("not enough tickets to cancel")
+				return apiErrors.ErrInvalidRequestBody
 			}
 
 			var idsToCancel []string

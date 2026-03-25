@@ -1,15 +1,28 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { organizerApi } from "../api";
 import { X, ChevronDown, MapPin, Loader2 } from "lucide-react";
 
 export default function MyEvents() {
    const navigate = useNavigate();
+   const location = useLocation();
    const [events, setEvents] = useState<any[]>([]);
    const [loading, setLoading] = useState(true);
    const [statusFilter, setStatusFilter] = useState("All");
+   const [toast, setToast] = useState<string | null>(null);
+   const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
+   const [selectedReason, setSelectedReason] = useState("");
    const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Completed"];
+
+   useEffect(() => {
+      if (location.state?.toastMessage) {
+         setToast(location.state.toastMessage);
+         window.history.replaceState({}, document.title);
+         const timer = setTimeout(() => setToast(null), 4000);
+         return () => clearTimeout(timer);
+      }
+   }, [location]);
 
    const loadEvents = async () => {
       setLoading(true);
@@ -71,6 +84,15 @@ export default function MyEvents() {
 
    return (
       <OrganizerLayout activeTab="My Events">
+         {toast && (
+            <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50">
+               <span className="w-2 h-2 rounded-full bg-green-400"></span>
+               <span className="text-sm font-medium">{toast}</span>
+               <button onClick={() => setToast(null)} className="ml-4 text-gray-400 hover:text-white">
+                  <X className="w-4 h-4" />
+               </button>
+            </div>
+         )}
          <div className="py-10 px-4 lg:px-10 max-w-6xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                <h1 className="text-2xl font-bold text-gray-900">Browse through your events</h1>
@@ -119,6 +141,11 @@ export default function MyEvents() {
                               })}
                            </p>
                            <p className="text-[13px] text-gray-500 flex items-center gap-1.5 mt-2"><MapPin className="w-3.5 h-3.5" /> {event.venue_name}, {event.city}</p>
+                           {event.available_capacity !== undefined && (
+                              <p className="text-[12px] text-[#e53e5d] flex items-center gap-1.5 mt-2 font-semibold bg-red-50 w-fit px-2.5 py-1 rounded-lg border border-red-100">
+                                 Tickets left: {event.available_capacity}
+                              </p>
+                           )}
                         </div>
                         <div className="mt-4 flex items-center justify-between">
                            <div className="flex items-center gap-4">
@@ -154,6 +181,17 @@ export default function MyEvents() {
                               Submit for Approval
                            </button>
                         )}
+                        {(event.status || "").toLowerCase() === "rejected" && event.rejection_reason && (
+                           <button
+                              onClick={() => {
+                                 setSelectedReason(event.rejection_reason);
+                                 setRejectionModalOpen(true);
+                              }}
+                              className="w-full border border-red-500 text-red-500 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                           >
+                              Show Reason
+                           </button>
+                        )}
                         <button
                            onClick={() => handleDelete(event.id)}
                            className="w-full text-[#e53e5d] hover:text-[#d03550] text-sm font-semibold mt-3 p-1"
@@ -165,6 +203,29 @@ export default function MyEvents() {
                ))}
             </div>
          </div>
+
+         {rejectionModalOpen && (
+            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+               <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                   <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                       <h3 className="text-lg font-bold text-gray-900">Rejection Reason</h3>
+                       <button onClick={() => setRejectionModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                           <X className="w-5 h-5" />
+                       </button>
+                   </div>
+                   <div className="p-6">
+                       <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm leading-relaxed border border-red-100">
+                           {selectedReason}
+                       </div>
+                   </div>
+                   <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                       <button onClick={() => setRejectionModalOpen(false)} className="bg-gray-900 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors">
+                           Close
+                       </button>
+                   </div>
+               </div>
+            </div>
+         )}
       </OrganizerLayout>
    );
 }

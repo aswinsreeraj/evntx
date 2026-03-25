@@ -7,6 +7,7 @@ import (
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -50,7 +51,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	for _, req := range requests {
 		tt, exists := ticketMap[req.TicketTypeID]
 		if !exists {
-			return nil, errors.New("invalid ticket type for this event")
+			return nil, apiErrors.ErrInvalidRequestBody
 		}
 
 		totalAmount += tt.Price * float64(req.Quantity)
@@ -77,9 +78,6 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
 	if err != nil {
-		if err.Error() == "EVT_009: Ticket sold out" {
-			return nil, errors.New("EVT_009: Tickets sold out")
-		}
 		return nil, err
 	}
 
@@ -133,13 +131,6 @@ func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, pag
 		return nil, 0, err
 	}
 
-	logger.Log.Info().
-		Str("user_id", userID).
-		Int("page", page).
-		Int("limit", limit).
-		Time("timestamp", time.Now()).
-		Msg("user_bookings_fetched")
-
 	return bookings, total, nil
 }
 
@@ -148,14 +139,6 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Log.Info().
-		Str("user_id", userID).
-		Str("event_filter", eventID).
-		Str("booking_filter", bookingID).
-		Str("status_filter", status).
-		Time("timestamp", time.Now()).
-		Msg("user_tickets_fetched")
 
 	return tickets, nil
 }

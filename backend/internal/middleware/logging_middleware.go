@@ -14,17 +14,26 @@ func LoggingMiddleware() gin.HandlerFunc {
 
 		c.Next()
 
-		duration := time.Since(start)
+		status := c.Writer.Status()
+		if status < 400 {
+			return
+		}
 
+		duration := time.Since(start)
 		userID := c.GetString("user_id")
 
-		logger.Log.Info().
+		event := logger.Log.Warn()
+		if status >= 500 {
+			event = logger.Log.Error()
+		}
+
+		event.
 			Str("method", c.Request.Method).
 			Str("path", c.Request.URL.Path).
-			Int("status", c.Writer.Status()).
+			Int("status", status).
 			Str("ip", c.ClientIP()).
 			Str("user_id", userID).
 			Dur("duration", duration).
-			Msg("request handled")
+			Msg("request failed")
 	}
 }

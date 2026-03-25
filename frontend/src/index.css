@@ -66,3 +66,48 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  /* Hide everything by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only the print root and its children */
+  #tickets-print-root,
+  #tickets-print-root * {
+    visibility: visible !important;
+  }
+
+  #tickets-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    display: block !important;
+  }
+
+  .ticket-print-page {
+    break-after: page;
+    page-break-after: always;
+    width: 100%;
+    margin: 0;
+    padding: 20mm; /* Add some padding for the content */
+    box-sizing: border-box;
+    display: flex !important;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .ticket-print-page:last-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
