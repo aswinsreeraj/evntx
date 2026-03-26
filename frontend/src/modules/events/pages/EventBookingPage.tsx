@@ -6,6 +6,7 @@ import { useEvent } from "../hooks"
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData"
 import { eventsApi } from "../api"
 import { useAuthStore } from "../../auth/store/authStore"
+import RazorpayButton from "../../payments/components/RazorpayButton"
 
 const PLATFORM_FEE_RATE = 0.05
 
@@ -28,6 +29,7 @@ export default function EventBookingPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -42,6 +44,7 @@ export default function EventBookingPage() {
   const selectedTickets = ticketRows.filter((ticket) => ticket.quantity > 0)
 
   const updateQuantity = (ticketName: string, nextQuantity: number, limit?: number) => {
+    if (reservedBookingId) return // Lock selection after reservation
     const safeQuantity = Math.max(0, Math.min(limit ?? Number.POSITIVE_INFINITY, nextQuantity))
     setQuantities((current) => ({
       ...current,
@@ -67,7 +70,7 @@ export default function EventBookingPage() {
         throw new Error("Ticket information is incomplete. Please refresh and try again.")
       }
  
-      await eventsApi.reserveTickets({
+      const response = await eventsApi.reserveTickets({
         eventId: displayEvent.id,
         tickets: selectedTickets.map((ticket) => ({
           ticket_type_id: ticket.id!,
@@ -75,8 +78,7 @@ export default function EventBookingPage() {
         })),
       })
 
-      setCheckoutOpen(false)
-      navigate("/profile/bookings", { replace: true })
+      setReservedBookingId(response.id)
     } catch (reservationError: any) {
       setError(
         reservationError?.response?.data?.message ??
@@ -189,7 +191,7 @@ export default function EventBookingPage() {
       <Modal
         open={checkoutOpen}
         onClose={() => {
-          if (!isSubmitting) {
+          if (!isSubmitting && !reservedBookingId) {
             setCheckoutOpen(false)
             setError(null)
           }
@@ -258,14 +260,26 @@ export default function EventBookingPage() {
             </div>
           ) : null}
 
-          <button
-            type="button"
-            className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
-            onClick={handleReservation}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Reserve Booking"}
-          </button>
+          {reservedBookingId ? (
+            <RazorpayButton
+              bookingId={reservedBookingId}
+              eventTitle={displayEvent.title}
+              onSuccess={() => {
+                setCheckoutOpen(false)
+                navigate("/profile/bookings", { replace: true })
+              }}
+              onError={(msg) => setError(msg)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={handleReservation}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing..." : "Reserve Booking"}
+            </button>
+          )}
         </div>
       </Modal>
     </div>
