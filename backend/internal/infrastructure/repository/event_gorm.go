@@ -11,17 +11,17 @@ import (
 )
 
 type EventModel struct {
-	ID            string
-	OrganizerID   string
-	Title         string
-	Slug          string
-	City          string
-	VenueName     string
-	Category      string
-	StartTime     int64
-	EndTime       int64
-	Tags          string
-	Status        string
+	ID                string
+	OrganizerID       string
+	Title             string
+	Slug              string
+	City              string
+	VenueName         string
+	Category          string
+	StartTime         int64
+	EndTime           int64
+	Tags              string
+	Status            string
 	CoverImageURL     string
 	MinPrice          float64 `gorm:"->"`
 	AvailableCapacity int     `gorm:"->"`
@@ -147,7 +147,7 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 
 	if total == 0 && city != "" {
 		query = r.db.Model(&EventModel{}).Where("status IN ?", []string{"live", "approved"})
-		
+
 		if category != "" && category != "All" && category != "all" {
 			categories := strings.Split(category, ",")
 			for i := range categories {
@@ -155,7 +155,7 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 			}
 			query = query.Where("category IN ?", categories)
 		}
-		
+
 		if search != "" {
 			searchPattern := "%" + search + "%"
 			query = query.Where("title ILIKE ? OR venue_name ILIKE ? OR tags ILIKE ? OR city ILIKE ? OR category ILIKE ?", searchPattern, searchPattern, searchPattern, searchPattern, searchPattern)
@@ -216,13 +216,13 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 
 	for _, m := range models {
 		events = append(events, domain.Event{
-			ID:            m.ID,
-			Title:         m.Title,
-			Slug:          m.Slug,
-			City:          m.City,
-			VenueName:     m.VenueName,
-			Category:      m.Category,
-			StartTime:     time.Unix(m.StartTime, 0),
+			ID:                m.ID,
+			Title:             m.Title,
+			Slug:              m.Slug,
+			City:              m.City,
+			VenueName:         m.VenueName,
+			Category:          m.Category,
+			StartTime:         time.Unix(m.StartTime, 0),
 			EndTime:           time.Unix(m.EndTime, 0),
 			Tags:              m.Tags,
 			CoverImageURL:     m.CoverImageURL,
@@ -259,12 +259,12 @@ func (r *eventGormRepository) AdminSearchEvents(
 				SELECT SUM(bkt.quantity)
 				FROM booking_models bk
 				JOIN booking_ticket_models bkt ON bkt.booking_id = bk.id
-				WHERE bk.event_id = event_models.id AND bk.status = 'confirmed'
+				WHERE bk.event_id = event_models.id AND bk.status IN ('paid', 'confirmed')
 			), 0) AS tickets_sold,
 			COALESCE((
 				SELECT SUM(bk.total_amount)
 				FROM booking_models bk
-				WHERE bk.event_id = event_models.id AND bk.status = 'confirmed'
+				WHERE bk.event_id = event_models.id AND bk.status IN ('paid', 'confirmed')
 			), 0) AS revenue
 		`).
 		Joins("LEFT JOIN user_models ON user_models.id::text = event_models.organizer_id")
@@ -639,8 +639,8 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
 	var models []EventModel
 	query := r.db.Model(&EventModel{}).
-		Select("event_models.*, " +
-			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason, " +
+		Select("event_models.*, "+
+			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
 			"COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("organizer_id = ?", organizerID)
 
@@ -656,22 +656,22 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 	events := make([]domain.Event, 0)
 	for _, m := range models {
 		events = append(events, domain.Event{
-			ID:            m.ID,
-			OrganizerID:   m.OrganizerID,
-			Title:         m.Title,
-			Slug:          m.Slug,
-			Status:        m.Status,
-			City:          m.City,
-			VenueName:     m.VenueName,
-			Category:      m.Category,
-			StartTime:     time.Unix(m.StartTime, 0),
-			EndTime:       time.Unix(m.EndTime, 0),
-			Tags:          m.Tags,
-			CoverImageURL: m.CoverImageURL,
+			ID:                m.ID,
+			OrganizerID:       m.OrganizerID,
+			Title:             m.Title,
+			Slug:              m.Slug,
+			Status:            m.Status,
+			City:              m.City,
+			VenueName:         m.VenueName,
+			Category:          m.Category,
+			StartTime:         time.Unix(m.StartTime, 0),
+			EndTime:           time.Unix(m.EndTime, 0),
+			Tags:              m.Tags,
+			CoverImageURL:     m.CoverImageURL,
 			AvailableCapacity: m.AvailableCapacity,
-			RejectionReason: m.RejectionReason,
-			CreatedAt:     time.Unix(m.CreatedAt, 0),
-			UpdatedAt:     time.Unix(m.UpdatedAt, 0),
+			RejectionReason:   m.RejectionReason,
+			CreatedAt:         time.Unix(m.CreatedAt, 0),
+			UpdatedAt:         time.Unix(m.UpdatedAt, 0),
 		})
 	}
 	return events, nil

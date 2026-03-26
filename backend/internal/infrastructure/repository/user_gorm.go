@@ -164,7 +164,7 @@ func (r *userGormRepository) Search(
 			user_models.*,
 			COALESCE((
 				SELECT COUNT(b.id) FROM booking_models b
-				WHERE b.user_id = user_models.id::text AND b.status = 'confirmed'
+				WHERE b.user_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
 			), 0) AS total_bookings
 		`)
 
@@ -253,12 +253,12 @@ func (r *userGormRepository) SearchOrganizers(
 			COALESCE((
 				SELECT COUNT(b.id) FROM booking_models b
 				JOIN event_models e ON e.id = b.event_id
-				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+				WHERE e.organizer_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
 			), 0) AS total_bookings,
 			COALESCE((
 				SELECT SUM(b.total_amount) FROM booking_models b
 				JOIN event_models e ON e.id = b.event_id
-				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+				WHERE e.organizer_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
 			), 0) AS total_revenue
 		`).
 		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).

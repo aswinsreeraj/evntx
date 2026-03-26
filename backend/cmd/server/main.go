@@ -8,6 +8,7 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
 	emailImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/email"
+	paymentImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/payment"
 	repoImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/repository"
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
@@ -49,8 +50,11 @@ func main() {
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
+	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
+	razorpayService := paymentImpl.NewRazorpayService()
+	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, paymentRepo, razorpayService)
 
 	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
 
@@ -66,6 +70,7 @@ func main() {
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
+	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
 
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
 	go expirationWorker.Start()
@@ -132,6 +137,10 @@ func main() {
 	bookingGroup.Use(middleware.JWTAuthMiddleware())
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
+
+	paymentGroup := router.Group("/payments")
+	paymentGroup.Use(middleware.JWTAuthMiddleware())
+	paymentGroup.POST("/razorpay/order", paymentHandler.CreateRazorpayOrder)
 
 	// Organizer endpoints
 	organizerGroup := router.Group("/organizer")

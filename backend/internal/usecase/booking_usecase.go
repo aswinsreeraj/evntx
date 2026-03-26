@@ -70,7 +70,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		ID:          bookingID,
 		UserID:      userID,
 		EventID:     eventID,
-		Status:      "confirmed",
+		Status:      "reserved",
 		TotalAmount: totalAmount,
 		ExpiresAt:   expiresAt,
 		CreatedAt:   now,

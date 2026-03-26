@@ -145,6 +145,24 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 	return apiErrors.ErrTicketSoldOut
 }
 
+func (r *bookingGormRepository) FindByID(ctx context.Context, bookingID string) (*domain.Booking, error) {
+	var model BookingModel
+
+	if err := r.db.WithContext(ctx).Where("id = ?", bookingID).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Booking{
+		ID:          model.ID,
+		UserID:      model.UserID,
+		EventID:     model.EventID,
+		Status:      model.Status,
+		TotalAmount: model.TotalAmount,
+		ExpiresAt:   time.Unix(model.ExpiresAt, 0),
+		CreatedAt:   time.Unix(model.CreatedAt, 0),
+	}, nil
+}
+
 func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bm BookingModel
@@ -152,7 +170,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			return apiErrors.ErrResourceNotFound
 		}
 
-		if bm.Status != "confirmed" && bm.Status != "reserved" {
+		if bm.Status != "paid" && bm.Status != "confirmed" && bm.Status != "reserved" {
 			return apiErrors.ErrInvalidStateTransition
 		}
 
