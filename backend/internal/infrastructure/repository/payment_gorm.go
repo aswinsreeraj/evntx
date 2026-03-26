@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -65,4 +66,30 @@ func (r *paymentGormRepository) UpdateStatus(paymentID string, status string) er
 	return r.db.Model(&PaymentModel{}).
 		Where("id = ?", paymentID).
 		Update("status", status).Error
+}
+
+func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		paymentResult := tx.Model(&PaymentModel{}).
+			Where("id = ?", paymentID).
+			Update("status", domain.PaymentStatusSuccess)
+		if paymentResult.Error != nil {
+			return paymentResult.Error
+		}
+		if paymentResult.RowsAffected == 0 {
+			return apiErrors.ErrResourceNotFound
+		}
+
+		bookingResult := tx.Model(&BookingModel{}).
+			Where("id = ? AND status IN ?", bookingID, []string{"reserved", "paid"}).
+			Update("status", "paid")
+		if bookingResult.Error != nil {
+			return bookingResult.Error
+		}
+		if bookingResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		return nil
+	})
 }

@@ -42,3 +42,23 @@ func (h *PaymentHandler) CreateRazorpayOrder(c *gin.Context) {
 		Data:    paymentOrder,
 	})
 }
+
+func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
+	var req struct {
+		RazorpayOrderID   string `json:"razorpay_order_id" binding:"required"`
+		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
+		RazorpaySignature string `json:"razorpay_signature" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.paymentUsecase.VerifyPayment(req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payment verified successfully", nil)
+}

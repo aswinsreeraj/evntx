@@ -2,6 +2,9 @@ package payment
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -86,4 +89,18 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 	order.RawResponse = json.RawMessage(respBody)
 
 	return &order, nil
+}
+
+func (s *RazorpayService) VerifySignature(orderID string, paymentID string, signature string) (bool, error) {
+	if s.keySecret == "" {
+		return false, fmt.Errorf("razorpay credentials are not configured")
+	}
+
+	mac := hmac.New(sha256.New, []byte(s.keySecret))
+	if _, err := mac.Write([]byte(orderID + "|" + paymentID)); err != nil {
+		return false, err
+	}
+
+	expectedSignature := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expectedSignature), []byte(signature)), nil
 }

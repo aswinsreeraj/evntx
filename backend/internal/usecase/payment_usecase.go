@@ -86,3 +86,51 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 		RazorpayKey: u.razorpayService.GetKeyID(),
 	}, nil
 }
+
+func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID string, razorpaySignature string) error {
+	payment, err := u.paymentRepo.FindByProviderReference(razorpayOrderID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apiErrors.ErrResourceNotFound
+		}
+
+		return err
+	}
+
+	if payment.Status == domain.PaymentStatusSuccess {
+		return nil
+	}
+
+	isValid, err := u.razorpayService.VerifySignature(razorpayOrderID, razorpayPaymentID, razorpaySignature)
+	if err != nil {
+		return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to verify payment signature")
+	}
+
+	if !isValid {
+		if updateErr := u.paymentRepo.UpdateStatus(payment.ID, domain.PaymentStatusFailed); updateErr != nil {
+			return updateErr
+		}
+
+		logger.Log.Warn().
+			Str("payment_id", payment.ID).
+			Str("booking_id", payment.BookingID).
+			Str("provider_reference", razorpayOrderID).
+			Str("razorpay_payment_id", razorpayPaymentID).
+			Msg("payment_signature_invalid")
+
+		return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
+	}
+
+	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("payment_id", payment.ID).
+		Str("booking_id", payment.BookingID).
+		Str("provider_reference", razorpayOrderID).
+		Str("razorpay_payment_id", razorpayPaymentID).
+		Msg("payment_verified")
+
+	return nil
+}

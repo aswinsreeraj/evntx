@@ -141,6 +141,7 @@ func main() {
 	paymentGroup := router.Group("/payments")
 	paymentGroup.Use(middleware.JWTAuthMiddleware())
 	paymentGroup.POST("/razorpay/order", paymentHandler.CreateRazorpayOrder)
+	paymentGroup.POST("/razorpay/verify", paymentHandler.VerifyRazorpayPayment)
 
 	// Organizer endpoints
 	organizerGroup := router.Group("/organizer")
