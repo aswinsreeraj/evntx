@@ -1,36 +1,31 @@
 package payment
 
 import (
-	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	razorpay "github.com/razorpay/razorpay-go"
+	"github.com/razorpay/razorpay-go/utils"
 )
 
-const razorpayCreateOrderURL = "https://api.razorpay.com/v1/orders"
-
 type RazorpayService struct {
-	keyID      string
-	keySecret  string
-	httpClient *http.Client
+	keyID     string
+	keySecret string
+	client    *razorpay.Client
 }
 
 func NewRazorpayService() repository.RazorpayService {
+	keyID := os.Getenv("RAZORPAY_KEY_ID")
+	keySecret := os.Getenv("RAZORPAY_KEY_SECRET")
+	client := razorpay.NewClient(keyID, keySecret)
+
 	return &RazorpayService{
-		keyID:     os.Getenv("RAZORPAY_KEY_ID"),
-		keySecret: os.Getenv("RAZORPAY_KEY_SECRET"),
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		keyID:     keyID,
+		keySecret: keySecret,
+		client:    client,
 	}
 }
 
@@ -43,47 +38,26 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 		return nil, fmt.Errorf("razorpay credentials are not configured")
 	}
 
-	payload := struct {
-		Amount   int64  `json:"amount"`
-		Currency string `json:"currency"`
-		Receipt  string `json:"receipt"`
-	}{
-		Amount:   amount,
-		Currency: "INR",
-		Receipt:  receipt,
+	orderData := map[string]interface{}{
+		"amount":   amount,
+		"currency": "INR",
+		"receipt":  receipt,
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := s.client.Order.Create(orderData, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("razorpay order creation failed: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, razorpayCreateOrderURL, bytes.NewReader(body))
+	// The SDK returns a map[string]interface{}. We need to map it back to our domain object.
+	respBody, err := json.Marshal(body)
 	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.SetBasicAuth(s.keyID, s.keySecret)
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("razorpay order creation failed with status %d: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("failed to marshal razorpay response: %w", err)
 	}
 
 	var order domain.RazorpayOrder
 	if err := json.Unmarshal(respBody, &order); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal razorpay response to domain: %w", err)
 	}
 
 	order.RawResponse = json.RawMessage(respBody)
@@ -96,11 +70,10 @@ func (s *RazorpayService) VerifySignature(orderID string, paymentID string, sign
 		return false, fmt.Errorf("razorpay credentials are not configured")
 	}
 
-	mac := hmac.New(sha256.New, []byte(s.keySecret))
-	if _, err := mac.Write([]byte(orderID + "|" + paymentID)); err != nil {
-		return false, err
+	params := map[string]interface{}{
+		"razorpay_order_id":   orderID,
+		"razorpay_payment_id": paymentID,
 	}
 
-	expectedSignature := hex.EncodeToString(mac.Sum(nil))
-	return hmac.Equal([]byte(expectedSignature), []byte(signature)), nil
+	return utils.VerifyPaymentSignature(params, signature, s.keySecret), nil
 }
