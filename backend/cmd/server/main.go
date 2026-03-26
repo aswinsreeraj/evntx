@@ -42,6 +42,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.BookingModel{})
 	db.AutoMigrate(&repoImpl.BookingTicketModel{})
 	db.AutoMigrate(&repoImpl.TicketModel{})
+	db.AutoMigrate(&repoImpl.PaymentModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
