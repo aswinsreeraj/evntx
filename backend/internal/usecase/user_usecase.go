@@ -8,12 +8,17 @@ import (
 )
 
 type UserUsecase struct {
-	repo     repository.UserRepository
-	roleRepo repository.UserRoleRepository
+	repo       repository.UserRepository
+	roleRepo   repository.UserRoleRepository
+	walletRepo repository.WalletRepository
 }
 
-func NewUserUsecase(r repository.UserRepository, roleRepo repository.UserRoleRepository) *UserUsecase {
-	return &UserUsecase{repo: r, roleRepo: roleRepo}
+func NewUserUsecase(
+	r repository.UserRepository,
+	roleRepo repository.UserRoleRepository,
+	walletRepo repository.WalletRepository,
+) *UserUsecase {
+	return &UserUsecase{repo: r, roleRepo: roleRepo, walletRepo: walletRepo}
 }
 
 func (u *UserUsecase) Register(email string) (*domain.User, error) {
@@ -59,6 +64,10 @@ func (u *UserUsecase) GetProfile(userID string) (*domain.User, *domain.Organizer
 	}
 
 	return user, nil, []domain.UserRole{}, nil
+}
+
+func (u *UserUsecase) GetWallet(userID string) (*domain.Wallet, error) {
+	return u.walletRepo.GetWalletByUserID(userID)
 }
 
 func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizationName, address string, locations []string) error {

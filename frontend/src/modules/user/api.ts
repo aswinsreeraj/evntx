@@ -35,6 +35,13 @@ export type UserTicket = {
   checked_in_at?: string | null;
 };
 
+export type WalletData = {
+  available_balance: number;
+  pending_balance: number;
+  total_credited: number;
+  total_debited: number;
+};
+
 export const userApi = {
   async getProfile() {
     const res = await api.get("/users/me");
@@ -43,6 +50,11 @@ export const userApi = {
 
   async updateProfile(payload: UpdateProfilePayload) {
     const res = await api.put("/users/me", payload);
+    return res.data.data;
+  },
+
+  async getWallet(): Promise<WalletData> {
+    const res = await api.get("/users/me/wallet");
     return res.data.data;
   },
 

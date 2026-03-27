@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	apiResponse "github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserHandler struct {
@@ -51,6 +53,28 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Profile retrieved successfully", resp)
+}
+
+func (h *UserHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.userUsecase.GetWallet(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
+			return
+		}
+
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	apiResponse.Success(c, "Wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+	})
 }
 
 type updateProfileRequest struct {

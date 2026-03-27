@@ -31,6 +31,7 @@ func main() {
 	}
 
 	db.AutoMigrate(&repoImpl.UserModel{})
+	db.AutoMigrate(&repoImpl.WalletModel{})
 	db.AutoMigrate(&repoImpl.OrganizerDetailModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -47,7 +48,8 @@ func main() {
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
+	walletRepo := repoImpl.NewWalletGormRepository(db)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
@@ -127,6 +129,7 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	userGroup.GET("/me/wallet", userHandler.GetWallet)
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)

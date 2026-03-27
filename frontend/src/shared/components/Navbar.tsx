@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react"
 import { useAuthStore } from "../../modules/auth/store/authStore"
 import { Link, useNavigate } from "react-router-dom"
 import { authApi } from "../../modules/auth/api"
+import { useWallet } from "../../modules/user/hooks"
+
+function formatWalletAmount(amount: number) {
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
 
 function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false)
@@ -16,6 +24,7 @@ function Navbar() {
   const isOrganizer = roles.includes("organizer")
   const isGoer = isAuthenticated && !isAdmin && !isOrganizer
   const currentRole = isAdmin ? "admin" : isOrganizer ? "organizer" : isGoer ? "goer" : null
+  const { data: wallet, isLoading: walletLoading } = useWallet({ enabled: currentRole !== "admin" })
   const notifications = [
     { id: 1, title: "Booking confirmed", body: "Your ticket for Sand Castle Workshop is active." },
     { id: 2, title: "Event reminder", body: "Premium Roy by Shreya starts tomorrow at 6:00 PM." },
@@ -87,9 +96,13 @@ function Navbar() {
 
             <div className="flex items-center gap-4">
               {currentRole !== "admin" ? (
-                <div className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36]">
-                  Wallet: ₹1,000
-                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate("/wallet")}
+                  className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36] transition hover:bg-[#e9eef6]"
+                >
+                  {walletLoading ? "Wallet..." : `₹${formatWalletAmount(wallet?.available_balance ?? 0)}`}
+                </button>
               ) : null}
 
               {currentRole === "organizer" ? (

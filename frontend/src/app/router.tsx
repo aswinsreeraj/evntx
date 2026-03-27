@@ -3,6 +3,7 @@ import HomePage from "../modules/home/pages/HomePage";
 import ProfilePage from "../modules/user/pages/ProfilePage";
 import MyBookingsPage from "../modules/user/pages/MyBookingsPage";
 import CalendarPage from "../modules/user/pages/CalendarPage";
+import WalletPage from "../modules/user/pages/WalletPage";
 import ProtectedRoute from "../shared/components/ProtectedRoute";
 import { createBrowserRouter } from "react-router-dom";
 import EventListPage from "../modules/events/pages/EventListPage";
@@ -42,6 +43,14 @@ export const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute roles={["goer"]}>
                         <CalendarPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "/wallet",
+                element: (
+                    <ProtectedRoute>
+                        <WalletPage />
                     </ProtectedRoute>
                 ),
             },
