@@ -81,10 +81,17 @@ func (u *WalletUsecase) ApplyTransaction(
 		case domain.WalletTransactionTypeCredit:
 			if referenceType == domain.WalletReferenceTypeEarning {
 				wallet.PendingBalance = normalizeWalletAmount(wallet.PendingBalance + normalizedAmount)
+				wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
+			} else if referenceType == domain.WalletReferenceTypeSettlement {
+				if wallet.PendingBalance < normalizedAmount {
+					return apiErrors.ErrInsufficientBalance
+				}
+				wallet.PendingBalance = normalizeWalletAmount(wallet.PendingBalance - normalizedAmount)
+				wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)
 			} else {
 				wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)
+				wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
 			}
-			wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
 		case domain.WalletTransactionTypeDebit:
 			wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance - normalizedAmount)
 			wallet.TotalDebited = normalizeWalletAmount(wallet.TotalDebited + normalizedAmount)

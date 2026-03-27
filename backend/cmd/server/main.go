@@ -69,7 +69,7 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
 
@@ -179,6 +179,8 @@ func main() {
 	adminGroup.GET("/events/slug/:slug", adminHandler.AdminGetEvent)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
+	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
+	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})
