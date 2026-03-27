@@ -73,7 +73,7 @@ func main() {
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
 
-	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
+	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
 
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
@@ -143,6 +143,7 @@ func main() {
 	bookingGroup.Use(middleware.JWTAuthMiddleware())
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
+	bookingGroup.POST("/:booking_id/refund", bookingHandler.RefundBooking)
 
 	// Payment endpoints
 	paymentGroup := router.Group("/payments")

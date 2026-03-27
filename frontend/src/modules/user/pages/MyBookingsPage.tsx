@@ -1,11 +1,13 @@
 import { MapPin, Star } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import CancellationModal from "../components/CancellationModal"
 import UserDashboardShell from "../components/UserDashboardShell"
 import TicketModal from "../components/TicketModal"
 import { userApi } from "../api"
 import { getFeedbackMap, saveFeedbackMap, type FeedbackRecord } from "../feedbackStorage"
+import { walletQueryKey, walletTransactionsQueryKey } from "../hooks"
 import {
   formatDateBadge,
   formatEventTime,
@@ -24,9 +26,12 @@ type CancellationModalState = {
 }
 
 export default function MyBookingsPage() {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<"upcoming" | "finished">("upcoming")
   const [bookings, setBookings] = useState<BookingRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [refundNotice, setRefundNotice] = useState("")
+  const [bookingActionError, setBookingActionError] = useState("")
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord>>({})
   const [draftFeedback, setDraftFeedback] = useState<Record<string, FeedbackRecord>>({})
   const [ticketModal, setTicketModal] = useState<TicketModalState | null>(null)
@@ -130,20 +135,36 @@ export default function MyBookingsPage() {
     if (!cancellationModal) return
 
     const { booking } = cancellationModal
+    const totalCancelled = selection.reduce((sum, item) => sum + item.cancelCount, 0)
+    const shouldRefundToWallet = totalCancelled > 0 && totalCancelled === cancellationModal.tickets.length
 
     const items = selection.map(s => ({
       ticket_type: s.ticketType,
       quantity: s.cancelCount
     }))
 
+    setRefundNotice("")
+    setBookingActionError("")
+
     try {
       await userApi.cancelBooking(booking.booking_id, { items })
+
+      if (shouldRefundToWallet) {
+        await userApi.refundBooking(booking.booking_id)
+        setRefundNotice("Refunded to wallet")
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: walletQueryKey }),
+          queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
+        ])
+      }
 
       const data = await userApi.getMyBookings()
       const validBookings = (data || []).filter(b => b.ticket_count > 0)
       setBookings(validBookings)
-    } catch {
-
+    } catch (error: any) {
+      setBookingActionError(
+        error?.response?.data?.error?.message || "Failed to process cancellation.",
+      )
     }
 
     setCancellationModal(null)
@@ -165,6 +186,18 @@ export default function MyBookingsPage() {
             </button>
           ))}
         </div>
+
+        {refundNotice ? (
+          <div className="mb-5 rounded-2xl border border-[#d9f3e3] bg-[#f1fbf5] px-4 py-3 text-sm font-medium text-[#118a43]">
+            {refundNotice}
+          </div>
+        ) : null}
+
+        {bookingActionError ? (
+          <div className="mb-5 rounded-2xl border border-[#ffd7dd] bg-[#fff5f7] px-4 py-3 text-sm font-medium text-[#d22d4c]">
+            {bookingActionError}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-6">
           {loading ? (

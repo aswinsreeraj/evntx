@@ -2,10 +2,12 @@ package repository
 
 import (
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -62,6 +64,25 @@ func (r *paymentGormRepository) FindByProviderReference(orderID string) (*domain
 	}, nil
 }
 
+func (r *paymentGormRepository) FindByBookingID(bookingID string) (*domain.Payment, error) {
+	var model PaymentModel
+
+	if err := r.db.Where("booking_id = ?", bookingID).Order("created_at DESC").First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Payment{
+		ID:                model.ID,
+		BookingID:         model.BookingID,
+		Provider:          model.Provider,
+		ProviderReference: model.ProviderReference,
+		Amount:            model.Amount,
+		Status:            model.Status,
+		RawResponse:       model.RawResponse,
+		CreatedAt:         model.CreatedAt,
+	}, nil
+}
+
 func (r *paymentGormRepository) UpdateStatus(paymentID string, status string) error {
 	return r.db.Model(&PaymentModel{}).
 		Where("id = ?", paymentID).
@@ -91,5 +112,56 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 		}
 
 		return nil
+	})
+}
+
+func (r *paymentGormRepository) RefundPaymentToWallet(userID string, paymentID string, bookingID string, amount float64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		paymentResult := tx.Model(&PaymentModel{}).
+			Where("id = ? AND status = ?", paymentID, domain.PaymentStatusSuccess).
+			Update("status", domain.PaymentStatusRefunded)
+		if paymentResult.Error != nil {
+			return paymentResult.Error
+		}
+		if paymentResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		var wallet WalletModel
+		if err := tx.Where("user_id = ?", userID).First(&wallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		normalizedAmount := math.Round(amount*100) / 100
+		now := time.Now()
+
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        normalizedAmount,
+			ReferenceType: "refund",
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		wallet.AvailableBalance = math.Round((wallet.AvailableBalance+normalizedAmount)*100) / 100
+		wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedAmount)*100) / 100
+		wallet.UpdatedAt = now
+
+		return tx.Model(&WalletModel{}).
+			Where("id = ?", wallet.ID).
+			Select("available_balance", "total_credited", "updated_at").
+			Updates(WalletModel{
+				AvailableBalance: wallet.AvailableBalance,
+				TotalCredited:    wallet.TotalCredited,
+				UpdatedAt:        wallet.UpdatedAt,
+			}).Error
 	})
 }

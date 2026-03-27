@@ -120,4 +120,8 @@ export const userApi = {
   async cancelBooking(bookingId: string, payload: { items: { ticket_type: string; quantity: number }[] }): Promise<void> {
     await api.post(`/bookings/${bookingId}/cancel`, payload);
   },
+
+  async refundBooking(bookingId: string): Promise<void> {
+    await api.post(`/bookings/${bookingId}/refund`);
+  },
 };
