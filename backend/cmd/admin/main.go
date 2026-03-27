@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	db.AutoMigrate(&repository.UserModel{}, &repository.WalletModel{}, &repository.UserRoleModel{})
+	db.AutoMigrate(&repository.UserModel{}, &repository.WalletModel{}, &repository.WalletTransactionModel{}, &repository.UserRoleModel{})
 
 	var user repository.UserModel
 	res := db.Where("email = ?", email).First(&user)

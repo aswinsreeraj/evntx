@@ -42,6 +42,7 @@ func main() {
 	if err := db.AutoMigrate(
 		&infraRepo.UserModel{},
 		&infraRepo.WalletModel{},
+		&infraRepo.WalletTransactionModel{},
 		&infraRepo.OrganizerDetailModel{},
 		&infraRepo.UserRoleModel{},
 		&infraRepo.EventModel{},

@@ -42,6 +42,26 @@ export type WalletData = {
   total_debited: number;
 };
 
+export type WalletTransaction = {
+  id: string;
+  wallet_id: string;
+  type: "cr" | "dr";
+  amount: number;
+  reference_type: string;
+  reference_id: string;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+};
+
+export type WalletTransactionsResponse = {
+  transactions: WalletTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
 export const userApi = {
   async getProfile() {
     const res = await api.get("/users/me");
@@ -55,6 +75,16 @@ export const userApi = {
 
   async getWallet(): Promise<WalletData> {
     const res = await api.get("/users/me/wallet");
+    return res.data.data;
+  },
+
+  async getWalletTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: "cr" | "dr";
+    status?: "pending" | "completed" | "failed";
+  }): Promise<WalletTransactionsResponse> {
+    const res = await api.get("/users/me/wallet/transactions", { params });
     return res.data.data;
   },
 

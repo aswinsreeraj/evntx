@@ -32,6 +32,7 @@ func main() {
 
 	db.AutoMigrate(&repoImpl.UserModel{})
 	db.AutoMigrate(&repoImpl.WalletModel{})
+	db.AutoMigrate(&repoImpl.WalletTransactionModel{})
 	db.AutoMigrate(&repoImpl.OrganizerDetailModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -50,6 +51,7 @@ func main() {
 	userRepo := repoImpl.NewUserGormRepository(db)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
@@ -58,7 +60,7 @@ func main() {
 	razorpayService := paymentImpl.NewRazorpayService()
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, paymentRepo, razorpayService)
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
+	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
 
 	emailSender := emailImpl.NewSMTPSender()
 
@@ -130,6 +132,7 @@ func main() {
 
 	userGroup.GET("/me", userHandler.GetProfile)
 	userGroup.GET("/me/wallet", userHandler.GetWallet)
+	userGroup.GET("/me/wallet/transactions", userHandler.GetWalletTransactions)
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
