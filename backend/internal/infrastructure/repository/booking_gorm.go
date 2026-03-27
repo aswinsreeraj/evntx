@@ -145,6 +145,24 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 	return apiErrors.ErrTicketSoldOut
 }
 
+func (r *bookingGormRepository) FindByID(ctx context.Context, bookingID string) (*domain.Booking, error) {
+	var model BookingModel
+
+	if err := r.db.WithContext(ctx).Where("id = ?", bookingID).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Booking{
+		ID:          model.ID,
+		UserID:      model.UserID,
+		EventID:     model.EventID,
+		Status:      model.Status,
+		TotalAmount: model.TotalAmount,
+		ExpiresAt:   time.Unix(model.ExpiresAt, 0),
+		CreatedAt:   time.Unix(model.CreatedAt, 0),
+	}, nil
+}
+
 func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bm BookingModel
@@ -152,7 +170,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			return apiErrors.ErrResourceNotFound
 		}
 
-		if bm.Status != "confirmed" && bm.Status != "reserved" {
+		if bm.Status != "paid" && bm.Status != "confirmed" && bm.Status != "reserved" {
 			return apiErrors.ErrInvalidStateTransition
 		}
 
@@ -279,10 +297,12 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 
 func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
 	var total int64
-	query := r.db.WithContext(ctx).Table("booking_models").Where("user_id = ?", userID)
+	query := r.db.WithContext(ctx).Table("booking_models").Where("booking_models.user_id = ?", userID)
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("booking_models.status = ?", status)
+	} else {
+		query = query.Where("booking_models.status NOT IN (?)", []string{"reserved", "expired"})
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -312,7 +332,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		event_models.title AS event_title, 
 		event_models.city AS event_city, 
 		event_models.start_time AS event_start_time, 
-		booking_models.status, 
+		booking_models.status AS status, 
 		booking_models.total_amount, 
 		booking_models.created_at, 
 		event_models.cover_image_url,
@@ -371,6 +391,9 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 	} else {
 		query = query.Where("ticket_models.status != ?", "cancelled")
 	}
+
+	// Only show tickets for paid or confirmed bookings
+	query = query.Where("booking_models.status IN (?)", []string{"paid", "confirmed"})
 
 	var results []struct {
 		TicketID    string

@@ -1,0 +1,80 @@
+package payment
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/aswinsreeraj/evntx/internal/repository"
+	razorpay "github.com/razorpay/razorpay-go"
+	"github.com/razorpay/razorpay-go/utils"
+)
+
+type RazorpayService struct {
+	keyID     string
+	keySecret string
+	client    *razorpay.Client
+}
+
+func NewRazorpayService() repository.RazorpayService {
+	keyID := os.Getenv("RAZORPAY_KEY_ID")
+	keySecret := os.Getenv("RAZORPAY_KEY_SECRET")
+	client := razorpay.NewClient(keyID, keySecret)
+
+	return &RazorpayService{
+		keyID:     keyID,
+		keySecret: keySecret,
+		client:    client,
+	}
+}
+
+func (s *RazorpayService) GetKeyID() string {
+	return s.keyID
+}
+
+func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.RazorpayOrder, error) {
+	if s.keyID == "" || s.keySecret == "" {
+		return nil, fmt.Errorf("razorpay credentials are not configured")
+	}
+
+	orderData := map[string]interface{}{
+		"amount":   amount,
+		"currency": "INR",
+		"receipt":  receipt,
+	}
+
+	body, err := s.client.Order.Create(orderData, nil)
+	if err != nil {
+		fmt.Println("Error point 2", err)
+		return nil, fmt.Errorf("razorpay order creation failed: %w", err)
+	}
+
+	// The SDK returns a map[string]interface{}. We need to map it back to our domain object.
+	respBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal razorpay response: %w", err)
+	}
+
+	var order domain.RazorpayOrder
+	if err := json.Unmarshal(respBody, &order); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal razorpay response to domain: %w", err)
+	}
+
+	order.RawResponse = json.RawMessage(respBody)
+
+	return &order, nil
+}
+
+func (s *RazorpayService) VerifySignature(orderID string, paymentID string, signature string) (bool, error) {
+	if s.keySecret == "" {
+		return false, fmt.Errorf("razorpay credentials are not configured")
+	}
+
+	params := map[string]interface{}{
+		"razorpay_order_id":   orderID,
+		"razorpay_payment_id": paymentID,
+	}
+
+	return utils.VerifyPaymentSignature(params, signature, s.keySecret), nil
+}

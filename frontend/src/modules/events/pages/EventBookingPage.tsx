@@ -5,8 +5,8 @@ import Modal from "../../../shared/ui/Modal"
 import { useEvent } from "../hooks"
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData"
 import { eventsApi } from "../api"
-import { saveBookingConfirmation } from "../bookingStorage"
 import { useAuthStore } from "../../auth/store/authStore"
+import RazorpayButton from "../../payments/components/RazorpayButton"
 
 const PLATFORM_FEE_RATE = 0.05
 
@@ -29,6 +29,7 @@ export default function EventBookingPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -43,6 +44,7 @@ export default function EventBookingPage() {
   const selectedTickets = ticketRows.filter((ticket) => ticket.quantity > 0)
 
   const updateQuantity = (ticketName: string, nextQuantity: number, limit?: number) => {
+    if (reservedBookingId) return // Lock selection after reservation
     const safeQuantity = Math.max(0, Math.min(limit ?? Number.POSITIVE_INFINITY, nextQuantity))
     setQuantities((current) => ({
       ...current,
@@ -53,14 +55,10 @@ export default function EventBookingPage() {
   const handleProceed = () => {
     if (selectedTickets.length === 0) return
     setError(null)
-    if (totalAmount > 0) {
-      setCheckoutOpen(true)
-    } else {
-      handlePayment()
-    }
+    setCheckoutOpen(true)
   }
  
-  const handlePayment = async () => {
+  const handleReservation = async () => {
     if (!eventId || selectedTickets.length === 0) return
  
     setIsSubmitting(true)
@@ -68,45 +66,24 @@ export default function EventBookingPage() {
  
     try {
       const hasTicketIds = selectedTickets.every((ticket) => ticket.id)
-      let bookingId = `BK-${Date.now()}`
- 
-      if (hasTicketIds) {
-        const response = await eventsApi.reserveTickets({
-          eventId: displayEvent.id,
-          tickets: selectedTickets.map((ticket) => ({
-            ticket_type_id: ticket.id!,
-            quantity: ticket.quantity,
-          })),
-        })
- 
-        bookingId = response.booking_id
+      if (!hasTicketIds) {
+        throw new Error("Ticket information is incomplete. Please refresh and try again.")
       }
  
-      saveBookingConfirmation({
-        bookingId,
-        eventId,
-        eventTitle: displayEvent.title,
-        eventImage: displayEvent.coverImageUrl,
-        eventDate: displayEvent.dateLabel,
-        eventTime: displayEvent.timeLabel,
-        venue: displayEvent.displayLocation,
-        totalAmount,
-        platformFee,
-        finalAmount,
-        email: user?.name ? `${user.name.toLowerCase().replace(/\s+/g, "")}@example.com` : "johnsmith@example.com",
+      const response = await eventsApi.reserveTickets({
+        eventId: displayEvent.id,
         tickets: selectedTickets.map((ticket) => ({
-          ticketName: ticket.name,
+          ticket_type_id: ticket.id!,
           quantity: ticket.quantity,
-          unitPrice: ticket.price,
         })),
-        createdAt: new Date().toISOString(),
       })
- 
-      navigate(`/events/${eventId}/confirmation`)
-    } catch (paymentError: any) {
+
+      setReservedBookingId(response.booking_id)
+    } catch (reservationError: any) {
       setError(
-        paymentError?.response?.data?.message ??
-          "We could not complete this booking right now. Please try again.",
+        reservationError?.response?.data?.message ??
+          reservationError?.message ??
+          "We could not reserve tickets right now. Please try again.",
       )
     } finally {
       setIsSubmitting(false)
@@ -206,7 +183,7 @@ export default function EventBookingPage() {
             className="rounded-xl bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleProceed}
           >
-            {isSubmitting ? "Processing..." : (totalAmount > 0 ? "Proceed to Payment" : "Confirm Booking")}
+            {isSubmitting ? "Processing..." : "Reserve Tickets"}
           </button>
         </section>
       </div>
@@ -214,7 +191,7 @@ export default function EventBookingPage() {
       <Modal
         open={checkoutOpen}
         onClose={() => {
-          if (!isSubmitting) {
+          if (!isSubmitting && !reservedBookingId) {
             setCheckoutOpen(false)
             setError(null)
           }
@@ -231,7 +208,7 @@ export default function EventBookingPage() {
         </button>
 
         <div className="flex flex-col items-center gap-4">
-          <h2 className="text-base font-medium text-[#111111]">Checkout</h2>
+          <h2 className="text-base font-medium text-[#111111]">Reserve Tickets</h2>
 
           <div className="w-full rounded-xl border border-[#dfdfdf] bg-white px-4 py-3 shadow-sm">
             <h3 className="text-center text-sm font-medium text-[#111111]">Order Summary</h3>
@@ -283,14 +260,27 @@ export default function EventBookingPage() {
             </div>
           ) : null}
 
-          <button
-            type="button"
-            className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
-            onClick={handlePayment}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Pay using Razorpay"}
-          </button>
+          {reservedBookingId ? (
+            <RazorpayButton
+              bookingId={reservedBookingId}
+              eventTitle={displayEvent.title}
+              autoOpen={true}
+              onSuccess={() => {
+                setCheckoutOpen(false)
+                navigate("/profile/bookings", { replace: true })
+              }}
+              onError={(msg) => setError(msg)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={handleReservation}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing..." : "Reserve Booking"}
+            </button>
+          )}
         </div>
       </Modal>
     </div>

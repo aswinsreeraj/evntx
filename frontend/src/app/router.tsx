@@ -8,7 +8,6 @@ import { createBrowserRouter } from "react-router-dom";
 import EventListPage from "../modules/events/pages/EventListPage";
 import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import EventBookingPage from "../modules/events/pages/EventBookingPage";
-import BookingConfirmationPage from "../modules/events/pages/BookingConfirmationPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
 import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
@@ -53,14 +52,6 @@ export const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute>
                         <EventBookingPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: "/events/:eventId/confirmation",
-                element: (
-                    <ProtectedRoute>
-                        <BookingConfirmationPage />
                     </ProtectedRoute>
                 ),
             },

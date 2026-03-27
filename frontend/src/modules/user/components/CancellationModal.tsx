@@ -29,7 +29,9 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
     })
 
     return Array.from(grouped.entries()).map(([ticketType, count]) => {
-      const price = (booking.total_amount / tickets.length) || 0
+      // Platform fee is 5%, so base price = total / 1.05
+      const baseTotal = booking.total_amount / 1.05
+      const price = (baseTotal / tickets.length) || 0
 
       return {
         ticketType,
