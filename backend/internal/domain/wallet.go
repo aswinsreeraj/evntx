@@ -9,6 +9,9 @@ const (
 	WalletTransactionStatusPending   = "pending"
 	WalletTransactionStatusCompleted = "completed"
 	WalletTransactionStatusFailed    = "failed"
+
+	WalletReferenceTypeRefund  = "refund"
+	WalletReferenceTypeEarning = "earning"
 )
 
 type Wallet struct {

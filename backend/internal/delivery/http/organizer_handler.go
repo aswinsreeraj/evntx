@@ -19,12 +19,13 @@ import (
 )
 
 type OrganizerHandler struct {
-	eventUsecase *usecase.EventUsecase
-	userUsecase  *usecase.UserUsecase
+	eventUsecase  *usecase.EventUsecase
+	userUsecase   *usecase.UserUsecase
+	walletUsecase *usecase.WalletUsecase
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -54,6 +55,23 @@ func (h *OrganizerHandler) GetProfile(c *gin.Context) {
 		"locations":         user.Locations,
 		"organization_name": orgName,
 		"address":           address,
+	})
+}
+
+func (h *OrganizerHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.walletUsecase.GetWalletByUserID(userID)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrResourceNotFound)
+		return
+	}
+
+	response.Success(c, "Organizer wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
 	})
 }
 

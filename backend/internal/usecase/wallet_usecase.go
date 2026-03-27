@@ -75,7 +75,11 @@ func (u *WalletUsecase) ApplyTransaction(
 
 		switch txnType {
 		case domain.WalletTransactionTypeCredit:
-			wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)
+			if referenceType == domain.WalletReferenceTypeEarning {
+				wallet.PendingBalance = normalizeWalletAmount(wallet.PendingBalance + normalizedAmount)
+			} else {
+				wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)
+			}
 			wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
 		case domain.WalletTransactionTypeDebit:
 			wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance - normalizedAmount)

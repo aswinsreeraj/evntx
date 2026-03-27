@@ -16,17 +16,20 @@ import (
 
 type PaymentUsecase struct {
 	bookingRepo     repository.BookingRepository
+	eventRepo       repository.EventRepository
 	paymentRepo     repository.PaymentRepository
 	razorpayService repository.RazorpayService
 }
 
 func NewPaymentUsecase(
 	bookingRepo repository.BookingRepository,
+	eventRepo repository.EventRepository,
 	paymentRepo repository.PaymentRepository,
 	razorpayService repository.RazorpayService,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
 		bookingRepo:     bookingRepo,
+		eventRepo:       eventRepo,
 		paymentRepo:     paymentRepo,
 		razorpayService: razorpayService,
 	}
@@ -119,7 +122,20 @@ func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID
 		return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
 	}
 
-	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID); err != nil {
+	booking, err := u.bookingRepo.FindByID(context.Background(), payment.BookingID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apiErrors.ErrResourceNotFound
+		}
+		return err
+	}
+
+	event, err := u.eventRepo.GetEventByID(booking.EventID)
+	if err != nil {
+		return err
+	}
+
+	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID, event.OrganizerID, payment.Amount); err != nil {
 		return err
 	}
 

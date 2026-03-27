@@ -11,14 +11,17 @@ function formatCurrency(amount: number) {
 function WalletMetric({
   label,
   value,
+  helper,
 }: {
   label: string;
   value: number;
+  helper?: string;
 }) {
   return (
     <div className="rounded-3xl border border-gray-100 bg-[#f8fafc] p-6">
       <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#6b7280]">{label}</p>
       <p className="mt-4 text-3xl font-semibold text-[#111827]">₹{formatCurrency(value)}</p>
+      {helper ? <p className="mt-2 text-sm text-[#6b7280]">{helper}</p> : null}
     </div>
   );
 }
@@ -85,7 +88,11 @@ export default function WalletPage() {
           <>
             <div className="mt-8 grid gap-5 md:grid-cols-2">
               <WalletMetric label="Available Balance" value={wallet.available_balance} />
-              <WalletMetric label="Pending Balance" value={wallet.pending_balance} />
+              <WalletMetric
+                label="Pending Balance"
+                value={wallet.pending_balance}
+                helper="Amount to be settled"
+              />
               <WalletMetric label="Total Credited" value={wallet.total_credited} />
               <WalletMetric label="Total Debited" value={wallet.total_debited} />
             </div>

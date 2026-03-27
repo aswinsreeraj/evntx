@@ -58,7 +58,7 @@ func main() {
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, paymentRepo, razorpayService)
+	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
 
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
 
@@ -79,7 +79,7 @@ func main() {
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
 	go expirationWorker.Start()
 
-	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase)
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase)
 
 	router := gin.New()
 
@@ -157,6 +157,7 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
+	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)

@@ -89,7 +89,7 @@ func (r *paymentGormRepository) UpdateStatus(paymentID string, status string) er
 		Update("status", status).Error
 }
 
-func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID string) error {
+func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID string, organizerID string, amount float64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		paymentResult := tx.Model(&PaymentModel{}).
 			Where("id = ?", paymentID).
@@ -109,6 +109,45 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 		}
 		if bookingResult.RowsAffected == 0 {
 			return apiErrors.ErrInvalidStateTransition
+		}
+
+		var wallet WalletModel
+		if err := tx.Where("user_id = ?", organizerID).First(&wallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		normalizedAmount := math.Round(amount*100) / 100
+		now := time.Now()
+
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.WalletReferenceTypeEarning,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		wallet.PendingBalance = math.Round((wallet.PendingBalance+normalizedAmount)*100) / 100
+		wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedAmount)*100) / 100
+		wallet.UpdatedAt = now
+
+		if err := tx.Model(&WalletModel{}).
+			Where("id = ?", wallet.ID).
+			Select("pending_balance", "total_credited", "updated_at").
+			Updates(WalletModel{
+				PendingBalance: wallet.PendingBalance,
+				TotalCredited:  wallet.TotalCredited,
+				UpdatedAt:      wallet.UpdatedAt,
+			}).Error; err != nil {
+			return err
 		}
 
 		return nil
