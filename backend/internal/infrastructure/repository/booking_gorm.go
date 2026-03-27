@@ -297,12 +297,12 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 
 func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
 	var total int64
-	query := r.db.WithContext(ctx).Table("booking_models").Where("user_id = ?", userID)
+	query := r.db.WithContext(ctx).Table("booking_models").Where("booking_models.user_id = ?", userID)
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("booking_models.status = ?", status)
 	} else {
-		query = query.Where("status NOT IN (?)", []string{"reserved", "expired"})
+		query = query.Where("booking_models.status NOT IN (?)", []string{"reserved", "expired"})
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -332,7 +332,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		event_models.title AS event_title, 
 		event_models.city AS event_city, 
 		event_models.start_time AS event_start_time, 
-		booking_models.status, 
+		booking_models.status AS status, 
 		booking_models.total_amount, 
 		booking_models.created_at, 
 		event_models.cover_image_url,

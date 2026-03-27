@@ -35,7 +35,7 @@ type RazorpayOrder struct {
 }
 
 type PaymentOrderResponse struct {
-	OrderID     string `json:"order_id"`
+	OrderID     string `json:"id"`
 	Amount      int64  `json:"amount"`
 	Currency    string `json:"currency"`
 	RazorpayKey string `json:"razorpay_key"`

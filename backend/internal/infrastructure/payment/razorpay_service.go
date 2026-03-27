@@ -46,6 +46,7 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 
 	body, err := s.client.Order.Create(orderData, nil)
 	if err != nil {
+		fmt.Println("Error point 2", err)
 		return nil, fmt.Errorf("razorpay order creation failed: %w", err)
 	}
 

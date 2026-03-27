@@ -44,7 +44,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		ticketMap[tt.ID] = tt
 	}
 
-	var totalAmount float64
+	var baseTotal float64
 	var bookingTickets []domain.BookingTicket
 	bookingID := uuid.New().String()
 
@@ -54,7 +54,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 			return nil, apiErrors.ErrInvalidRequestBody
 		}
 
-		totalAmount += tt.Price * float64(req.Quantity)
+		baseTotal += tt.Price * float64(req.Quantity)
 
 		bookingTickets = append(bookingTickets, domain.BookingTicket{
 			BookingID:    bookingID,
@@ -65,6 +65,8 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	now := time.Now()
 	expiresAt := now.Add(10 * time.Minute)
+	platformFee := baseTotal * 0.05
+	totalAmount := baseTotal + platformFee
 
 	booking := &domain.Booking{
 		ID:          bookingID,

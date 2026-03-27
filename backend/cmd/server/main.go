@@ -138,6 +138,7 @@ func main() {
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
 
+	// Payment endpoints
 	paymentGroup := router.Group("/payments")
 	paymentGroup.Use(middleware.JWTAuthMiddleware())
 	paymentGroup.POST("/razorpay/order", paymentHandler.CreateRazorpayOrder)

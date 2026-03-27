@@ -93,7 +93,6 @@ func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return apiErrors.ErrResourceNotFound
 		}
-
 		return err
 	}
 
@@ -117,7 +116,6 @@ func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID
 			Str("provider_reference", razorpayOrderID).
 			Str("razorpay_payment_id", razorpayPaymentID).
 			Msg("payment_signature_invalid")
-
 		return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
 	}
 
