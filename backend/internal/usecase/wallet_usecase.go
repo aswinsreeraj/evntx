@@ -11,11 +11,15 @@ import (
 )
 
 type WalletUsecase struct {
-	repo repository.WalletRepository
+	repo     repository.WalletRepository
+	roleRepo repository.UserRoleRepository
 }
 
-func NewWalletUsecase(repo repository.WalletRepository) *WalletUsecase {
-	return &WalletUsecase{repo: repo}
+func NewWalletUsecase(
+	repo repository.WalletRepository,
+	roleRepo repository.UserRoleRepository,
+) *WalletUsecase {
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -108,6 +112,47 @@ func (u *WalletUsecase) GetTransactionsByUserID(
 	}
 
 	return u.repo.GetTransactionsByWalletID(wallet.ID, filters, page, limit)
+}
+
+func (u *WalletUsecase) RequestPayout(userID string, amount float64) error {
+	if amount <= 0 {
+		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
+	}
+
+	roles, err := u.roleRepo.GetRolesByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	isOrganizer := false
+	for _, role := range roles {
+		if role == domain.RoleOrganizer {
+			isOrganizer = true
+			break
+		}
+	}
+
+	if !isOrganizer {
+		return apiErrors.ErrForbiddenAction
+	}
+
+	wallet, err := u.repo.GetWalletByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	normalizedAmount := normalizeWalletAmount(amount)
+	if wallet.AvailableBalance < normalizedAmount {
+		return apiErrors.ErrInsufficientBalance
+	}
+
+	return u.ApplyTransaction(
+		wallet.ID,
+		domain.WalletTransactionTypeDebit,
+		normalizedAmount,
+		"payout",
+		userID,
+	)
 }
 
 func normalizeWalletAmount(amount float64) float64 {

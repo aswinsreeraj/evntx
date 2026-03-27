@@ -5,7 +5,7 @@ import { Edit2, ChevronDown, Plus } from "lucide-react";
 import { userApi } from "../../user/api";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { useNavigate } from "react-router-dom";
-import { organizerApi } from "../api";
+import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -36,7 +36,7 @@ export default function OrganizerProfile() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const { data: walletSummary, isLoading: walletLoading } = useQuery({
-    queryKey: ["organizer-wallet-summary"],
+    queryKey: organizerWalletSummaryQueryKey,
     queryFn: () => organizerApi.getWalletSummary(),
   });
 

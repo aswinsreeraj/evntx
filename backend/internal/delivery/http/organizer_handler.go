@@ -75,6 +75,29 @@ func (h *OrganizerHandler) GetWallet(c *gin.Context) {
 	})
 }
 
+func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(userID, req.Amount); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout request submitted", gin.H{
+		"amount": req.Amount,
+		"status": "completed",
+	})
+}
+
 type detailsInput struct {
 	Description        string `json:"description" binding:"required"`
 	VenueAddress       string `json:"venue_address" binding:"required"`

@@ -16,6 +16,7 @@ import EventManagementPage from "../modules/admin/pages/EventManagementPage";
 import OrganizerProfile from "../modules/organizer/pages/Profile";
 import EventForm from "../modules/organizer/pages/EventForm";
 import MyEvents from "../modules/organizer/pages/MyEvents";
+import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 
 export const router = createBrowserRouter([
     {
@@ -95,6 +96,14 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["organizer"]}>
                 <MyEvents />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/wallet",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerWalletPage />
             </ProtectedRoute>
         ),
     },

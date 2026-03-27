@@ -1,5 +1,7 @@
 import api from "../../services/axios";
 
+export const organizerWalletSummaryQueryKey = ["organizer-wallet-summary"] as const;
+
 export interface TicketInput {
   id?: string;
   name: string;
@@ -78,6 +80,11 @@ export const organizerApi = {
 
   async getWalletSummary(): Promise<OrganizerWalletSummary> {
     const res = await api.get("/organizer/wallet");
+    return res.data.data;
+  },
+
+  async requestPayout(amount: number) {
+    const res = await api.post("/organizer/wallet/payout", { amount });
     return res.data.data;
   },
 

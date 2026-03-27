@@ -51,7 +51,7 @@ func main() {
 	userRepo := repoImpl.NewUserGormRepository(db)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
-	walletUsecase := usecase.NewWalletUsecase(walletRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
@@ -158,6 +158,7 @@ func main() {
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
 	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
+	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
