@@ -301,6 +301,8 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 
 	if status != "" {
 		query = query.Where("status = ?", status)
+	} else {
+		query = query.Where("status NOT IN (?)", []string{"reserved", "expired"})
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -389,6 +391,9 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 	} else {
 		query = query.Where("ticket_models.status != ?", "cancelled")
 	}
+
+	// Only show tickets for paid or confirmed bookings
+	query = query.Where("booking_models.status IN (?)", []string{"paid", "confirmed"})
 
 	var results []struct {
 		TicketID    string

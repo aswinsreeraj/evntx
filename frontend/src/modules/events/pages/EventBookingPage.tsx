@@ -78,7 +78,7 @@ export default function EventBookingPage() {
         })),
       })
 
-      setReservedBookingId(response.id)
+      setReservedBookingId(response.booking_id)
     } catch (reservationError: any) {
       setError(
         reservationError?.response?.data?.message ??
@@ -264,6 +264,7 @@ export default function EventBookingPage() {
             <RazorpayButton
               bookingId={reservedBookingId}
               eventTitle={displayEvent.title}
+              autoOpen={true}
               onSuccess={() => {
                 setCheckoutOpen(false)
                 navigate("/profile/bookings", { replace: true })

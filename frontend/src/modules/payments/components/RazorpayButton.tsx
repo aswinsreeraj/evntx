@@ -9,6 +9,7 @@ interface RazorpayButtonProps {
   eventTitle: string;
   onSuccess: () => void;
   onError: (message: string) => void;
+  autoOpen?: boolean;
 }
 
 const RazorpayButton: React.FC<RazorpayButtonProps> = ({
@@ -16,12 +17,20 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
   eventTitle,
   onSuccess,
   onError,
+  autoOpen = false,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuthStore();
   
   const createOrderMutation = useCreateRazorpayOrder();
   const verifyPaymentMutation = useVerifyRazorpayPayment();
+
+  // Handle automatic opening if requested
+  React.useEffect(() => {
+    if (autoOpen && !isProcessing && !createOrderMutation.isSuccess && !verifyPaymentMutation.isSuccess) {
+      handlePayment();
+    }
+  }, [autoOpen]);
 
   const loadScript = (src: string) => {
     return new Promise((resolve) => {
