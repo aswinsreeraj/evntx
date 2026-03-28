@@ -1,6 +1,7 @@
 package http
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -11,12 +12,17 @@ import (
 )
 
 type EventHandler struct {
-	usecase     *usecase.EventUsecase
-	userUsecase *usecase.UserUsecase
+	usecase        *usecase.EventUsecase
+	userUsecase    *usecase.UserUsecase
+	bookingUsecase *usecase.BookingUsecase
 }
 
-func NewEventHandler(u *usecase.EventUsecase, uu *usecase.UserUsecase) *EventHandler {
-	return &EventHandler{usecase: u, userUsecase: uu}
+func NewEventHandler(
+	u *usecase.EventUsecase,
+	uu *usecase.UserUsecase,
+	bu *usecase.BookingUsecase,
+) *EventHandler {
+	return &EventHandler{usecase: u, userUsecase: uu, bookingUsecase: bu}
 }
 
 func (h *EventHandler) ListEvents(c *gin.Context) {
@@ -96,5 +102,32 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		"personnels":   personnels,
 		"ticket_types": tickets,
 		"host":         host,
+	})
+}
+
+func (h *EventHandler) CheckInTicket(c *gin.Context) {
+	userID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	var req struct {
+		TicketCode string `json:"ticket_code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, apiErrors.InvalidRequestBody, "Invalid request body")
+		return
+	}
+
+	ticket, err := h.bookingUsecase.CheckInTicket(c.Request.Context(), eventID, userID, req.TicketCode)
+	if err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Ticket validated successfully", gin.H{
+		"ticket_id":     ticket.TicketID,
+		"ticket_code":   ticket.TicketCode,
+		"status":        ticket.Status,
+		"checked_in_at": ticket.CheckedInAt,
 	})
 }

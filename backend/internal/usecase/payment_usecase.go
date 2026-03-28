@@ -16,11 +16,10 @@ import (
 )
 
 type PaymentUsecase struct {
-	bookingRepo         repository.BookingRepository
-	eventRepo           repository.EventRepository
-	paymentRepo         repository.PaymentRepository
-	razorpayService     repository.RazorpayService
-	notificationUsecase *NotificationUsecase
+	bookingRepo     repository.BookingRepository
+	eventRepo       repository.EventRepository
+	paymentRepo     repository.PaymentRepository
+	razorpayService repository.RazorpayService
 }
 
 func NewPaymentUsecase(
@@ -31,11 +30,10 @@ func NewPaymentUsecase(
 	notificationUsecase *NotificationUsecase,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		bookingRepo:         bookingRepo,
-		eventRepo:           eventRepo,
-		paymentRepo:         paymentRepo,
-		razorpayService:     razorpayService,
-		notificationUsecase: notificationUsecase,
+		bookingRepo:     bookingRepo,
+		eventRepo:       eventRepo,
+		paymentRepo:     paymentRepo,
+		razorpayService: razorpayService,
 	}
 }
 
@@ -152,7 +150,20 @@ func (u *PaymentUsecase) VerifyPayment(
 		return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
 	}
 
-	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID); err != nil {
+	booking, err := u.bookingRepo.FindByID(context.Background(), payment.BookingID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apiErrors.ErrResourceNotFound
+		}
+		return err
+	}
+
+	event, err := u.eventRepo.GetEventByID(booking.EventID)
+	if err != nil {
+		return err
+	}
+
+	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID, event.OrganizerID, payment.Amount); err != nil {
 		return err
 	}
 
@@ -235,4 +246,74 @@ func (u *PaymentUsecase) VerifyPayment(
 		Msg("payment_verified")
 
 	return nil
+}
+
+func (u *PaymentUsecase) RefundPaymentToWallet(ctx context.Context, bookingID string, userID string) error {
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apiErrors.ErrResourceNotFound
+		}
+
+		return err
+	}
+
+	if booking.UserID != userID {
+		return apiErrors.ErrForbiddenAction
+	}
+
+	if booking.Status != "paid" && booking.Status != "cancelled" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	payment, err := u.paymentRepo.FindByBookingID(bookingID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apiErrors.ErrResourceNotFound
+		}
+
+		return err
+	}
+
+	if payment.Status == domain.PaymentStatusRefunded {
+		return apiErrors.New(409, apiErrors.DuplicateResource, "Refund already processed")
+	}
+
+	if payment.Status != domain.PaymentStatusSuccess {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Payment is not eligible for refund")
+	}
+
+	refundAmount := normalizeRefundAmount(payment.Amount - booking.TotalAmount)
+	if refundAmount <= 0 {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "No refundable ticket amount available")
+	}
+
+	platformFeeAmount := normalizeRefundAmount(payment.Amount - refundAmount)
+	if platformFeeAmount < 0 {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Invalid refund split")
+	}
+
+	if err := u.paymentRepo.RefundPaymentToWallet(
+		booking.UserID,
+		payment.ID,
+		booking.ID,
+		refundAmount,
+		platformFeeAmount,
+	); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("payment_id", payment.ID).
+		Str("booking_id", booking.ID).
+		Str("user_id", booking.UserID).
+		Float64("refund_amount", refundAmount).
+		Float64("platform_fee_amount", platformFeeAmount).
+		Msg("payment_refunded_to_wallet")
+
+	return nil
+}
+
+func normalizeRefundAmount(amount float64) float64 {
+	return math.Round(amount*100) / 100
 }

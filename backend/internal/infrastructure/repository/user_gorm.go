@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -52,7 +53,22 @@ func (r *userGormRepository) Create(user *domain.User) error {
 		EmailVerified: user.EmailVerified,
 	}
 
-	return r.db.Create(&model).Error
+	walletModel := WalletModel{
+		ID:               uuid.NewString(),
+		UserID:           user.ID,
+		AvailableBalance: 0,
+		PendingBalance:   0,
+		TotalCredited:    0,
+		TotalDebited:     0,
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&model).Error; err != nil {
+			return err
+		}
+
+		return tx.Create(&walletModel).Error
+	})
 }
 
 func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {

@@ -19,12 +19,13 @@ import (
 )
 
 type OrganizerHandler struct {
-	eventUsecase *usecase.EventUsecase
-	userUsecase  *usecase.UserUsecase
+	eventUsecase  *usecase.EventUsecase
+	userUsecase   *usecase.UserUsecase
+	walletUsecase *usecase.WalletUsecase
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -54,6 +55,46 @@ func (h *OrganizerHandler) GetProfile(c *gin.Context) {
 		"locations":         user.Locations,
 		"organization_name": orgName,
 		"address":           address,
+	})
+}
+
+func (h *OrganizerHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.walletUsecase.GetWalletByUserID(userID)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrResourceNotFound)
+		return
+	}
+
+	response.Success(c, "Organizer wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+	})
+}
+
+func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(userID, req.Amount); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout request submitted", gin.H{
+		"amount": req.Amount,
+		"status": "completed",
 	})
 }
 

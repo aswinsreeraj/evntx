@@ -14,11 +14,12 @@ import (
 )
 
 type EventUsecase struct {
-	repo repository.EventRepository
+	repo        repository.EventRepository
+	bookingRepo repository.BookingRepository
 }
 
-func NewEventUsecase(repo repository.EventRepository) *EventUsecase {
-	return &EventUsecase{repo: repo}
+func NewEventUsecase(repo repository.EventRepository, bookingRepo repository.BookingRepository) *EventUsecase {
+	return &EventUsecase{repo: repo, bookingRepo: bookingRepo}
 }
 
 func (u *EventUsecase) ListEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) (interface{}, int64, float64, float64, error) {
@@ -247,7 +248,7 @@ func (u *EventUsecase) UpdateEvent(
 	now := time.Now()
 	eventUpdates["updated_at"] = now
 	detailsUpdates["updated_at"] = now
- 
+
 	if event.Status == "approved" {
 		eventUpdates["status"] = "draft"
 		logger.Log.Info().
@@ -367,6 +368,75 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 		Str("from", event.Status).
 		Str("to", "rejected").
 		Str("actor_id", adminID).
+		Msg("")
+
+	return nil
+}
+
+func (u *EventUsecase) CompleteEvent(ctx context.Context, adminID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+
+	if event.Status != "live" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	if err := u.repo.UpdateEventStatus(ctx, eventID, "completed"); err != nil {
+		return err
+	}
+
+	if err := u.SettleEventEarnings(ctx, eventID); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "completed").
+		Str("actor_id", adminID).
+		Msg("")
+
+	return nil
+}
+
+func (u *EventUsecase) SettleEventEarnings(ctx context.Context, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+
+	if event.Status != "completed" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	if event.Settled {
+		return apiErrors.ErrDuplicateResource
+	}
+
+	bookings, err := u.bookingRepo.GetPaidBookingsByEventID(ctx, eventID)
+	if err != nil {
+		return err
+	}
+
+	var totalAmount float64
+	for _, booking := range bookings {
+		totalAmount += booking.TotalAmount
+	}
+
+	if err := u.repo.SettleEventEarnings(ctx, eventID, event.OrganizerID, totalAmount); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event", "event_earnings_settled").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("organizer_id", event.OrganizerID).
+		Float64("amount", totalAmount).
 		Msg("")
 
 	return nil

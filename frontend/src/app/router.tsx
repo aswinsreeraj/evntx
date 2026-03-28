@@ -3,6 +3,7 @@ import HomePage from "../modules/home/pages/HomePage";
 import ProfilePage from "../modules/user/pages/ProfilePage";
 import MyBookingsPage from "../modules/user/pages/MyBookingsPage";
 import CalendarPage from "../modules/user/pages/CalendarPage";
+import WalletPage from "../modules/user/pages/WalletPage";
 import ProtectedRoute from "../shared/components/ProtectedRoute";
 import { createBrowserRouter } from "react-router-dom";
 import EventListPage from "../modules/events/pages/EventListPage";
@@ -15,6 +16,8 @@ import EventManagementPage from "../modules/admin/pages/EventManagementPage";
 import OrganizerProfile from "../modules/organizer/pages/Profile";
 import EventForm from "../modules/organizer/pages/EventForm";
 import MyEvents from "../modules/organizer/pages/MyEvents";
+import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
+import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 
 export const router = createBrowserRouter([
     {
@@ -42,6 +45,14 @@ export const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute roles={["goer"]}>
                         <CalendarPage />
+                    </ProtectedRoute>
+                ),
+            },
+            {
+                path: "/wallet",
+                element: (
+                    <ProtectedRoute>
+                        <WalletPage />
                     </ProtectedRoute>
                 ),
             },
@@ -86,6 +97,22 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["organizer"]}>
                 <MyEvents />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/events/:eventId/check-in",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerCheckInPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/wallet",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerWalletPage />
             </ProtectedRoute>
         ),
     },

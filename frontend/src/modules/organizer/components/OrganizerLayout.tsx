@@ -1,9 +1,11 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
-import { CircleUserRound, Plus } from "lucide-react";
 import NotificationMenu from "../../../shared/components/NotificationMenu";
+import { Bell, CircleUserRound, Plus } from "lucide-react";
+import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
@@ -15,6 +17,10 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
   const { logout } = useAuthStore();
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
   const profileMenuRef = React.useRef<HTMLDivElement>(null);
+  const { data: walletSummary } = useQuery({
+    queryKey: organizerWalletSummaryQueryKey,
+    queryFn: () => organizerApi.getWalletSummary(),
+  });
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -61,7 +67,7 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
           <SidebarItem label="Dashboard" />
           <SidebarItem label="My Events" route="/organizer/events" />
           <SidebarItem label="Reports" />
-          <SidebarItem label="Wallet" />
+          <SidebarItem label="Wallet" route="/organizer/wallet" />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -92,9 +98,16 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
                 Create Event
               </button>
 
-              <div className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36]">
-                Wallet: ₹1,000
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/organizer/wallet")}
+                className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36] transition hover:bg-[#e9eef6]"
+              >
+                Wallet: ₹{new Intl.NumberFormat("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(walletSummary?.available_balance ?? 0)}
+              </button>
 
               <NotificationMenu />
 
