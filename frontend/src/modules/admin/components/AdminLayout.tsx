@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Bell, Search, User } from "lucide-react";
+import { Search, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
 import { useEffect, useRef, useState } from "react";
+import NotificationMenu from "../../../shared/components/NotificationMenu";
 
 type Props = {
   children: ReactNode;
@@ -125,9 +126,11 @@ export default function AdminLayout({ children, title }: Props) {
               />
             </div>
 
-            <button className="text-gray-400 hover:text-blue-500 transition-colors">
-              <Bell className="w-5 h-5" fill="currentColor" />
-            </button>
+            <NotificationMenu
+              buttonClassName="relative rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-500"
+              iconClassName="w-5 h-5"
+              panelClassName="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.12)]"
+            />
 
             <div className="relative" ref={profileMenuRef}>
               <button

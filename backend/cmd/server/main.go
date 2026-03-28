@@ -46,9 +46,13 @@ func main() {
 	db.AutoMigrate(&repoImpl.BookingTicketModel{})
 	db.AutoMigrate(&repoImpl.TicketModel{})
 	db.AutoMigrate(&repoImpl.PaymentModel{})
+	db.AutoMigrate(&repoImpl.NotificationModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
+	notificationRepo := repoImpl.NewNotificationGormRepository(db)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
+	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
@@ -56,6 +60,12 @@ func main() {
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, notificationUsecase)
+	razorpayService := paymentImpl.NewRazorpayService()
+	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase)
+
+	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
+	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
@@ -137,6 +147,12 @@ func main() {
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
+
+	notificationGroup := router.Group("/notifications")
+	notificationGroup.Use(middleware.JWTAuthMiddleware())
+	notificationGroup.GET("", notificationHandler.GetNotifications)
+	notificationGroup.PATCH("/:id/read", notificationHandler.MarkAsRead)
+	notificationGroup.PATCH("/read-all", notificationHandler.MarkAllAsRead)
 
 	// Booking endpoint
 	bookingGroup := router.Group("/bookings")

@@ -55,7 +55,7 @@ func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
 		return
 	}
 
-	if err := h.paymentUsecase.VerifyPayment(req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature); err != nil {
+	if err := h.paymentUsecase.VerifyPayment(c.Request.Context(), req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature); err != nil {
 		response.AppError(c, err)
 		return
 	}
