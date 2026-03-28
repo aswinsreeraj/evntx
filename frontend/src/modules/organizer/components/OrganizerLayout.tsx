@@ -2,7 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
-import { Bell, CircleUserRound, Plus } from "lucide-react";
+import { CircleUserRound, Plus } from "lucide-react";
+import NotificationMenu from "../../../shared/components/NotificationMenu";
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
@@ -12,16 +13,11 @@ interface OrganizerLayoutProps {
 export default function OrganizerLayout({ children, activeTab }: OrganizerLayoutProps) {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
-  const [showNotifications, setShowNotifications] = React.useState(false);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const notificationRef = React.useRef<HTMLDivElement>(null);
   const profileMenuRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
@@ -30,11 +26,6 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const notifications = [
-    { id: 1, title: "Event pending", body: "One of your events is waiting for admin approval." },
-    { id: 2, title: "New booking", body: "You received a new reservation for Friday Night at Vapour Ladies Night." },
-  ];
 
   const handleLogout = () => {
     logout();
@@ -105,30 +96,7 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
                 Wallet: ₹1,000
               </div>
 
-              <div className="relative" ref={notificationRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowNotifications((current) => !current)}
-                  className="relative rounded-full p-2 text-[#6c7480] transition hover:bg-[#f5f5f5]"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#ff445d]" />
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 top-12 w-80 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
-                    <div className="px-2 py-1 text-sm font-semibold text-[#111827]">Notifications</div>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} className="rounded-xl bg-[#f8fafc] px-3 py-3">
-                          <div className="text-sm font-medium text-[#111827]">{notification.title}</div>
-                          <div className="mt-1 text-xs text-[#6b7280]">{notification.body}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <NotificationMenu />
 
               <div className="relative" ref={profileMenuRef}>
                 <button

@@ -13,14 +13,20 @@ import (
 )
 
 type BookingUsecase struct {
-	bookingRepo repository.BookingRepository
-	eventRepo   repository.EventRepository
+	bookingRepo         repository.BookingRepository
+	eventRepo           repository.EventRepository
+	notificationUsecase *NotificationUsecase
 }
 
-func NewBookingUsecase(bookingRepo repository.BookingRepository, eventRepo repository.EventRepository) *BookingUsecase {
+func NewBookingUsecase(
+	bookingRepo repository.BookingRepository,
+	eventRepo repository.EventRepository,
+	notificationUsecase *NotificationUsecase,
+) *BookingUsecase {
 	return &BookingUsecase{
-		bookingRepo: bookingRepo,
-		eventRepo:   eventRepo,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		notificationUsecase: notificationUsecase,
 	}
 }
 
@@ -104,6 +110,27 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		Float64("total_amount", booking.TotalAmount).
 		Time("expires_at", booking.ExpiresAt).
 		Msg("")
+
+	if u.notificationUsecase != nil {
+		if notifyErr := u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypeBookingReserved,
+			"Booking reserved",
+			"Booking reserved. Complete payment before expiry.",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+				"expires_at":  booking.ExpiresAt,
+			},
+		); notifyErr != nil {
+			logger.Log.Warn().
+				Err(notifyErr).
+				Str("user_id", userID).
+				Str("booking_id", booking.ID).
+				Msg("notification_send_failed")
+		}
+	}
 
 	return booking, nil
 }

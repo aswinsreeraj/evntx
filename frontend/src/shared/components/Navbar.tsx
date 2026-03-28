@@ -1,31 +1,22 @@
 import AuthModal from "../../modules/auth/components/AuthModal"
-import { Bell, CircleUserRound } from "lucide-react"
+import { CircleUserRound } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { useAuthStore } from "../../modules/auth/store/authStore"
 import { Link, useNavigate } from "react-router-dom"
 import { authApi } from "../../modules/auth/api"
+import NotificationMenu from "./NotificationMenu"
 
 function Navbar() {
-  const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const { isAuthenticated, logout, roles, authModalOpen, openAuthModal, closeAuthModal } = useAuthStore()
   const navigate = useNavigate()
-  const notificationRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const isAdmin = roles.includes("admin")
   const isOrganizer = roles.includes("organizer")
   const isGoer = isAuthenticated && !isAdmin && !isOrganizer
   const currentRole = isAdmin ? "admin" : isOrganizer ? "organizer" : isGoer ? "goer" : null
-  const notifications = [
-    { id: 1, title: "Booking confirmed", body: "Your ticket for Sand Castle Workshop is active." },
-    { id: 2, title: "Event reminder", body: "Premium Roy by Shreya starts tomorrow at 6:00 PM." },
-  ]
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false)
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
       }
@@ -102,30 +93,7 @@ function Navbar() {
                 </button>
               ) : null}
 
-              <div className="relative" ref={notificationRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowNotifications((current) => !current)}
-                  className="relative rounded-full p-2 text-[#6c7480] transition hover:bg-[#f5f5f5]"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#ff445d]" />
-                </button>
-
-                {showNotifications ? (
-                  <div className="absolute right-0 top-12 w-80 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
-                    <div className="px-2 py-1 text-sm font-semibold text-[#111827]">Notifications</div>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} className="rounded-xl bg-[#f8fafc] px-3 py-3">
-                          <div className="text-sm font-medium text-[#111827]">{notification.title}</div>
-                          <div className="mt-1 text-xs text-[#6b7280]">{notification.body}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+              <NotificationMenu />
 
               <div className="relative" ref={profileMenuRef}>
                 <button

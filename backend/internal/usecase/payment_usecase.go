@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -15,20 +16,26 @@ import (
 )
 
 type PaymentUsecase struct {
-	bookingRepo     repository.BookingRepository
-	paymentRepo     repository.PaymentRepository
-	razorpayService repository.RazorpayService
+	bookingRepo         repository.BookingRepository
+	eventRepo           repository.EventRepository
+	paymentRepo         repository.PaymentRepository
+	razorpayService     repository.RazorpayService
+	notificationUsecase *NotificationUsecase
 }
 
 func NewPaymentUsecase(
 	bookingRepo repository.BookingRepository,
+	eventRepo repository.EventRepository,
 	paymentRepo repository.PaymentRepository,
 	razorpayService repository.RazorpayService,
+	notificationUsecase *NotificationUsecase,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		bookingRepo:     bookingRepo,
-		paymentRepo:     paymentRepo,
-		razorpayService: razorpayService,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		paymentRepo:         paymentRepo,
+		razorpayService:     razorpayService,
+		notificationUsecase: notificationUsecase,
 	}
 }
 
@@ -87,7 +94,12 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 	}, nil
 }
 
-func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID string, razorpaySignature string) error {
+func (u *PaymentUsecase) VerifyPayment(
+	ctx context.Context,
+	razorpayOrderID string,
+	razorpayPaymentID string,
+	razorpaySignature string,
+) error {
 	payment, err := u.paymentRepo.FindByProviderReference(razorpayOrderID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -110,6 +122,27 @@ func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID
 			return updateErr
 		}
 
+		if u.notificationUsecase != nil {
+			if booking, bookingErr := u.bookingRepo.FindByID(ctx, payment.BookingID); bookingErr == nil {
+				if notifyErr := u.notificationUsecase.SendNotification(
+					booking.UserID,
+					domain.NotificationTypePaymentFailed,
+					"Payment failed",
+					"Payment failed. Please retry.",
+					map[string]interface{}{
+						"booking_id": payment.BookingID,
+						"payment_id": payment.ID,
+					},
+				); notifyErr != nil {
+					logger.Log.Warn().
+						Err(notifyErr).
+						Str("user_id", booking.UserID).
+						Str("payment_id", payment.ID).
+						Msg("notification_send_failed")
+				}
+			}
+		}
+
 		logger.Log.Warn().
 			Str("payment_id", payment.ID).
 			Str("booking_id", payment.BookingID).
@@ -121,6 +154,77 @@ func (u *PaymentUsecase) VerifyPayment(razorpayOrderID string, razorpayPaymentID
 
 	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID); err != nil {
 		return err
+	}
+
+	if u.notificationUsecase != nil {
+		booking, bookingErr := u.bookingRepo.FindByID(ctx, payment.BookingID)
+		if bookingErr != nil {
+			logger.Log.Warn().
+				Err(bookingErr).
+				Str("payment_id", payment.ID).
+				Msg("notification_context_lookup_failed")
+		} else if event, eventErr := u.eventRepo.GetEventByID(booking.EventID); eventErr != nil {
+			logger.Log.Warn().
+				Err(eventErr).
+				Str("payment_id", payment.ID).
+				Msg("notification_context_lookup_failed")
+		} else {
+			if notifyErr := u.notificationUsecase.SendNotification(
+				booking.UserID,
+				domain.NotificationTypePaymentSuccess,
+				"Payment successful",
+				"Payment successful. Tickets confirmed.",
+				map[string]interface{}{
+					"booking_id":  booking.ID,
+					"event_id":    event.ID,
+					"event_title": event.Title,
+					"amount":      payment.Amount,
+				},
+			); notifyErr != nil {
+				logger.Log.Warn().
+					Err(notifyErr).
+					Str("user_id", booking.UserID).
+					Str("payment_id", payment.ID).
+					Msg("notification_send_failed")
+			}
+
+			if notifyErr := u.notificationUsecase.SendNotification(
+				booking.UserID,
+				domain.NotificationTypeTicketGenerated,
+				"Your tickets are generated",
+				"Your tickets are generated",
+				map[string]interface{}{
+					"booking_id":  booking.ID,
+					"event_id":    event.ID,
+					"event_title": event.Title,
+				},
+			); notifyErr != nil {
+				logger.Log.Warn().
+					Err(notifyErr).
+					Str("user_id", booking.UserID).
+					Str("payment_id", payment.ID).
+					Msg("notification_send_failed")
+			}
+
+			if notifyErr := u.notificationUsecase.SendNotification(
+				event.OrganizerID,
+				domain.NotificationTypePaymentSuccess,
+				"New booking received",
+				"New booking received. You earned ₹"+strconv.FormatFloat(payment.Amount, 'f', 2, 64),
+				map[string]interface{}{
+					"booking_id":  booking.ID,
+					"event_id":    event.ID,
+					"event_title": event.Title,
+					"amount":      payment.Amount,
+				},
+			); notifyErr != nil {
+				logger.Log.Warn().
+					Err(notifyErr).
+					Str("organizer_id", event.OrganizerID).
+					Str("payment_id", payment.ID).
+					Msg("notification_send_failed")
+			}
+		}
 	}
 
 	logger.Log.Info().
