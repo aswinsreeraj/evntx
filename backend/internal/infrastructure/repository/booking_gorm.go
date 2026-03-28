@@ -10,6 +10,7 @@ import (
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type BookingModel struct {
@@ -469,4 +470,83 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 	}
 
 	return tickets, nil
+}
+
+func (r *bookingGormRepository) CheckInTicket(
+	ctx context.Context,
+	eventID string,
+	ticketCode string,
+) (*domain.TicketCheckIn, error) {
+	var checkedInTicket *domain.TicketCheckIn
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var result struct {
+			TicketID    string
+			TicketCode  string
+			EventID     string
+			Status      string
+			CheckedInAt *int64
+		}
+
+		if err := tx.Table("ticket_models").
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Select(`
+				ticket_models.id AS ticket_id,
+				ticket_models.ticket_code,
+				booking_models.event_id,
+				ticket_models.status,
+				ticket_models.checked_in_at
+			`).
+			Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
+			Where("ticket_models.ticket_code = ?", ticketCode).
+			First(&result).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apiErrors.New(404, apiErrors.ResourceNotFound, "Ticket not found")
+			}
+
+			return err
+		}
+
+		if result.EventID != eventID {
+			return apiErrors.New(404, apiErrors.ResourceNotFound, "Ticket not found")
+		}
+
+		if result.Status == "used" {
+			return apiErrors.New(409, apiErrors.InvalidStateTransition, "Ticket already used")
+		}
+
+		if result.Status != "valid" {
+			return apiErrors.New(400, apiErrors.InvalidStateTransition, "Ticket is not valid for check-in")
+		}
+
+		now := time.Now()
+		checkedInAt := now.Unix()
+
+		updateResult := tx.Model(&TicketModel{}).
+			Where("id = ? AND status = ?", result.TicketID, "valid").
+			Updates(map[string]interface{}{
+				"status":        "used",
+				"checked_in_at": checkedInAt,
+			})
+		if updateResult.Error != nil {
+			return updateResult.Error
+		}
+		if updateResult.RowsAffected == 0 {
+			return apiErrors.New(409, apiErrors.InvalidStateTransition, "Ticket already used")
+		}
+
+		checkedInTicket = &domain.TicketCheckIn{
+			TicketID:    result.TicketID,
+			TicketCode:  result.TicketCode,
+			Status:      "used",
+			CheckedInAt: now,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return checkedInTicket, nil
 }

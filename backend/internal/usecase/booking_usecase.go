@@ -15,12 +15,18 @@ import (
 type BookingUsecase struct {
 	bookingRepo repository.BookingRepository
 	eventRepo   repository.EventRepository
+	roleRepo    repository.UserRoleRepository
 }
 
-func NewBookingUsecase(bookingRepo repository.BookingRepository, eventRepo repository.EventRepository) *BookingUsecase {
+func NewBookingUsecase(
+	bookingRepo repository.BookingRepository,
+	eventRepo repository.EventRepository,
+	roleRepo repository.UserRoleRepository,
+) *BookingUsecase {
 	return &BookingUsecase{
 		bookingRepo: bookingRepo,
 		eventRepo:   eventRepo,
+		roleRepo:    roleRepo,
 	}
 }
 
@@ -159,4 +165,44 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 		Msg("booking_cancelled_partially")
 
 	return nil
+}
+
+func (u *BookingUsecase) CheckInTicket(
+	ctx context.Context,
+	eventID string,
+	actorID string,
+	ticketCode string,
+) (*domain.TicketCheckIn, error) {
+	roles, err := u.roleRepo.GetRolesByUserID(actorID)
+	if err != nil {
+		return nil, err
+	}
+
+	isAdmin := false
+	isOrganizer := false
+	for _, role := range roles {
+		switch role {
+		case domain.RoleAdmin:
+			isAdmin = true
+		case domain.RoleOrganizer:
+			isOrganizer = true
+		}
+	}
+
+	if !isAdmin {
+		if !isOrganizer {
+			return nil, apiErrors.ErrForbiddenAction
+		}
+
+		event, err := u.eventRepo.GetEventByID(eventID)
+		if err != nil {
+			return nil, err
+		}
+
+		if event.OrganizerID != actorID {
+			return nil, apiErrors.ErrForbiddenAction
+		}
+	}
+
+	return u.bookingRepo.CheckInTicket(ctx, eventID, ticketCode)
 }
