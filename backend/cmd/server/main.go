@@ -56,7 +56,7 @@ func main() {
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
 
@@ -70,7 +70,7 @@ func main() {
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo)
-	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase)
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
@@ -189,6 +189,7 @@ func main() {
 	// Event endpoints
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
+	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

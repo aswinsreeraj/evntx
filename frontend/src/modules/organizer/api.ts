@@ -62,6 +62,13 @@ export interface OrganizerWalletSummary {
   total_debited: number;
 }
 
+export interface CheckInResponse {
+  ticket_id: string;
+  ticket_code: string;
+  status: string;
+  checked_in_at: string;
+}
+
 export const organizerApi = {
   async createEvent(payload: CreateEventPayload) {
     const res = await api.post("/organizer/events", payload);
@@ -101,6 +108,13 @@ export const organizerApi = {
   async submitEvent(eventId: string) {
     const res = await api.post(`/organizer/events/${eventId}/submit`);
     return res.data;
+  },
+
+  async checkInTicket(eventId: string, ticketCode: string): Promise<CheckInResponse> {
+    const res = await api.post(`/events/${eventId}/check-in`, {
+      ticket_code: ticketCode,
+    });
+    return res.data.data;
   },
 
   async uploadImage(file: File) {

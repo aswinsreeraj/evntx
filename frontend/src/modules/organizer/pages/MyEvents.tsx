@@ -181,6 +181,14 @@ export default function MyEvents() {
                               Submit for Approval
                            </button>
                         )}
+                        {(event.status || "").toLowerCase() === "live" && (
+                           <button
+                              onClick={() => navigate(`/organizer/events/${event.id}/check-in`)}
+                              className="w-full border border-emerald-500 text-emerald-700 hover:bg-emerald-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                           >
+                              Check In Tickets
+                           </button>
+                        )}
                         {(event.status || "").toLowerCase() === "rejected" && event.rejection_reason && (
                            <button
                               onClick={() => {

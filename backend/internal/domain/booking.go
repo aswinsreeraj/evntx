@@ -39,13 +39,18 @@ type BookingWithEvent struct {
 }
 
 type TicketWithEvent struct {
-	TicketID     string
-	TicketCode   string
-	EventID      string
-	EventTitle   string
-	TicketType   string
-	Status       string
-	CheckedInAt  *time.Time
+	TicketID    string
+	TicketCode  string
+	EventID     string
+	EventTitle  string
+	TicketType  string
+	Status      string
+	CheckedInAt *time.Time
 }
 
-
+type TicketCheckIn struct {
+	TicketID    string
+	TicketCode  string
+	Status      string
+	CheckedInAt time.Time
+}
