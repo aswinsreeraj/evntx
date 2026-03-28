@@ -18,6 +18,7 @@ type EventRepository interface {
 	CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType, personnels []domain.EventPersonnel) error
 	UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType, personnelUpdates []domain.EventPersonnel) error
 	UpdateEventStatus(ctx context.Context, eventID string, status string) error
+	SettleEventEarnings(ctx context.Context, eventID string, organizerID string, totalAmount float64) error
 	ApproveEvent(ctx context.Context, eventID string) error
 	RejectEvent(ctx context.Context, eventID string, adminID string, reason string) error
 	DeleteEvent(ctx context.Context, eventID string) error

@@ -1,25 +1,34 @@
 package http
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	apiResponse "github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserHandler struct {
 	userUsecase    *usecase.UserUsecase
+	walletUsecase  *usecase.WalletUsecase
 	bookingUsecase *usecase.BookingUsecase
 }
 
-func NewUserHandler(userUsecase *usecase.UserUsecase, bookingUsecase *usecase.BookingUsecase) *UserHandler {
+func NewUserHandler(
+	userUsecase *usecase.UserUsecase,
+	walletUsecase *usecase.WalletUsecase,
+	bookingUsecase *usecase.BookingUsecase,
+) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
+		walletUsecase:  walletUsecase,
 		bookingUsecase: bookingUsecase,
 	}
 }
@@ -51,6 +60,99 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Profile retrieved successfully", resp)
+}
+
+func (h *UserHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.walletUsecase.GetWalletByUserID(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
+			return
+		}
+
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	apiResponse.Success(c, "Wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+	})
+}
+
+func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	filters := domain.WalletTransactionFilter{
+		Type:   c.Query("type"),
+		Status: c.Query("status"),
+	}
+
+	if filters.Type != "" &&
+		filters.Type != domain.WalletTransactionTypeCredit &&
+		filters.Type != domain.WalletTransactionTypeDebit {
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid wallet transaction type"))
+		return
+	}
+
+	if filters.Status != "" &&
+		filters.Status != domain.WalletTransactionStatusPending &&
+		filters.Status != domain.WalletTransactionStatusCompleted &&
+		filters.Status != domain.WalletTransactionStatusFailed {
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid wallet transaction status"))
+		return
+	}
+
+	transactions, total, err := h.walletUsecase.GetTransactionsByUserID(userID, filters, page, limit)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
+			return
+		}
+
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	responseTransactions := make([]gin.H, 0, len(transactions))
+	for _, txn := range transactions {
+		responseTransactions = append(responseTransactions, gin.H{
+			"id":             txn.ID,
+			"wallet_id":      txn.WalletID,
+			"type":           txn.Type,
+			"amount":         txn.Amount,
+			"reference_type": txn.ReferenceType,
+			"reference_id":   txn.ReferenceID,
+			"status":         txn.Status,
+			"created_at":     txn.CreatedAt,
+		})
+	}
+
+	apiResponse.Success(c, "Wallet transactions retrieved successfully", gin.H{
+		"transactions": responseTransactions,
+		"pagination": gin.H{
+			"page":  page,
+			"limit": limit,
+			"total": total,
+		},
+	})
 }
 
 type updateProfileRequest struct {

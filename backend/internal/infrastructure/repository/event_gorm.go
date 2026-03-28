@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -25,7 +26,8 @@ type EventModel struct {
 	CoverImageURL     string
 	MinPrice          float64 `gorm:"->"`
 	AvailableCapacity int     `gorm:"->"`
-	RejectionReason   string  `gorm:"->"`
+	Settled           bool
+	RejectionReason   string `gorm:"->"`
 	CreatedAt         int64
 	UpdatedAt         int64
 }
@@ -228,6 +230,7 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 			CoverImageURL:     m.CoverImageURL,
 			MinPrice:          m.MinPrice,
 			AvailableCapacity: m.AvailableCapacity,
+			Settled:           m.Settled,
 			CreatedAt:         time.Unix(m.CreatedAt, 0),
 			UpdatedAt:         time.Unix(m.UpdatedAt, 0),
 		})
@@ -303,6 +306,7 @@ func (r *eventGormRepository) AdminSearchEvents(
 				City:      m.City,
 				StartTime: time.Unix(m.StartTime, 0),
 				Status:    m.Status,
+				Settled:   m.Settled,
 				CreatedAt: time.Unix(m.CreatedAt, 0),
 				UpdatedAt: time.Unix(m.UpdatedAt, 0),
 			},
@@ -340,6 +344,7 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 		EndTime:       time.Unix(model.EndTime, 0),
 		Tags:          model.Tags,
 		CoverImageURL: model.CoverImageURL,
+		Settled:       model.Settled,
 		CreatedAt:     time.Unix(model.CreatedAt, 0),
 		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
 	}, nil
@@ -370,6 +375,7 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 		EndTime:       time.Unix(model.EndTime, 0),
 		Tags:          model.Tags,
 		CoverImageURL: model.CoverImageURL,
+		Settled:       model.Settled,
 		CreatedAt:     time.Unix(model.CreatedAt, 0),
 		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
 	}, nil
@@ -469,6 +475,7 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 			EndTime:       event.EndTime.Unix(),
 			Tags:          event.Tags,
 			Status:        event.Status,
+			Settled:       event.Settled,
 			CoverImageURL: event.CoverImageURL,
 			CreatedAt:     event.CreatedAt.Unix(),
 			UpdatedAt:     event.UpdatedAt.Unix(),
@@ -603,6 +610,67 @@ func (r *eventGormRepository) UpdateEventStatus(ctx context.Context, eventID str
 		}).Error
 }
 
+func (r *eventGormRepository) SettleEventEarnings(
+	ctx context.Context,
+	eventID string,
+	organizerID string,
+	totalAmount float64,
+) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		eventResult := tx.Model(&EventModel{}).
+			Where("id = ? AND status = ? AND settled = ?", eventID, "completed", false).
+			Updates(map[string]interface{}{
+				"settled":    true,
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			})
+		if eventResult.Error != nil {
+			return eventResult.Error
+		}
+		if eventResult.RowsAffected == 0 {
+			return apiErrors.ErrDuplicateResource
+		}
+
+		if totalAmount <= 0 {
+			return nil
+		}
+
+		var wallet WalletModel
+		if err := tx.Where("user_id = ?", organizerID).First(&wallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		if wallet.PendingBalance < totalAmount {
+			return apiErrors.ErrInsufficientBalance
+		}
+
+		now := time.Now()
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        totalAmount,
+			ReferenceType: domain.WalletReferenceTypeSettlement,
+			ReferenceID:   eventID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		return tx.Model(&WalletModel{}).
+			Where("id = ?", wallet.ID).
+			Select("pending_balance", "available_balance", "updated_at").
+			Updates(WalletModel{
+				PendingBalance:   wallet.PendingBalance - totalAmount,
+				AvailableBalance: wallet.AvailableBalance + totalAmount,
+				UpdatedAt:        now,
+			}).Error
+	})
+}
+
 func (r *eventGormRepository) ApproveEvent(ctx context.Context, eventID string) error {
 	return r.db.WithContext(ctx).Model(&EventModel{}).
 		Where("id = ?", eventID).
@@ -669,6 +737,7 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 			Tags:              m.Tags,
 			CoverImageURL:     m.CoverImageURL,
 			AvailableCapacity: m.AvailableCapacity,
+			Settled:           m.Settled,
 			RejectionReason:   m.RejectionReason,
 			CreatedAt:         time.Unix(m.CreatedAt, 0),
 			UpdatedAt:         time.Unix(m.UpdatedAt, 0),

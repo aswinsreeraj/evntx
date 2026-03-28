@@ -2,10 +2,12 @@ package repository
 
 import (
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -62,13 +64,32 @@ func (r *paymentGormRepository) FindByProviderReference(orderID string) (*domain
 	}, nil
 }
 
+func (r *paymentGormRepository) FindByBookingID(bookingID string) (*domain.Payment, error) {
+	var model PaymentModel
+
+	if err := r.db.Where("booking_id = ?", bookingID).Order("created_at DESC").First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Payment{
+		ID:                model.ID,
+		BookingID:         model.BookingID,
+		Provider:          model.Provider,
+		ProviderReference: model.ProviderReference,
+		Amount:            model.Amount,
+		Status:            model.Status,
+		RawResponse:       model.RawResponse,
+		CreatedAt:         model.CreatedAt,
+	}, nil
+}
+
 func (r *paymentGormRepository) UpdateStatus(paymentID string, status string) error {
 	return r.db.Model(&PaymentModel{}).
 		Where("id = ?", paymentID).
 		Update("status", status).Error
 }
 
-func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID string) error {
+func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID string, organizerID string, amount float64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		paymentResult := tx.Model(&PaymentModel{}).
 			Where("id = ?", paymentID).
@@ -90,6 +111,149 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return apiErrors.ErrInvalidStateTransition
 		}
 
+		var wallet WalletModel
+		if err := tx.Where("user_id = ?", organizerID).First(&wallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		normalizedAmount := math.Round(amount*100) / 100
+		now := time.Now()
+
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.WalletReferenceTypeEarning,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		wallet.PendingBalance = math.Round((wallet.PendingBalance+normalizedAmount)*100) / 100
+		wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedAmount)*100) / 100
+		wallet.UpdatedAt = now
+
+		if err := tx.Model(&WalletModel{}).
+			Where("id = ?", wallet.ID).
+			Select("pending_balance", "total_credited", "updated_at").
+			Updates(WalletModel{
+				PendingBalance: wallet.PendingBalance,
+				TotalCredited:  wallet.TotalCredited,
+				UpdatedAt:      wallet.UpdatedAt,
+			}).Error; err != nil {
+			return err
+		}
+
 		return nil
+	})
+}
+
+func (r *paymentGormRepository) RefundPaymentToWallet(
+	userID string,
+	paymentID string,
+	bookingID string,
+	refundAmount float64,
+	platformFeeAmount float64,
+) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		paymentResult := tx.Model(&PaymentModel{}).
+			Where("id = ? AND status = ?", paymentID, domain.PaymentStatusSuccess).
+			Update("status", domain.PaymentStatusRefunded)
+		if paymentResult.Error != nil {
+			return paymentResult.Error
+		}
+		if paymentResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		var wallet WalletModel
+		if err := tx.Where("user_id = ?", userID).First(&wallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		normalizedRefundAmount := math.Round(refundAmount*100) / 100
+		normalizedPlatformFeeAmount := math.Round(platformFeeAmount*100) / 100
+		now := time.Now()
+
+		if normalizedRefundAmount > 0 {
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      wallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        normalizedRefundAmount,
+				ReferenceType: domain.WalletReferenceTypeRefund,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			wallet.AvailableBalance = math.Round((wallet.AvailableBalance+normalizedRefundAmount)*100) / 100
+			wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedRefundAmount)*100) / 100
+			wallet.UpdatedAt = now
+
+			if err := tx.Model(&WalletModel{}).
+				Where("id = ?", wallet.ID).
+				Select("available_balance", "total_credited", "updated_at").
+				Updates(WalletModel{
+					AvailableBalance: wallet.AvailableBalance,
+					TotalCredited:    wallet.TotalCredited,
+					UpdatedAt:        wallet.UpdatedAt,
+				}).Error; err != nil {
+				return err
+			}
+		}
+
+		if normalizedPlatformFeeAmount <= 0 {
+			return nil
+		}
+
+		var adminWallet WalletModel
+		if err := tx.Model(&WalletModel{}).
+			Joins("JOIN user_role_models ON user_role_models.user_id = wallet_models.user_id").
+			Where("user_role_models.role = ?", domain.RoleAdmin).
+			Order("wallet_models.updated_at ASC").
+			First(&adminWallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
+
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      adminWallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        normalizedPlatformFeeAmount,
+			ReferenceType: domain.WalletReferenceTypePlatformFee,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		adminWallet.AvailableBalance = math.Round((adminWallet.AvailableBalance+normalizedPlatformFeeAmount)*100) / 100
+		adminWallet.TotalCredited = math.Round((adminWallet.TotalCredited+normalizedPlatformFeeAmount)*100) / 100
+		adminWallet.UpdatedAt = now
+
+		return tx.Model(&WalletModel{}).
+			Where("id = ?", adminWallet.ID).
+			Select("available_balance", "total_credited", "updated_at").
+			Updates(WalletModel{
+				AvailableBalance: adminWallet.AvailableBalance,
+				TotalCredited:    adminWallet.TotalCredited,
+				UpdatedAt:        adminWallet.UpdatedAt,
+			}).Error
 	})
 }

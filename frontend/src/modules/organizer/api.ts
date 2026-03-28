@@ -1,5 +1,7 @@
 import api from "../../services/axios";
 
+export const organizerWalletSummaryQueryKey = ["organizer-wallet-summary"] as const;
+
 export interface TicketInput {
   id?: string;
   name: string;
@@ -53,6 +55,13 @@ export interface UpdateEventPayload {
   key_personnel?: PersonnelInput[];
 }
 
+export interface OrganizerWalletSummary {
+  available_balance: number;
+  pending_balance: number;
+  total_credited: number;
+  total_debited: number;
+}
+
 export const organizerApi = {
   async createEvent(payload: CreateEventPayload) {
     const res = await api.post("/organizer/events", payload);
@@ -67,6 +76,16 @@ export const organizerApi = {
   async getOrganizerEvents(status?: string) {
     const res = await api.get(`/organizer/events`, { params: { status } });
     return res.data;
+  },
+
+  async getWalletSummary(): Promise<OrganizerWalletSummary> {
+    const res = await api.get("/organizer/wallet");
+    return res.data.data;
+  },
+
+  async requestPayout(amount: number) {
+    const res = await api.post("/organizer/wallet/payout", { amount });
+    return res.data.data;
   },
 
   async getEventBySlug(slug: string) {

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/aswinsreeraj/evntx/internal/usecase"
 	pkgErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -125,6 +125,34 @@ func (h *AdminHandler) RejectEventHandler(c *gin.Context) {
 	response.Success(c, "Event rejected successfully", gin.H{
 		"event_id": eventID,
 		"status":   "rejected",
+	})
+}
+
+func (h *AdminHandler) CompleteEventHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	if err := h.eventUsecase.CompleteEvent(c.Request.Context(), adminID, eventID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Event completed successfully", gin.H{
+		"event_id": eventID,
+		"status":   "completed",
+	})
+}
+
+func (h *AdminHandler) SettleEventHandler(c *gin.Context) {
+	eventID := c.Param("event_id")
+
+	if err := h.eventUsecase.SettleEventEarnings(c.Request.Context(), eventID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Settlement completed", gin.H{
+		"event_id": eventID,
 	})
 }
 

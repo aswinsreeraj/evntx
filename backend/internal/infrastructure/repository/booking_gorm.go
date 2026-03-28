@@ -295,6 +295,31 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 	return returnedBookings, nil
 }
 
+func (r *bookingGormRepository) GetPaidBookingsByEventID(ctx context.Context, eventID string) ([]domain.Booking, error) {
+	var models []BookingModel
+
+	if err := r.db.WithContext(ctx).
+		Where("event_id = ? AND status = ?", eventID, "paid").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	bookings := make([]domain.Booking, 0, len(models))
+	for _, model := range models {
+		bookings = append(bookings, domain.Booking{
+			ID:          model.ID,
+			UserID:      model.UserID,
+			EventID:     model.EventID,
+			Status:      model.Status,
+			TotalAmount: model.TotalAmount,
+			ExpiresAt:   time.Unix(model.ExpiresAt, 0),
+			CreatedAt:   time.Unix(model.CreatedAt, 0),
+		})
+	}
+
+	return bookings, nil
+}
+
 func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
 	var total int64
 	query := r.db.WithContext(ctx).Table("booking_models").Where("booking_models.user_id = ?", userID)

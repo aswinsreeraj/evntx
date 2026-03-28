@@ -31,6 +31,8 @@ func main() {
 	}
 
 	db.AutoMigrate(&repoImpl.UserModel{})
+	db.AutoMigrate(&repoImpl.WalletModel{})
+	db.AutoMigrate(&repoImpl.WalletTransactionModel{})
 	db.AutoMigrate(&repoImpl.OrganizerDetailModel{})
 	db.AutoMigrate(&repoImpl.EmailOTPModel{})
 	db.AutoMigrate(&repoImpl.UserSessionModel{})
@@ -47,16 +49,18 @@ func main() {
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
+	walletRepo := repoImpl.NewWalletGormRepository(db)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, paymentRepo, razorpayService)
+	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
+	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
 
 	emailSender := emailImpl.NewSMTPSender()
 
@@ -65,17 +69,17 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
 
-	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase)
+	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
 
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
 	go expirationWorker.Start()
 
-	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase)
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase)
 
 	router := gin.New()
 
@@ -127,6 +131,8 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	userGroup.GET("/me/wallet", userHandler.GetWallet)
+	userGroup.GET("/me/wallet/transactions", userHandler.GetWalletTransactions)
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
 	userGroup.PUT("/me", userHandler.UpdateProfile)
@@ -137,6 +143,7 @@ func main() {
 	bookingGroup.Use(middleware.JWTAuthMiddleware())
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
+	bookingGroup.POST("/:booking_id/refund", bookingHandler.RefundBooking)
 
 	// Payment endpoints
 	paymentGroup := router.Group("/payments")
@@ -150,6 +157,8 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
+	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
+	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
@@ -170,6 +179,8 @@ func main() {
 	adminGroup.GET("/events/slug/:slug", adminHandler.AdminGetEvent)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
+	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
+	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})

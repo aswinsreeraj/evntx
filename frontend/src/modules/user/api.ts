@@ -35,6 +35,33 @@ export type UserTicket = {
   checked_in_at?: string | null;
 };
 
+export type WalletData = {
+  available_balance: number;
+  pending_balance: number;
+  total_credited: number;
+  total_debited: number;
+};
+
+export type WalletTransaction = {
+  id: string;
+  wallet_id: string;
+  type: "cr" | "dr";
+  amount: number;
+  reference_type: string;
+  reference_id: string;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+};
+
+export type WalletTransactionsResponse = {
+  transactions: WalletTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
 export const userApi = {
   async getProfile() {
     const res = await api.get("/users/me");
@@ -43,6 +70,21 @@ export const userApi = {
 
   async updateProfile(payload: UpdateProfilePayload) {
     const res = await api.put("/users/me", payload);
+    return res.data.data;
+  },
+
+  async getWallet(): Promise<WalletData> {
+    const res = await api.get("/users/me/wallet");
+    return res.data.data;
+  },
+
+  async getWalletTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: "cr" | "dr";
+    status?: "pending" | "completed" | "failed";
+  }): Promise<WalletTransactionsResponse> {
+    const res = await api.get("/users/me/wallet/transactions", { params });
     return res.data.data;
   },
 
@@ -77,5 +119,9 @@ export const userApi = {
 
   async cancelBooking(bookingId: string, payload: { items: { ticket_type: string; quantity: number }[] }): Promise<void> {
     await api.post(`/bookings/${bookingId}/cancel`, payload);
+  },
+
+  async refundBooking(bookingId: string): Promise<void> {
+    await api.post(`/bookings/${bookingId}/refund`);
   },
 };
