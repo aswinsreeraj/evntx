@@ -151,7 +151,7 @@ export default function MyBookingsPage() {
 
       if (shouldRefundToWallet) {
         await userApi.refundBooking(booking.booking_id)
-        setRefundNotice("Refunded to wallet")
+        setRefundNotice("Ticket amount refunded to wallet. Platform fee is non-refundable.")
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: walletQueryKey }),
           queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),

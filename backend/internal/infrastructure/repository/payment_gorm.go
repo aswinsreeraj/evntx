@@ -154,7 +154,13 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 	})
 }
 
-func (r *paymentGormRepository) RefundPaymentToWallet(userID string, paymentID string, bookingID string, amount float64) error {
+func (r *paymentGormRepository) RefundPaymentToWallet(
+	userID string,
+	paymentID string,
+	bookingID string,
+	refundAmount float64,
+	platformFeeAmount float64,
+) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		paymentResult := tx.Model(&PaymentModel{}).
 			Where("id = ? AND status = ?", paymentID, domain.PaymentStatusSuccess).
@@ -174,15 +180,62 @@ func (r *paymentGormRepository) RefundPaymentToWallet(userID string, paymentID s
 			return err
 		}
 
-		normalizedAmount := math.Round(amount*100) / 100
+		normalizedRefundAmount := math.Round(refundAmount*100) / 100
+		normalizedPlatformFeeAmount := math.Round(platformFeeAmount*100) / 100
 		now := time.Now()
+
+		if normalizedRefundAmount > 0 {
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      wallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        normalizedRefundAmount,
+				ReferenceType: domain.WalletReferenceTypeRefund,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			wallet.AvailableBalance = math.Round((wallet.AvailableBalance+normalizedRefundAmount)*100) / 100
+			wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedRefundAmount)*100) / 100
+			wallet.UpdatedAt = now
+
+			if err := tx.Model(&WalletModel{}).
+				Where("id = ?", wallet.ID).
+				Select("available_balance", "total_credited", "updated_at").
+				Updates(WalletModel{
+					AvailableBalance: wallet.AvailableBalance,
+					TotalCredited:    wallet.TotalCredited,
+					UpdatedAt:        wallet.UpdatedAt,
+				}).Error; err != nil {
+				return err
+			}
+		}
+
+		if normalizedPlatformFeeAmount <= 0 {
+			return nil
+		}
+
+		var adminWallet WalletModel
+		if err := tx.Model(&WalletModel{}).
+			Joins("JOIN user_role_models ON user_role_models.user_id = wallet_models.user_id").
+			Where("user_role_models.role = ?", domain.RoleAdmin).
+			Order("wallet_models.updated_at ASC").
+			First(&adminWallet).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return apiErrors.ErrResourceNotFound
+			}
+			return err
+		}
 
 		if err := tx.Create(&WalletTransactionModel{
 			ID:            uuid.NewString(),
-			WalletID:      wallet.ID,
+			WalletID:      adminWallet.ID,
 			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        normalizedAmount,
-			ReferenceType: "refund",
+			Amount:        normalizedPlatformFeeAmount,
+			ReferenceType: domain.WalletReferenceTypePlatformFee,
 			ReferenceID:   bookingID,
 			Status:        domain.WalletTransactionStatusCompleted,
 			CreatedAt:     now,
@@ -190,17 +243,17 @@ func (r *paymentGormRepository) RefundPaymentToWallet(userID string, paymentID s
 			return err
 		}
 
-		wallet.AvailableBalance = math.Round((wallet.AvailableBalance+normalizedAmount)*100) / 100
-		wallet.TotalCredited = math.Round((wallet.TotalCredited+normalizedAmount)*100) / 100
-		wallet.UpdatedAt = now
+		adminWallet.AvailableBalance = math.Round((adminWallet.AvailableBalance+normalizedPlatformFeeAmount)*100) / 100
+		adminWallet.TotalCredited = math.Round((adminWallet.TotalCredited+normalizedPlatformFeeAmount)*100) / 100
+		adminWallet.UpdatedAt = now
 
 		return tx.Model(&WalletModel{}).
-			Where("id = ?", wallet.ID).
+			Where("id = ?", adminWallet.ID).
 			Select("available_balance", "total_credited", "updated_at").
 			Updates(WalletModel{
-				AvailableBalance: wallet.AvailableBalance,
-				TotalCredited:    wallet.TotalCredited,
-				UpdatedAt:        wallet.UpdatedAt,
+				AvailableBalance: adminWallet.AvailableBalance,
+				TotalCredited:    adminWallet.TotalCredited,
+				UpdatedAt:        adminWallet.UpdatedAt,
 			}).Error
 	})
 }

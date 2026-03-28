@@ -184,7 +184,23 @@ func (u *PaymentUsecase) RefundPaymentToWallet(ctx context.Context, bookingID st
 		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Payment is not eligible for refund")
 	}
 
-	if err := u.paymentRepo.RefundPaymentToWallet(booking.UserID, payment.ID, booking.ID, payment.Amount); err != nil {
+	refundAmount := normalizeRefundAmount(payment.Amount - booking.TotalAmount)
+	if refundAmount <= 0 {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "No refundable ticket amount available")
+	}
+
+	platformFeeAmount := normalizeRefundAmount(payment.Amount - refundAmount)
+	if platformFeeAmount < 0 {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Invalid refund split")
+	}
+
+	if err := u.paymentRepo.RefundPaymentToWallet(
+		booking.UserID,
+		payment.ID,
+		booking.ID,
+		refundAmount,
+		platformFeeAmount,
+	); err != nil {
 		return err
 	}
 
@@ -192,8 +208,13 @@ func (u *PaymentUsecase) RefundPaymentToWallet(ctx context.Context, bookingID st
 		Str("payment_id", payment.ID).
 		Str("booking_id", booking.ID).
 		Str("user_id", booking.UserID).
-		Float64("amount", payment.Amount).
+		Float64("refund_amount", refundAmount).
+		Float64("platform_fee_amount", platformFeeAmount).
 		Msg("payment_refunded_to_wallet")
 
 	return nil
+}
+
+func normalizeRefundAmount(amount float64) float64 {
+	return math.Round(amount*100) / 100
 }
