@@ -16,10 +16,11 @@ import (
 )
 
 type PaymentUsecase struct {
-	bookingRepo     repository.BookingRepository
-	eventRepo       repository.EventRepository
-	paymentRepo     repository.PaymentRepository
-	razorpayService repository.RazorpayService
+	bookingRepo         repository.BookingRepository
+	eventRepo           repository.EventRepository
+	paymentRepo         repository.PaymentRepository
+	razorpayService     repository.RazorpayService
+	notificationUsecase *NotificationUsecase
 }
 
 func NewPaymentUsecase(
@@ -30,10 +31,11 @@ func NewPaymentUsecase(
 	notificationUsecase *NotificationUsecase,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		bookingRepo:     bookingRepo,
-		eventRepo:       eventRepo,
-		paymentRepo:     paymentRepo,
-		razorpayService: razorpayService,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		paymentRepo:         paymentRepo,
+		razorpayService:     razorpayService,
+		notificationUsecase: notificationUsecase,
 	}
 }
 

@@ -50,26 +50,21 @@ func main() {
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
-	notificationRepo := repoImpl.NewNotificationGormRepository(db)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
-	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
+	notificationRepo := repoImpl.NewNotificationGormRepository(db)
+
+	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, notificationUsecase)
 	razorpayService := paymentImpl.NewRazorpayService()
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase)
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo)
-	razorpayService := paymentImpl.NewRazorpayService()
-	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
-
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
 
 	emailSender := emailImpl.NewSMTPSender()

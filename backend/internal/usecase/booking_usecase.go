@@ -23,11 +23,13 @@ func NewBookingUsecase(
 	bookingRepo repository.BookingRepository,
 	eventRepo repository.EventRepository,
 	roleRepo repository.UserRoleRepository,
+	notificationUsecase *NotificationUsecase,
 ) *BookingUsecase {
 	return &BookingUsecase{
-		bookingRepo: bookingRepo,
-		eventRepo:   eventRepo,
-		roleRepo:    roleRepo,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		roleRepo:            roleRepo,
+		notificationUsecase: notificationUsecase,
 	}
 }
 
