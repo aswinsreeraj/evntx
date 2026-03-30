@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -176,6 +177,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 		}
 
 		var totalRefund float64
+		var totalTicketsCancelled int
 
 		for _, item := range items {
 			if item.Quantity <= 0 {
@@ -220,6 +222,70 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			}
 
 			totalRefund += tt.Price * float64(item.Quantity)
+			totalTicketsCancelled += item.Quantity
+		}
+
+		if (bm.Status == "paid" || bm.Status == "confirmed") && totalRefund > 0 {
+			now := time.Now()
+
+			var userWallet WalletModel
+			if err := tx.Where("user_id = ?", bm.UserID).First(&userWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      userWallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance+totalRefund)*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
+				"available_balance": userWallet.AvailableBalance,
+				"updated_at":        now,
+			}).Error; err != nil {
+				return err
+			}
+
+			var event EventModel
+			if err := tx.Where("id = ?", bm.EventID).First(&event).Error; err != nil {
+				return err
+			}
+
+			var orgWallet WalletModel
+			if err := tx.Where("user_id = ?", event.OrganizerID).First(&orgWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      orgWallet.ID,
+				Type:          domain.WalletTransactionTypeDebit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-totalRefund)*100) / 100
+			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+float64(totalTicketsCancelled*30))*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+				"pending_balance": orgWallet.PendingBalance,
+				"reserve_balance": orgWallet.ReserveBalance,
+				"updated_at":      now,
+			}).Error; err != nil {
+				return err
+			}
 		}
 
 		if totalRefund > 0 {

@@ -57,6 +57,41 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 		return nil, apiErrors.ErrInvalidStateTransition
 	}
 
+	if booking.TotalAmount == 0 {
+		payment := &domain.Payment{
+			ID:                uuid.NewString(),
+			BookingID:         booking.ID,
+			Provider:          "free",
+			ProviderReference: "FREE_" + booking.ID,
+			Amount:            0,
+			Status:            domain.PaymentStatusSuccess,
+			RawResponse:       []byte(`{}`),
+			CreatedAt:         time.Now(),
+		}
+
+		if err := u.paymentRepo.CreatePayment(payment); err != nil {
+			return nil, err
+		}
+
+		if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, booking.ID, booking.EventID, 0); err != nil {
+			return nil, err
+		}
+
+		logger.Log.Info().
+			Str("booking_id", booking.ID).
+			Str("user_id", userID).
+			Str("payment_id", payment.ID).
+			Msg("free_payment_order_created_and_successful")
+
+		return &domain.PaymentOrderResponse{
+			OrderID:       "FREE_" + booking.ID,
+			Amount:        0,
+			Currency:      "INR",
+			RazorpayKey:   "",
+			IsFreeBooking: true,
+		}, nil
+	}
+
 	amountInPaise := int64(math.Round(booking.TotalAmount * 100))
 	order, err := u.razorpayService.CreateOrder(amountInPaise, booking.ID)
 	if err != nil {

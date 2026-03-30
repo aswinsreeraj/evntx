@@ -1,44 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../auth/store/authStore";
 import { Edit2, ChevronDown, Plus } from "lucide-react";
 import { userApi } from "../../user/api";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { useNavigate } from "react-router-dom";
-import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-function WalletSummaryCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: number;
-  helper?: string;
-}) {
-  return (
-    <div className="rounded-3xl border border-gray-100 bg-[#f8fafc] p-6">
-      <p className="text-sm font-medium uppercase tracking-[0.18em] text-[#6b7280]">{label}</p>
-      <p className="mt-4 text-3xl font-semibold text-[#111827]">₹{formatCurrency(value)}</p>
-      {helper ? <p className="mt-2 text-sm text-[#6b7280]">{helper}</p> : null}
-    </div>
-  );
-}
 
 export default function OrganizerProfile() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const { data: walletSummary, isLoading: walletLoading } = useQuery({
-    queryKey: organizerWalletSummaryQueryKey,
-    queryFn: () => organizerApi.getWalletSummary(),
-  });
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -183,35 +152,6 @@ export default function OrganizerProfile() {
             </div>
           ) : (
             <>
-              <div className="mb-10">
-                <div className="mb-4">
-                  <h2 className="text-base font-semibold text-gray-900">Wallet Summary</h2>
-                  <p className="mt-1 text-sm text-gray-500">Pending balance is the amount to be settled.</p>
-                </div>
-
-                {walletLoading ? (
-                  <div className="flex h-32 items-center justify-center rounded-3xl border border-gray-100 bg-[#f8fafc]">
-                    <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900" />
-                  </div>
-                ) : walletSummary ? (
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <WalletSummaryCard
-                      label="Available Balance"
-                      value={walletSummary.available_balance}
-                    />
-                    <WalletSummaryCard
-                      label="Pending Balance"
-                      value={walletSummary.pending_balance}
-                      helper="Amount to be settled"
-                    />
-                    <WalletSummaryCard
-                      label="Total Earnings"
-                      value={walletSummary.total_credited}
-                    />
-                  </div>
-                ) : null}
-              </div>
-
               {}
               <div className="flex flex-col items-center mb-12">
                 <div className="relative group">

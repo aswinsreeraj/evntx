@@ -13,6 +13,7 @@ type WalletModel struct {
 	UserID           string  `gorm:"type:uuid;uniqueIndex;not null"`
 	AvailableBalance float64 `gorm:"type:numeric(18,2);default:0;not null"`
 	PendingBalance   float64 `gorm:"type:numeric(18,2);default:0;not null"`
+	ReserveBalance   float64 `gorm:"type:numeric(18,2);default:0;not null"`
 	TotalCredited    float64 `gorm:"type:numeric(18,2);default:0;not null"`
 	TotalDebited     float64 `gorm:"type:numeric(18,2);default:0;not null"`
 	UpdatedAt        time.Time
@@ -68,6 +69,7 @@ func (r *walletGormRepository) UpdateWallet(wallet *domain.Wallet) error {
 		Select(
 			"available_balance",
 			"pending_balance",
+			"reserve_balance",
 			"total_credited",
 			"total_debited",
 			"updated_at",
@@ -75,6 +77,7 @@ func (r *walletGormRepository) UpdateWallet(wallet *domain.Wallet) error {
 		Updates(WalletModel{
 			AvailableBalance: wallet.AvailableBalance,
 			PendingBalance:   wallet.PendingBalance,
+			ReserveBalance:   wallet.ReserveBalance,
 			TotalCredited:    wallet.TotalCredited,
 			TotalDebited:     wallet.TotalDebited,
 			UpdatedAt:        wallet.UpdatedAt,
@@ -157,6 +160,7 @@ func walletDomainToModel(wallet *domain.Wallet) WalletModel {
 		UserID:           wallet.UserID,
 		AvailableBalance: wallet.AvailableBalance,
 		PendingBalance:   wallet.PendingBalance,
+		ReserveBalance:   wallet.ReserveBalance,
 		TotalCredited:    wallet.TotalCredited,
 		TotalDebited:     wallet.TotalDebited,
 		UpdatedAt:        wallet.UpdatedAt,
@@ -169,6 +173,7 @@ func walletModelToDomain(model WalletModel) *domain.Wallet {
 		UserID:           model.UserID,
 		AvailableBalance: model.AvailableBalance,
 		PendingBalance:   model.PendingBalance,
+		ReserveBalance:   model.ReserveBalance,
 		TotalCredited:    model.TotalCredited,
 		TotalDebited:     model.TotalDebited,
 		UpdatedAt:        model.UpdatedAt,

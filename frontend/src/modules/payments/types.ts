@@ -3,6 +3,7 @@ export interface RazorpayOrder {
   amount: number;
   currency: string;
   receipt: string;
+  is_free_booking?: boolean;
 }
 
 export interface RazorpayResponse {

@@ -57,4 +57,9 @@ export const adminApi = {
     });
     return response.data;
   },
+
+  async getPlatformWallet() {
+    const response = await api.get("/admin/platform-wallet");
+    return response.data.data;
+  },
 };

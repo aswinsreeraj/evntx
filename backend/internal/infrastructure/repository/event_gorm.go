@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
@@ -614,7 +615,7 @@ func (r *eventGormRepository) SettleEventEarnings(
 	ctx context.Context,
 	eventID string,
 	organizerID string,
-	totalAmount float64,
+	totalAmountParam float64,
 ) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		eventResult := tx.Model(&EventModel{}).
@@ -630,9 +631,28 @@ func (r *eventGormRepository) SettleEventEarnings(
 			return apiErrors.ErrDuplicateResource
 		}
 
-		if totalAmount <= 0 {
+		var bookingStats struct {
+			TotalAmount  float64
+			TotalTickets int64
+		}
+
+		if err := tx.Table("booking_models").
+			Select("COALESCE(SUM(booking_models.total_amount), 0) as total_amount, COALESCE(SUM(booking_ticket_models.quantity), 0) as total_tickets").
+			Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id = booking_models.id").
+			Where("booking_models.event_id = ? AND booking_models.status IN ('paid', 'confirmed')", eventID).
+			Scan(&bookingStats).Error; err != nil {
+			return err
+		}
+
+		if bookingStats.TotalAmount <= 0 {
 			return nil
 		}
+
+		baseT := bookingStats.TotalAmount - float64(bookingStats.TotalTickets*30)
+		organizerFee := math.Round((baseT*0.05)*100) / 100
+		organizerRevenue := math.Round((baseT-organizerFee)*100) / 100
+		reserveRelease := float64(bookingStats.TotalTickets * 30)
+		now := time.Now()
 
 		var wallet WalletModel
 		if err := tx.Where("user_id = ?", organizerID).First(&wallet).Error; err != nil {
@@ -642,16 +662,16 @@ func (r *eventGormRepository) SettleEventEarnings(
 			return err
 		}
 
-		if wallet.PendingBalance < totalAmount {
+		if wallet.PendingBalance < baseT {
 			return apiErrors.ErrInsufficientBalance
 		}
 
-		now := time.Now()
+		// 1. Organizer Wallet updates
 		if err := tx.Create(&WalletTransactionModel{
 			ID:            uuid.NewString(),
 			WalletID:      wallet.ID,
 			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        totalAmount,
+			Amount:        organizerRevenue,
 			ReferenceType: domain.WalletReferenceTypeSettlement,
 			ReferenceID:   eventID,
 			Status:        domain.WalletTransactionStatusCompleted,
@@ -660,14 +680,57 @@ func (r *eventGormRepository) SettleEventEarnings(
 			return err
 		}
 
-		return tx.Model(&WalletModel{}).
+		wallet.PendingBalance = math.Round((wallet.PendingBalance-baseT)*100) / 100
+		wallet.AvailableBalance = math.Round((wallet.AvailableBalance+organizerRevenue)*100) / 100
+		wallet.ReserveBalance = math.Round((wallet.ReserveBalance+reserveRelease)*100) / 100
+		wallet.UpdatedAt = now
+
+		if err := tx.Model(&WalletModel{}).
 			Where("id = ?", wallet.ID).
-			Select("pending_balance", "available_balance", "updated_at").
+			Select("pending_balance", "available_balance", "reserve_balance", "updated_at").
 			Updates(WalletModel{
-				PendingBalance:   wallet.PendingBalance - totalAmount,
-				AvailableBalance: wallet.AvailableBalance + totalAmount,
-				UpdatedAt:        now,
-			}).Error
+				PendingBalance:   wallet.PendingBalance,
+				AvailableBalance: wallet.AvailableBalance,
+				ReserveBalance:   wallet.ReserveBalance,
+				UpdatedAt:        wallet.UpdatedAt,
+			}).Error; err != nil {
+			return err
+		}
+
+		// 2. Platform Wallet updates
+		var platformWallet PlatformWalletModel
+		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
+			return err
+		}
+		
+		if err := tx.Create(&PlatformWalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      domain.PlatformWalletID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        organizerFee,
+			ReferenceType: domain.PlatformRefTypeEarning,
+			ReferenceID:   eventID,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		platformWallet.AvailableBalance = math.Round((platformWallet.AvailableBalance+organizerFee)*100) / 100
+		platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+organizerFee)*100) / 100
+		platformWallet.UpdatedAt = now
+
+		if err := tx.Model(&PlatformWalletModel{}).
+			Where("id = ?", domain.PlatformWalletID).
+			Select("available_balance", "total_credited", "updated_at").
+			Updates(PlatformWalletModel{
+				AvailableBalance: platformWallet.AvailableBalance,
+				TotalCredited:    platformWallet.TotalCredited,
+				UpdatedAt:        platformWallet.UpdatedAt,
+			}).Error; err != nil {
+			return err
+		}
+
+		return nil
 	})
 }
 
@@ -704,11 +767,35 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 	})
 }
 
+func (r *eventGormRepository) SuspendLiveEvent(ctx context.Context, eventID string, adminID string, reason string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&EventModel{}).
+			Where("id = ?", eventID).
+			Updates(map[string]interface{}{
+				"status":     "suspended",
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			}).Error; err != nil {
+			return err
+		}
+
+		logModel := EventModerationLogModel{
+			ID:        uuid.New().String(),
+			EventID:   eventID,
+			AdminID:   adminID,
+			Action:    "suspended",
+			Reason:    reason,
+			CreatedAt: time.Now().Unix(),
+		}
+
+		return tx.Create(&logModel).Error
+	})
+}
+
 func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
 	var models []EventModel
 	query := r.db.Model(&EventModel{}).
 		Select("event_models.*, "+
-			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'rejected' ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
+			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action IN ('rejected', 'suspended') ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
 			"COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("organizer_id = ?", organizerID)
 
@@ -762,4 +849,153 @@ func (r *eventGormRepository) DeleteEvent(ctx context.Context, eventID string) e
 		}
 		return nil
 	})
+}
+
+func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID string, organizerID string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		eventResult := tx.Model(&EventModel{}).
+			Where("id = ? AND organizer_id = ? AND status IN ('live', 'approved')", eventID, organizerID).
+			Updates(map[string]interface{}{
+				"status":     "cancelled",
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			})
+		if eventResult.Error != nil {
+			return eventResult.Error
+		}
+		if eventResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		var bookings []BookingModel
+		if err := tx.Where("event_id = ? AND status IN ('paid', 'confirmed')", eventID).Find(&bookings).Error; err != nil {
+			return err
+		}
+
+		if len(bookings) == 0 {
+			return nil
+		}
+
+		now := time.Now()
+
+		for _, bm := range bookings {
+			var bookingTickets []BookingTicketModel
+			if err := tx.Where("booking_id = ?", bm.ID).Find(&bookingTickets).Error; err != nil {
+				return err
+			}
+
+			var totalTicketsCancelled int
+			for _, bt := range bookingTickets {
+				totalTicketsCancelled += bt.Quantity
+			}
+
+			baseRefund := bm.TotalAmount - float64(totalTicketsCancelled*30)
+			totalRefundToUser := bm.TotalAmount
+
+			if totalRefundToUser <= 0 {
+				continue
+			}
+
+			if err := tx.Model(&BookingModel{}).Where("id = ?", bm.ID).Update("status", "cancelled").Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&TicketModel{}).Where("booking_id = ?", bm.ID).Update("status", "cancelled").Error; err != nil {
+				return err
+			}
+
+			var userWallet WalletModel
+			if err := tx.Where("user_id = ?", bm.UserID).First(&userWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      userWallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        totalRefundToUser,
+				ReferenceType: domain.WalletReferenceTypeOrganizerCancellation,
+				ReferenceID:   bm.ID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance+totalRefundToUser)*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
+				"available_balance": userWallet.AvailableBalance,
+				"updated_at":        now,
+			}).Error; err != nil {
+				return err
+			}
+
+			var orgWallet WalletModel
+			if err := tx.Where("user_id = ?", organizerID).First(&orgWallet).Error; err != nil {
+				return err
+			}
+
+			platformFee := float64(totalTicketsCancelled * 30)
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      orgWallet.ID,
+				Type:          domain.WalletTransactionTypeDebit,
+				Amount:        totalRefundToUser,
+				ReferenceType: domain.WalletReferenceTypeOrganizerCancellation,
+				ReferenceID:   bm.ID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-baseRefund)*100) / 100
+			orgWallet.AvailableBalance = math.Round((orgWallet.AvailableBalance-platformFee)*100) / 100
+			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+platformFee)*100) / 100
+
+			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+				"pending_balance":   orgWallet.PendingBalance,
+				"available_balance": orgWallet.AvailableBalance,
+				"reserve_balance":   orgWallet.ReserveBalance,
+				"updated_at":        now,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
+
+func (r *eventGormRepository) FindPastLiveEvents(ctx context.Context, now time.Time) ([]domain.Event, error) {
+	var models []EventModel
+	nowUnix := now.Unix()
+
+	if err := r.db.WithContext(ctx).
+		Where("status = ? AND end_time < ?", "live", nowUnix).
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	events := make([]domain.Event, len(models))
+	for i, model := range models {
+		events[i] = domain.Event{
+			ID:            model.ID,
+			OrganizerID:   model.OrganizerID,
+			Title:         model.Title,
+			Slug:          model.Slug,
+			Status:        model.Status,
+			City:          model.City,
+			VenueName:     model.VenueName,
+			Category:      model.Category,
+			StartTime:     time.Unix(model.StartTime, 0),
+			EndTime:       time.Unix(model.EndTime, 0),
+			Tags:          model.Tags,
+			CoverImageURL: model.CoverImageURL,
+			Settled:       model.Settled,
+			CreatedAt:     time.Unix(model.CreatedAt, 0),
+			UpdatedAt:     time.Unix(model.UpdatedAt, 0),
+		}
+	}
+
+	return events, nil
 }

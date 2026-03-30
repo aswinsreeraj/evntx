@@ -55,6 +55,11 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
       // 2. Create Order on Backend
       const order = await createOrderMutation.mutateAsync(bookingId);
 
+      if (order.is_free_booking) {
+        onSuccess();
+        return;
+      }
+
       // 3. Open Razorpay Checkout
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,

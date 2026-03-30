@@ -74,8 +74,17 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	now := time.Now()
 	expiresAt := now.Add(10 * time.Minute)
-	platformFee := baseTotal * 0.05
-	totalAmount := baseTotal + platformFee
+	
+	var totalTickets int
+	for _, req := range requests {
+		totalTickets += req.Quantity
+	}
+	
+	userFee := 0.0
+	if baseTotal > 0 {
+		userFee = float64(30 * totalTickets)
+	}
+	totalAmount := baseTotal + userFee
 
 	booking := &domain.Booking{
 		ID:          bookingID,
@@ -176,7 +185,22 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 }
 
 func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
-	err := u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	event, err := u.eventRepo.GetEventByID(booking.EventID)
+	if err != nil {
+		return err
+	}
+
+	timeUntilEvent := time.Until(event.StartTime)
+	if timeUntilEvent < 48*time.Hour {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Cannot cancel booking less than 48 hours before the event")
+	}
+
+	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
 	if err != nil {
 		return err
 	}

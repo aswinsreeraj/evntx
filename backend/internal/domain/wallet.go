@@ -10,10 +10,13 @@ const (
 	WalletTransactionStatusCompleted = "completed"
 	WalletTransactionStatusFailed    = "failed"
 
-	WalletReferenceTypeRefund      = "refund"
-	WalletReferenceTypeEarning     = "earning"
-	WalletReferenceTypeSettlement  = "settlement"
-	WalletReferenceTypePlatformFee = "platform_fee"
+	WalletReferenceTypeRefund               = "refund"
+	WalletReferenceTypeEarning              = "earning"
+	WalletReferenceTypeSettlement           = "settlement"
+	WalletReferenceTypePlatformFee          = "platform_fee"
+	WalletReferenceTypePurchase             = "purchase"
+	WalletReferenceTypeUserCancellation     = "user_cancellation"
+	WalletReferenceTypeOrganizerCancellation = "organizer_cancellation"
 )
 
 type Wallet struct {
@@ -21,6 +24,7 @@ type Wallet struct {
 	UserID           string    `json:"user_id"`
 	AvailableBalance float64   `json:"available_balance"`
 	PendingBalance   float64   `json:"pending_balance"`
+	ReserveBalance   float64   `json:"reserve_balance"`
 	TotalCredited    float64   `json:"total_credited"`
 	TotalDebited     float64   `json:"total_debited"`
 	UpdatedAt        time.Time `json:"updated_at"`

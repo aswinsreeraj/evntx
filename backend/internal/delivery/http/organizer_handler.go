@@ -487,3 +487,16 @@ func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
 
 	response.Success(c, "Event deleted successfully", nil)
 }
+
+func (h *OrganizerHandler) CancelLiveEvent(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	err := h.eventUsecase.CancelLiveEvent(c.Request.Context(), organizerID, eventID)
+	if err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Live event cancelled successfully. All users refunded.", nil)
+}

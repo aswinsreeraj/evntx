@@ -35,8 +35,9 @@ type RazorpayOrder struct {
 }
 
 type PaymentOrderResponse struct {
-	OrderID     string `json:"id"`
-	Amount      int64  `json:"amount"`
-	Currency    string `json:"currency"`
-	RazorpayKey string `json:"razorpay_key"`
+	OrderID       string `json:"id"`
+	Amount        int64  `json:"amount"`
+	Currency      string `json:"currency"`
+	RazorpayKey   string `json:"razorpay_key"`
+	IsFreeBooking bool   `json:"is_free_booking"`
 }

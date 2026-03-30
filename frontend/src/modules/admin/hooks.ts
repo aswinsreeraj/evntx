@@ -58,3 +58,10 @@ export function useRejectEvent() {
     },
   });
 }
+
+export function usePlatformWallet() {
+  return useQuery({
+    queryKey: ["admin-platform-wallet"],
+    queryFn: () => adminApi.getPlatformWallet(),
+  });
+}

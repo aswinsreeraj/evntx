@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/aswinsreeraj/evntx/internal/repository"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	pkgErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/response"
@@ -12,14 +13,16 @@ import (
 )
 
 type AdminHandler struct {
-	eventUsecase *usecase.EventUsecase
-	userUsecase  *usecase.UserUsecase
+	eventUsecase        *usecase.EventUsecase
+	userUsecase         *usecase.UserUsecase
+	platformWalletRepo  repository.PlatformWalletRepository
 }
 
-func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase) *AdminHandler {
+func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase, platformWalletRepo repository.PlatformWalletRepository) *AdminHandler {
 	return &AdminHandler{
-		eventUsecase: eventUsecase,
-		userUsecase:  userUsecase,
+		eventUsecase:       eventUsecase,
+		userUsecase:        userUsecase,
+		platformWalletRepo: platformWalletRepo,
 	}
 }
 
@@ -128,6 +131,31 @@ func (h *AdminHandler) RejectEventHandler(c *gin.Context) {
 	})
 }
 
+func (h *AdminHandler) SuspendEventHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.Reason == "" {
+		response.AppError(c, pkgErrors.New(400, pkgErrors.InvalidRequestBody, "Reason is required"))
+		return
+	}
+
+	err := h.eventUsecase.SuspendLiveEvent(c.Request.Context(), adminID, eventID, req.Reason)
+	if err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Event suspended successfully", gin.H{
+		"event_id": eventID,
+		"status":   "suspended",
+	})
+}
+
 func (h *AdminHandler) CompleteEventHandler(c *gin.Context) {
 	adminID := c.GetString("user_id")
 	eventID := c.Param("event_id")
@@ -188,5 +216,20 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 		"personnels":   personnels,
 		"ticket_types": tickets,
 		"host":         host,
+	})
+}
+func (h *AdminHandler) GetPlatformWallet(c *gin.Context) {
+	wallet, err := h.platformWalletRepo.GetPlatformWallet()
+	if err != nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "Platform wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+		"updated_at":        wallet.UpdatedAt,
 	})
 }

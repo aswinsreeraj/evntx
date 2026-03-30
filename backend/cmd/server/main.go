@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -47,15 +48,21 @@ func main() {
 	db.AutoMigrate(&repoImpl.TicketModel{})
 	db.AutoMigrate(&repoImpl.PaymentModel{})
 	db.AutoMigrate(&repoImpl.NotificationModel{})
+	db.AutoMigrate(&repoImpl.PlatformWalletModel{})
+	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
 	notificationRepo := repoImpl.NewNotificationGormRepository(db)
+	platformWalletRepo := repoImpl.NewPlatformWalletGormRepository(db)
+	if err := platformWalletRepo.EnsureExists(); err != nil {
+		logger.Log.Fatal().Msgf("failed to initialize platform wallet: %v", err)
+	}
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
@@ -74,9 +81,9 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
-	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, platformWalletRepo)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
@@ -175,6 +182,7 @@ func main() {
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
 	organizerGroup.DELETE("/events/:event_id", organizerHandler.DeleteEvent)
+	organizerGroup.POST("/events/:event_id/cancel", organizerHandler.CancelLiveEvent)
 	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 	organizerGroup.POST("/upload", organizerHandler.UploadImage)
 
@@ -190,8 +198,10 @@ func main() {
 	adminGroup.GET("/events/slug/:slug", adminHandler.AdminGetEvent)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
+	adminGroup.PATCH("/events/:event_id/suspend", adminHandler.SuspendEventHandler)
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
+	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})
@@ -201,6 +211,17 @@ func main() {
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
 	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			err := eventUsecase.AutoProcessCompletedEvents(context.Background())
+			if err != nil {
+				logger.Log.Error().Err(err).Msg("Background job AutoProcessCompletedEvents failed")
+			}
+		}
+	}()
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

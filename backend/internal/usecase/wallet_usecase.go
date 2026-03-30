@@ -11,15 +11,17 @@ import (
 )
 
 type WalletUsecase struct {
-	repo     repository.WalletRepository
-	roleRepo repository.UserRoleRepository
+	repo               repository.WalletRepository
+	roleRepo           repository.UserRoleRepository
+	platformWalletRepo repository.PlatformWalletRepository
 }
 
 func NewWalletUsecase(
 	repo repository.WalletRepository,
 	roleRepo repository.UserRoleRepository,
+	platformWalletRepo repository.PlatformWalletRepository,
 ) *WalletUsecase {
-	return &WalletUsecase{repo: repo, roleRepo: roleRepo}
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -149,17 +151,39 @@ func (u *WalletUsecase) RequestPayout(userID string, amount float64) error {
 	}
 
 	normalizedAmount := normalizeWalletAmount(amount)
-	if wallet.AvailableBalance < normalizedAmount {
-		return apiErrors.ErrInsufficientBalance
+	
+	lockedAmount := 0.0
+	if wallet.ReserveBalance < 0 {
+		lockedAmount = math.Abs(wallet.ReserveBalance)
 	}
 
-	return u.ApplyTransaction(
+	withdrawableBalance := wallet.AvailableBalance - lockedAmount
+	if withdrawableBalance < normalizedAmount {
+		return apiErrors.New(400, apiErrors.InsufficientBalance, "Insufficient withdrawable balance. Please note any reserve deficits.")
+	}
+
+	if err := u.ApplyTransaction(
 		wallet.ID,
 		domain.WalletTransactionTypeDebit,
 		normalizedAmount,
 		"payout",
 		userID,
-	)
+	); err != nil {
+		return err
+	}
+
+	if u.platformWalletRepo != nil {
+		if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
+			domain.WalletTransactionTypeDebit,
+			normalizedAmount,
+			domain.PlatformRefTypePayout,
+			userID,
+		); notifyErr != nil {
+			return notifyErr
+		}
+	}
+
+	return nil
 }
 
 func normalizeWalletAmount(amount float64) float64 {
