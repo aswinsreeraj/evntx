@@ -102,8 +102,6 @@ export default function FilterSidebar({
     );
   };
 
-
-
   const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Math.min(Number(e.target.value), maxVal - 1);
     setMinVal(value);

@@ -24,8 +24,6 @@ function TicketQr({ value }: { value: string }) {
   )
 }
 
-
-
 export default function TicketModal({ booking, tickets, open, onClose }: Props) {
   const [activeIndex, setActiveIndex] = useState(0)
   const attendeeName = useAuthStore.getState().user?.name || "Attendee"

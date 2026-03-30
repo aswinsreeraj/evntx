@@ -82,4 +82,3 @@ func (u *NotificationUsecase) MarkAllAsRead(userID string) error {
 func (u *NotificationUsecase) ClearAll(userID string) error {
 	return u.repo.ClearAll(userID)
 }
-

@@ -666,7 +666,6 @@ func (r *eventGormRepository) SettleEventEarnings(
 			return apiErrors.ErrInsufficientBalance
 		}
 
-		// 1. Organizer Wallet updates
 		if err := tx.Create(&WalletTransactionModel{
 			ID:            uuid.NewString(),
 			WalletID:      wallet.ID,
@@ -697,12 +696,11 @@ func (r *eventGormRepository) SettleEventEarnings(
 			return err
 		}
 
-		// 2. Platform Wallet updates
 		var platformWallet PlatformWalletModel
 		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
 			return err
 		}
-		
+
 		if err := tx.Create(&PlatformWalletTransactionModel{
 			ID:            uuid.NewString(),
 			WalletID:      domain.PlatformWalletID,

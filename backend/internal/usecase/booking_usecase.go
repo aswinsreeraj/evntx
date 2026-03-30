@@ -74,12 +74,12 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	now := time.Now()
 	expiresAt := now.Add(10 * time.Minute)
-	
+
 	var totalTickets int
 	for _, req := range requests {
 		totalTickets += req.Quantity
 	}
-	
+
 	userFee := 0.0
 	if baseTotal > 0 {
 		userFee = float64(30 * totalTickets)
@@ -267,7 +267,6 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
 		return apiErrors.ErrInvalidStateTransition
 	}
 
-	// Double check expiration
 	if time.Now().After(booking.ExpiresAt) {
 		return apiErrors.ErrBookingExpired
 	}
@@ -277,7 +276,6 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
 		return err
 	}
 
-	// Send notifications
 	if u.notificationUsecase != nil {
 		event, _ := u.eventRepo.GetEventByID(booking.EventID)
 		_ = u.notificationUsecase.SendNotification(

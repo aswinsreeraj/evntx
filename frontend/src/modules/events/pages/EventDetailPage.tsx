@@ -142,19 +142,19 @@ export default function EventDetailPage() {
               <div className="bg-[#fcf3f4] rounded-xl p-4 mb-4 flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700">Price From</span>
                 <span className="text-sm font-bold text-[#e53e5d]">
-                  {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0 
+                  {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0
                     ? formatCurrency(Math.min(...displayEvent.ticketTypes.map(t => t.price)))
                     : `₹ ${displayEvent.priceLabel || "N/A"}`}
                 </span>
               </div>
-              
+
               {(() => {
-                const isSoldOut = displayEvent.ticketTypes?.length > 0 && 
+                const isSoldOut = displayEvent.ticketTypes?.length > 0 &&
                                  displayEvent.ticketTypes.every(t => (t.availableQuantity ?? 0) <= 0);
-                
+
                 const isSellingFast = displayEvent.availableCapacity !== undefined &&
                                       displayEvent.totalCapacity !== undefined &&
-                                      displayEvent.availableCapacity > 0 && 
+                                      displayEvent.availableCapacity > 0 &&
                                       displayEvent.availableCapacity <= displayEvent.totalCapacity * 0.2;
 
                 return (
@@ -171,8 +171,8 @@ export default function EventDetailPage() {
                     <button
                     disabled={isSoldOut}
                     className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
-                      isSoldOut 
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                      isSoldOut
+                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                         : "bg-[#0b101e] hover:bg-black text-white"
                     }`}
                     onClick={() => {

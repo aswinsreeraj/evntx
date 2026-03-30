@@ -420,14 +420,14 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 	}
 
 	err := query.Select(`
-		booking_models.id AS booking_id, 
-		booking_models.event_id, 
-		event_models.title AS event_title, 
-		event_models.city AS event_city, 
-		event_models.start_time AS event_start_time, 
-		booking_models.status AS status, 
-		booking_models.total_amount, 
-		booking_models.created_at, 
+		booking_models.id AS booking_id,
+		booking_models.event_id,
+		event_models.title AS event_title,
+		event_models.city AS event_city,
+		event_models.start_time AS event_start_time,
+		booking_models.status AS status,
+		booking_models.total_amount,
+		booking_models.created_at,
 		event_models.cover_image_url,
 		event_models.venue_name,
 		event_models.tags,
@@ -487,7 +487,6 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 		query = query.Where("ticket_models.status != ?", "cancelled")
 	}
 
-	// Only show tickets for paid or confirmed bookings
 	query = query.Where("booking_models.status IN (?)", []string{"paid", "confirmed"})
 
 	var results []struct {
@@ -655,7 +654,6 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 		now := time.Now()
 		normalizedAmount := math.Round(amount*100) / 100
 
-		// 1. Deduct from User Wallet
 		if err := tx.Create(&WalletTransactionModel{
 			ID:            uuid.NewString(),
 			WalletID:      wallet.ID,
@@ -681,12 +679,10 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 			return err
 		}
 
-		// 2. Update Booking Status
 		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Update("status", "paid").Error; err != nil {
 			return err
 		}
 
-		// 3. Credit Platform & Organizer
 		var totalTickets int64
 		if err := tx.Model(&BookingTicketModel{}).Where("booking_id = ?", bookingID).Select("COALESCE(SUM(quantity), 0)").Scan(&totalTickets).Error; err != nil {
 			return err
@@ -695,7 +691,6 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 		userPlatformFee := float64(totalTickets * 30)
 		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
 
-		// Platform Wallet
 		var platformWallet PlatformWalletModel
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
 			return err
@@ -722,7 +717,6 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 			return err
 		}
 
-		// Organizer Wallet
 		var event EventModel
 		if err := tx.Where("id = ?", booking.EventID).First(&event).Error; err != nil {
 			return err
@@ -760,4 +754,3 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 		return nil
 	})
 }
-

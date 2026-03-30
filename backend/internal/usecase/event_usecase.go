@@ -389,7 +389,6 @@ func (u *EventUsecase) SuspendLiveEvent(ctx context.Context, adminID string, eve
 		return err
 	}
 
-	// Trigger a notification to the organizer
 	if u.notificationUsecase != nil {
 		err = u.notificationUsecase.SendNotification(
 			event.OrganizerID,

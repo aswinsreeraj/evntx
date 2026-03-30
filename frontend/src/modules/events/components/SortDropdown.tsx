@@ -60,4 +60,3 @@ export default function SortDropdown({ currentSort, onSortChange }: SortDropdown
     </div>
   );
 }
-

@@ -113,4 +113,3 @@ func (r *notificationGormRepository) MarkAllAsRead(userID string) error {
 func (r *notificationGormRepository) ClearAll(userID string) error {
 	return r.db.Where("user_id = ?", userID).Delete(&NotificationModel{}).Error
 }
-

@@ -7,4 +7,3 @@ export default function FeaturedEvents() {
 
   return <EventCarousel title="Recently added events" events={events} />;
 }
-

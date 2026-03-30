@@ -72,4 +72,3 @@ func (h *NotificationHandler) ClearAll(c *gin.Context) {
 
 	response.Success(c, "All notifications cleared", nil)
 }
-

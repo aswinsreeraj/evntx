@@ -14,4 +14,3 @@ export default function CategoryEvents({ activeCategory }: CategoryEventsProps) 
 
   return <EventCarousel title="" events={events} />;
 }
-
