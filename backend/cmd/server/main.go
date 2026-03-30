@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -47,41 +48,42 @@ func main() {
 	db.AutoMigrate(&repoImpl.TicketModel{})
 	db.AutoMigrate(&repoImpl.PaymentModel{})
 	db.AutoMigrate(&repoImpl.NotificationModel{})
+	db.AutoMigrate(&repoImpl.PlatformWalletModel{})
+	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
-	notificationRepo := repoImpl.NewNotificationGormRepository(db)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
-	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
+	notificationRepo := repoImpl.NewNotificationGormRepository(db)
+	platformWalletRepo := repoImpl.NewPlatformWalletGormRepository(db)
+	if err := platformWalletRepo.EnsureExists(); err != nil {
+		logger.Log.Fatal().Msgf("failed to initialize platform wallet: %v", err)
+	}
+
+	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo)
+	razorpayService := paymentImpl.NewRazorpayService()
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, notificationUsecase)
-	razorpayService := paymentImpl.NewRazorpayService()
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase)
 
-	userHandler := httpDelivery.NewUserHandler(userUsecase, bookingUsecase)
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo)
-	razorpayService := paymentImpl.NewRazorpayService()
-	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService)
-
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
 
 	emailSender := emailImpl.NewSMTPSender()
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
-	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, platformWalletRepo)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
@@ -141,25 +143,34 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	//=== Wallet
 	userGroup.GET("/me/wallet", userHandler.GetWallet)
+	userGroup.POST("/me/wallet/payout", userHandler.RequestPayout)
+	userGroup.POST("/me/wallet/add-fund", userHandler.CreateAddFundOrder)
+	userGroup.POST("/me/wallet/add-fund/verify", userHandler.VerifyAddFundPayment)
 	userGroup.GET("/me/wallet/transactions", userHandler.GetWalletTransactions)
+	//=== Booking
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
+	//=== Profile
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
+	// Notification endpoints
 	notificationGroup := router.Group("/notifications")
 	notificationGroup.Use(middleware.JWTAuthMiddleware())
 	notificationGroup.GET("", notificationHandler.GetNotifications)
 	notificationGroup.PATCH("/:id/read", notificationHandler.MarkAsRead)
 	notificationGroup.PATCH("/read-all", notificationHandler.MarkAllAsRead)
+	notificationGroup.DELETE("", notificationHandler.ClearAll)
 
-	// Booking endpoint
+	// Booking endpoints
 	bookingGroup := router.Group("/bookings")
 	bookingGroup.Use(middleware.JWTAuthMiddleware())
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
 	bookingGroup.POST("/:booking_id/refund", bookingHandler.RefundBooking)
+	bookingGroup.POST("/:booking_id/pay-with-wallet", bookingHandler.PayWithWallet)
 
 	// Payment endpoints
 	paymentGroup := router.Group("/payments")
@@ -173,13 +184,16 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
+	//=== Wallet
 	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
 	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
+	//=== Event
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
 	organizerGroup.DELETE("/events/:event_id", organizerHandler.DeleteEvent)
+	organizerGroup.POST("/events/:event_id/cancel", organizerHandler.CancelLiveEvent)
 	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 	organizerGroup.POST("/upload", organizerHandler.UploadImage)
 
@@ -191,12 +205,15 @@ func main() {
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+	//=== Event
 	adminGroup.GET("/events", adminHandler.AdminListEvents)
 	adminGroup.GET("/events/slug/:slug", adminHandler.AdminGetEvent)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
+	adminGroup.PATCH("/events/:event_id/suspend", adminHandler.SuspendEventHandler)
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
+	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})
@@ -206,6 +223,17 @@ func main() {
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
 	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			err := eventUsecase.AutoProcessCompletedEvents(context.Background())
+			if err != nil {
+				logger.Log.Error().Err(err).Msg("Background job AutoProcessCompletedEvents failed")
+			}
+		}
+	}()
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

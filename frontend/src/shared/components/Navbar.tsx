@@ -56,12 +56,14 @@ function Navbar() {
           { label: "View Profile", to: "/profile" },
           { label: "My Bookings", to: "/profile/bookings" },
           { label: "Calendar", to: "/profile/calendar" },
+          { label: "My Wallet", to: "/wallet" },
         ]
       : currentRole === "organizer"
         ? [
             { label: "View Profile", to: "/organizer/profile" },
             { label: "My Events", to: "/organizer/events" },
             { label: "Create Event", to: "/organizer/events/create" },
+            { label: "Wallet", to: "/organizer/wallet" },
           ]
         : currentRole === "admin"
           ? [

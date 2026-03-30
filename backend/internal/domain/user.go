@@ -28,13 +28,13 @@ type OrganizerDetail struct {
 type OrganizerDetails struct {
 	User
 	OrganizerDetail
-	TotalBookings int64 `json:"total_bookings"`
-	TotalEvents   int64 `json:"total_events"`
-	WalletBalance int64 `json:"wallet_balance"`
-	TotalRevenue  int64 `json:"total_revenue"`
+	TotalBookings int64   `json:"total_bookings"`
+	TotalEvents   int64   `json:"total_events"`
+	WalletBalance float64 `json:"wallet_balance"`
+	TotalRevenue  float64 `json:"total_revenue"`
 }
 type AdminUserDetails struct {
 	User
-	TotalBookings int64 `json:"total_bookings"`
-	WalletBalance int64 `json:"wallet_balance"`
+	TotalBookings int64   `json:"total_bookings"`
+	WalletBalance float64 `json:"wallet_balance"`
 }

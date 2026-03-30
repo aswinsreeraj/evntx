@@ -36,6 +36,7 @@ type BookingWithEvent struct {
 	CoverImageURL  string
 	VenueName      string
 	Tags           string
+	EventStatus    string
 }
 
 type TicketWithEvent struct {

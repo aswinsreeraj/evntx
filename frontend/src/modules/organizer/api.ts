@@ -57,6 +57,7 @@ export interface UpdateEventPayload {
 
 export interface OrganizerWalletSummary {
   available_balance: number;
+  reserve_balance: number;
   pending_balance: number;
   total_credited: number;
   total_debited: number;
@@ -90,9 +91,9 @@ export const organizerApi = {
     return res.data.data;
   },
 
-  async requestPayout(amount: number) {
-    const res = await api.post("/organizer/wallet/payout", { amount });
-    return res.data.data;
+  async requestPayout(payload: { amount: number; account_name: string; account_number: string; ifsc_code: string }) {
+    const res = await api.post("/organizer/wallet/payout", payload);
+    return res.data;
   },
 
   async getEventBySlug(slug: string) {

@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 import { userApi } from "../../user/api";
 import { walletTransactionsQueryKey } from "../../user/hooks";
+import PayoutModal, { type PayoutFormData } from "../../../shared/components/PayoutModal";
+import AddFundModal, { type AddFundFormData } from "../../../shared/components/AddFundModal";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -51,7 +53,9 @@ function SummaryCard({
 export default function OrganizerWalletPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [amount, setAmount] = useState("");
+  const [isPayoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [isAddFundModalOpen, setAddFundModalOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const limit = 10;
 
   const {
@@ -76,27 +80,60 @@ export default function OrganizerWalletPage() {
     queryFn: () => userApi.getWalletTransactions({ page, limit }),
   });
 
-  const payoutMutation = useMutation({
-    mutationFn: (value: number) => organizerApi.requestPayout(value),
-    onSuccess: async () => {
-      setAmount("");
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: organizerWalletSummaryQueryKey }),
-        queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
-      ]);
-    },
-  });
+  const handleAddFundSubmit = async (data: AddFundFormData) => {
+    setActionError(null);
+    try {
+      const order = await userApi.createAddFundOrder(data.amount);
 
-  const parsedAmount = useMemo(() => Number(amount), [amount]);
-  const availableBalance = wallet?.available_balance ?? 0;
-  const validationError =
-    amount.trim() === ""
-      ? ""
-      : Number.isNaN(parsedAmount) || parsedAmount <= 0
-        ? "Enter a valid payout amount"
-        : parsedAmount > availableBalance
-          ? "Insufficient balance"
-          : "";
+      const options = {
+        key: order.razorpay_key,
+        amount: order.amount,
+        currency: order.currency,
+        name: "EvntX",
+        description: "Add funds to wallet",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            await userApi.verifyAddFundPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            await queryClient.invalidateQueries({ queryKey: organizerWalletSummaryQueryKey });
+            await queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+          } catch (verifyErr: any) {
+            setActionError(verifyErr?.response?.data?.error?.message || "Failed to verify transaction.");
+          }
+        },
+        theme: {
+          color: "#111827",
+        },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on("payment.failed", (res: any) => {
+        setActionError(res.error.description || "Payment failed.");
+      });
+      razorpay.open();
+    } catch (err: any) {
+      setActionError(err?.response?.data?.error?.message || "Failed to initiate add fund.");
+      throw err;
+    }
+  };
+
+  const handlePayoutSubmit = async (data: PayoutFormData) => {
+    setActionError(null);
+    await organizerApi.requestPayout({
+      amount: data.amount,
+      account_name: data.account,
+      account_number: data.accountNumber,
+      ifsc_code: data.ifsc,
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: organizerWalletSummaryQueryKey }),
+      queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
+    ]);
+  };
 
   const transactions = transactionsData?.transactions ?? [];
   const pagination = transactionsData?.pagination;
@@ -106,10 +143,21 @@ export default function OrganizerWalletPage() {
     <OrganizerLayout activeTab="Wallet">
       <div className="px-8 py-10">
         <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm md:p-10">
-          <div className="border-b border-gray-100 pb-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#ff445d]">Wallet</p>
-            <h1 className="mt-2 text-3xl font-semibold text-[#111827]">Organizer wallet</h1>
-            <p className="mt-2 text-sm text-[#6b7280]">Pending balance is the amount to be settled.</p>
+          <div className="border-b border-gray-100 pb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#ff445d]">Wallet</p>
+              <h1 className="mt-2 text-3xl font-semibold text-[#111827]">Organizer wallet</h1>
+              <p className="mt-2 text-sm text-[#6b7280]">Pending balance is the amount to be settled.</p>
+            </div>
+            <div className="mt-4 sm:mt-0 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAddFundModalOpen(true)}
+                className="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-100 whitespace-nowrap"
+              >
+                Add Fund
+              </button>
+            </div>
           </div>
 
           {isLoading ? (
@@ -139,68 +187,38 @@ export default function OrganizerWalletPage() {
                   value={wallet.pending_balance}
                   helper="Amount to be settled"
                 />
-                <SummaryCard label="Total Earnings" value={wallet.total_credited} />
-                <SummaryCard label="Total Debited" value={wallet.total_debited} />
+                <SummaryCard
+                  label="Reserve Balance"
+                  value={wallet.reserve_balance}
+                  helper="Refund reserves"
+                />
+                <SummaryCard label="Total Earnings" value={wallet.total_credited - wallet.total_debited} />
               </div>
 
-              <div className="mt-8 rounded-3xl border border-gray-100 bg-[#f8fafc] p-6">
+              <div className="mt-8 rounded-3xl border border-gray-100 bg-[#f8fafc] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                  <h2 className="text-xl font-semibold text-[#111827]">Request payout</h2>
+                  <h3 className="text-lg font-semibold text-[#111827]">Wallet Payout</h3>
                   <p className="text-sm text-[#6b7280]">
-                    Only available balance can be withdrawn. Pending balance cannot be used for payouts.
+                    Transfer your available balance to your registered bank account.
                   </p>
                 </div>
 
-                <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,240px)_auto] md:items-start">
-                  <div>
-                    <label htmlFor="payout-amount" className="mb-2 block text-sm font-medium text-[#111827]">
-                      Amount
-                    </label>
-                    <input
-                      id="payout-amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                      placeholder="Enter payout amount"
-                      className={`w-full rounded-2xl border px-4 py-3 text-sm text-[#111827] outline-none transition ${
-                        validationError ? "border-[#ff8a98] bg-white" : "border-gray-200 bg-white"
-                      }`}
-                    />
-                    {validationError ? (
-                      <p className="mt-2 text-sm text-[#d22d4c]">{validationError}</p>
-                    ) : (
-                      <p className="mt-2 text-sm text-[#6b7280]">
-                        Available for payout: ₹{formatCurrency(availableBalance)}
-                      </p>
-                    )}
-                  </div>
-
+                <div className="flex gap-3">
                   <button
                     type="button"
-                    disabled={payoutMutation.isPending || amount.trim() === "" || Boolean(validationError)}
-                    onClick={() => payoutMutation.mutate(parsedAmount)}
-                    className="rounded-full bg-[#111827] px-6 py-3 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => setPayoutModalOpen(true)}
+                    className="rounded-full bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#1f2937] focus:outline-none focus:ring-4 focus:ring-gray-100 whitespace-nowrap"
                   >
-                    {payoutMutation.isPending ? "Submitting..." : "Request Payout"}
+                    Request Payout
                   </button>
                 </div>
-
-                {payoutMutation.isSuccess ? (
-                  <div className="mt-4 rounded-2xl border border-[#d9f3e3] bg-[#f1fbf5] px-4 py-3 text-sm font-medium text-[#118a43]">
-                    Payout request submitted
-                  </div>
-                ) : null}
-
-                {payoutMutation.isError ? (
-                  <div className="mt-4 rounded-2xl border border-[#ffd7dd] bg-[#fff5f7] px-4 py-3 text-sm font-medium text-[#d22d4c]">
-                    {payoutMutation.error instanceof Error
-                      ? payoutMutation.error.message
-                      : "Failed to submit payout request."}
-                  </div>
-                ) : null}
               </div>
+
+              {actionError && (
+                <div className="mt-6 rounded-2xl border border-[#ffd7dd] bg-[#fff5f7] px-6 py-4 text-sm font-medium text-[#d22d4c]">
+                  {actionError}
+                </div>
+              )}
 
               <div className="mt-10 border-t border-gray-100 pt-8">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -324,6 +342,19 @@ export default function OrganizerWalletPage() {
           ) : null}
         </div>
       </div>
+
+      <PayoutModal
+        isOpen={isPayoutModalOpen}
+        onClose={() => setPayoutModalOpen(false)}
+        onSubmit={handlePayoutSubmit}
+        maxAmount={Math.max(0, (wallet?.available_balance || 0) - Math.abs(Math.min(0, wallet?.reserve_balance || 0)))}
+      />
+
+      <AddFundModal
+        isOpen={isAddFundModalOpen}
+        onClose={() => setAddFundModalOpen(false)}
+        onSubmit={handleAddFundSubmit}
+      />
     </OrganizerLayout>
   );
 }

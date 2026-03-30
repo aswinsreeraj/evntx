@@ -18,6 +18,7 @@ import EventForm from "../modules/organizer/pages/EventForm";
 import MyEvents from "../modules/organizer/pages/MyEvents";
 import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
+import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
 
 export const router = createBrowserRouter([
     {
@@ -138,6 +139,14 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <EventManagementPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/platform-wallet",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <PlatformWalletPage />
             </ProtectedRoute>
         ),
     }

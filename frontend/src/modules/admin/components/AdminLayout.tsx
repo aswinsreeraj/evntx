@@ -35,6 +35,7 @@ export default function AdminLayout({ children, title }: Props) {
     { name: "Users", path: "/admin/users" },
     { name: "Organizers", path: "/admin/organizers" },
     { name: "Events", path: "/admin/events" },
+    { name: "Platform Wallet", path: "/admin/platform-wallet" },
     { name: "Reports", path: "/admin/reports" },
   ];
 

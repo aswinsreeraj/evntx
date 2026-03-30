@@ -23,11 +23,13 @@ func NewBookingUsecase(
 	bookingRepo repository.BookingRepository,
 	eventRepo repository.EventRepository,
 	roleRepo repository.UserRoleRepository,
+	notificationUsecase *NotificationUsecase,
 ) *BookingUsecase {
 	return &BookingUsecase{
-		bookingRepo: bookingRepo,
-		eventRepo:   eventRepo,
-		roleRepo:    roleRepo,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		roleRepo:            roleRepo,
+		notificationUsecase: notificationUsecase,
 	}
 }
 
@@ -72,8 +74,17 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 
 	now := time.Now()
 	expiresAt := now.Add(10 * time.Minute)
-	platformFee := baseTotal * 0.05
-	totalAmount := baseTotal + platformFee
+	
+	var totalTickets int
+	for _, req := range requests {
+		totalTickets += req.Quantity
+	}
+	
+	userFee := 0.0
+	if baseTotal > 0 {
+		userFee = float64(30 * totalTickets)
+	}
+	totalAmount := baseTotal + userFee
 
 	booking := &domain.Booking{
 		ID:          bookingID,
@@ -174,7 +185,20 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 }
 
 func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
-	err := u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	event, err := u.eventRepo.GetEventByID(booking.EventID)
+	if err != nil {
+		return err
+	}
+
+	timeUntilEvent := time.Until(event.StartTime)
+	isRefundable := timeUntilEvent >= 24*time.Hour
+
+	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
 	if err != nil {
 		return err
 	}
@@ -227,4 +251,60 @@ func (u *BookingUsecase) CheckInTicket(
 	}
 
 	return u.bookingRepo.CheckInTicket(ctx, eventID, ticketCode)
+}
+
+func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, userID string) error {
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	if booking.UserID != userID {
+		return apiErrors.ErrForbiddenAction
+	}
+
+	if booking.Status != "reserved" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	// Double check expiration
+	if time.Now().After(booking.ExpiresAt) {
+		return apiErrors.ErrBookingExpired
+	}
+
+	err = u.bookingRepo.PayWithWallet(ctx, bookingID, userID, booking.TotalAmount)
+	if err != nil {
+		return err
+	}
+
+	// Send notifications
+	if u.notificationUsecase != nil {
+		event, _ := u.eventRepo.GetEventByID(booking.EventID)
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypePaymentSuccess,
+			"Payment successful",
+			"Payment successful via wallet. Tickets confirmed.",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+				"amount":      booking.TotalAmount,
+			},
+		)
+
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypeTicketGenerated,
+			"Your tickets are generated",
+			"Your tickets are generated",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+			},
+		)
+	}
+
+	return nil
 }

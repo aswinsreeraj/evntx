@@ -78,3 +78,8 @@ func (u *NotificationUsecase) MarkAsRead(userID string, notificationID string) e
 func (u *NotificationUsecase) MarkAllAsRead(userID string) error {
 	return u.repo.MarkAllAsRead(userID)
 }
+
+func (u *NotificationUsecase) ClearAll(userID string) error {
+	return u.repo.ClearAll(userID)
+}
+

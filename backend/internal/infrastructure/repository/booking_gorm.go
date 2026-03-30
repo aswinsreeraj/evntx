@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -164,7 +165,7 @@ func (r *bookingGormRepository) FindByID(ctx context.Context, bookingID string) 
 	}, nil
 }
 
-func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
+func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest, isRefundable bool) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bm BookingModel
 		if err := tx.Where("id = ? AND user_id = ?", bookingID, userID).First(&bm).Error; err != nil {
@@ -176,6 +177,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 		}
 
 		var totalRefund float64
+		var totalTicketsCancelled int
 
 		for _, item := range items {
 			if item.Quantity <= 0 {
@@ -220,9 +222,73 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			}
 
 			totalRefund += tt.Price * float64(item.Quantity)
+			totalTicketsCancelled += item.Quantity
 		}
 
-		if totalRefund > 0 {
+		if (bm.Status == "paid" || bm.Status == "confirmed") && totalRefund > 0 && isRefundable {
+			now := time.Now()
+
+			var userWallet WalletModel
+			if err := tx.Where("user_id = ?", bm.UserID).First(&userWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      userWallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance+totalRefund)*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
+				"available_balance": userWallet.AvailableBalance,
+				"updated_at":        now,
+			}).Error; err != nil {
+				return err
+			}
+
+			var event EventModel
+			if err := tx.Where("id = ?", bm.EventID).First(&event).Error; err != nil {
+				return err
+			}
+
+			var orgWallet WalletModel
+			if err := tx.Where("user_id = ?", event.OrganizerID).First(&orgWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      orgWallet.ID,
+				Type:          domain.WalletTransactionTypeDebit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-totalRefund)*100) / 100
+			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+float64(totalTicketsCancelled*30))*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+				"pending_balance": orgWallet.PendingBalance,
+				"reserve_balance": orgWallet.ReserveBalance,
+				"updated_at":      now,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		if totalRefund > 0 && isRefundable {
 			if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).
 				Update("total_amount", gorm.Expr("total_amount - ?", totalRefund)).Error; err != nil {
 				return err
@@ -350,6 +416,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		CoverImageURL  string
 		VenueName      string
 		Tags           string
+		EventStatus    string
 	}
 
 	err := query.Select(`
@@ -364,6 +431,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		event_models.cover_image_url,
 		event_models.venue_name,
 		event_models.tags,
+		event_models.status AS event_status,
 		COALESCE(SUM(booking_ticket_models.quantity), 0) AS ticket_count
 	`).
 		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
@@ -393,6 +461,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 			CoverImageURL:  r.CoverImageURL,
 			VenueName:      r.VenueName,
 			Tags:           r.Tags,
+			EventStatus:    r.EventStatus,
 		})
 	}
 
@@ -499,7 +568,7 @@ func (r *bookingGormRepository) CheckInTicket(
 			`).
 			Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
 			Where("ticket_models.ticket_code = ?", ticketCode).
-			First(&result).Error; err != nil {
+			Take(&result).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return apiErrors.New(404, apiErrors.ResourceNotFound, "Ticket not found")
 			}
@@ -550,3 +619,145 @@ func (r *bookingGormRepository) CheckInTicket(
 
 	return checkedInTicket, nil
 }
+
+func (r *bookingGormRepository) GetTicketCountByBookingID(ctx context.Context, bookingID string) (int, error) {
+	var models []BookingTicketModel
+	if err := r.db.WithContext(ctx).Where("booking_id = ?", bookingID).Find(&models).Error; err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, m := range models {
+		total += m.Quantity
+	}
+	return total, nil
+}
+
+func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID string, userID string, amount float64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var booking BookingModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND user_id = ? AND status = ?", bookingID, userID, "reserved").First(&booking).Error; err != nil {
+			return err
+		}
+
+		if math.Abs(booking.TotalAmount-amount) > 0.01 {
+			return apiErrors.New(400, apiErrors.InvalidRequestBody, "amount mismatch")
+		}
+
+		var wallet WalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&wallet).Error; err != nil {
+			return err
+		}
+
+		if wallet.AvailableBalance < amount {
+			return apiErrors.ErrInsufficientBalance
+		}
+
+		now := time.Now()
+		normalizedAmount := math.Round(amount*100) / 100
+
+		// 1. Deduct from User Wallet
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeDebit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.WalletReferenceTypePurchase,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		wallet.AvailableBalance = math.Round((wallet.AvailableBalance-normalizedAmount)*100) / 100
+		wallet.TotalDebited = math.Round((wallet.TotalDebited+normalizedAmount)*100) / 100
+		wallet.UpdatedAt = now
+
+		if err := tx.Model(&WalletModel{}).Where("id = ?", wallet.ID).Updates(map[string]interface{}{
+			"available_balance": wallet.AvailableBalance,
+			"total_debited":     wallet.TotalDebited,
+			"updated_at":        wallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		// 2. Update Booking Status
+		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Update("status", "paid").Error; err != nil {
+			return err
+		}
+
+		// 3. Credit Platform & Organizer
+		var totalTickets int64
+		if err := tx.Model(&BookingTicketModel{}).Where("booking_id = ?", bookingID).Select("COALESCE(SUM(quantity), 0)").Scan(&totalTickets).Error; err != nil {
+			return err
+		}
+
+		userPlatformFee := float64(totalTickets * 30)
+		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
+
+		// Platform Wallet
+		var platformWallet PlatformWalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&PlatformWalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      domain.PlatformWalletID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        userPlatformFee,
+			ReferenceType: domain.PlatformRefTypePayment,
+			ReferenceID:   bookingID,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+		platformWallet.AvailableBalance = math.Round((platformWallet.AvailableBalance+userPlatformFee)*100) / 100
+		platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+userPlatformFee)*100) / 100
+		platformWallet.UpdatedAt = now
+		if err := tx.Model(&PlatformWalletModel{}).Where("id = ?", domain.PlatformWalletID).Updates(map[string]interface{}{
+			"available_balance": platformWallet.AvailableBalance,
+			"total_credited":    platformWallet.TotalCredited,
+			"updated_at":        platformWallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		// Organizer Wallet
+		var event EventModel
+		if err := tx.Where("id = ?", booking.EventID).First(&event).Error; err != nil {
+			return err
+		}
+
+		var orgWallet WalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", event.OrganizerID).First(&orgWallet).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      orgWallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        baseTicketRevenue,
+			ReferenceType: domain.WalletReferenceTypeEarning,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+		orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance+baseTicketRevenue)*100) / 100
+		orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance-userPlatformFee)*100) / 100
+		orgWallet.TotalCredited = math.Round((orgWallet.TotalCredited+baseTicketRevenue)*100) / 100
+		orgWallet.UpdatedAt = now
+		if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+			"pending_balance": orgWallet.PendingBalance,
+			"reserve_balance": orgWallet.ReserveBalance,
+			"total_credited":  orgWallet.TotalCredited,
+			"updated_at":      orgWallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+

@@ -7,4 +7,5 @@ type NotificationRepository interface {
 	GetNotificationsByUser(userID string, page int, limit int) ([]domain.Notification, int64, int64, error)
 	MarkAsRead(notificationID string, userID string) error
 	MarkAllAsRead(userID string) error
+	ClearAll(userID string) error
 }

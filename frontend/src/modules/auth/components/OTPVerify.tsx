@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react"
 import OTPInput from "./OTPInput"
 import { authApi } from "../api"
+import { useNavigate } from "react-router-dom"
 
 export default function OTPVerify({ email, isOrganizer, onClose }: any) {
+  const navigate = useNavigate()
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -34,12 +36,12 @@ export default function OTPVerify({ email, isOrganizer, onClose }: any) {
     try {
       await authApi.verifyOtp(email, otp)
       if (isOrganizer) {
-        window.location.href = "/organizer/profile"
+        navigate("/organizer/profile")
       } else {
         if (onClose) {
           onClose()
         } else {
-          window.location.href = "/"
+          navigate("/")
         }
       }
     } catch (err: any) {

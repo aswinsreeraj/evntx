@@ -102,7 +102,7 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
                 <p style="margin: 4px 0 0; fontSize: 12px; color: #7b838e;">Booking ID: ${booking.booking_id}</p>
               </div>
               <div style="border-radius: 8px; background: white; padding: 8px;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${booking.booking_id}-${t.ticket_id}`)}" style="width: 120px; height: 120px;" />
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(t.ticket_code ?? t.ticket_id)}" style="width: 120px; height: 120px;" />
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function TicketModal({ booking, tickets, open, onClose }: Props) 
                 <p className="text-lg text-white">{attendeeName}</p>
                 <p className="mt-0.5 text-sm text-[#7b838e]">Booking ID: {booking.booking_id}</p>
               </div>
-              <TicketQr value={`${booking.booking_id}-${activeTicket?.ticket_id ?? "ticket"}`} />
+              <TicketQr value={activeTicket?.ticket_code ?? activeTicket?.ticket_id ?? "ticket"} />
             </div>
           </div>
 
