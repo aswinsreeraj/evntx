@@ -55,7 +55,6 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 		return nil, fmt.Errorf("razorpay order creation failed: %w", err)
 	}
 
-	// The SDK returns a map[string]interface{}. We need to map it back to our domain object.
 	respBody, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal razorpay response: %w", err)

@@ -141,7 +141,6 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 		userPlatformFee := float64(totalTickets * 30)
 		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
 
-		// 2. Platform Wallet: Credit userPlatformFee
 		var platformWallet PlatformWalletModel
 		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
 			return err
@@ -167,7 +166,6 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return err
 		}
 
-		// 3. Organizer Wallet
 		var wallet WalletModel
 		if err := tx.Where("user_id = ?", organizerID).First(&wallet).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {

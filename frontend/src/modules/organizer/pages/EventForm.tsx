@@ -218,7 +218,7 @@ export default function EventForm() {
           total_capacity: totalCapacity,
           terms_and_conditions: terms,
         },
-        ticket_types: entryType === "Free" 
+        ticket_types: entryType === "Free"
           ? [{ name: "Free Entry", price: 0, total_quantity: Number(freeQuantity) }]
           : tickets.map(t => ({
               ...t,
@@ -234,8 +234,8 @@ export default function EventForm() {
         await organizerApi.createEvent(payload as CreateEventPayload);
       }
 
-      navigate("/organizer/events", { 
-        state: { toastMessage: isEditMode ? "Event successfully updated!" : "Event successfully created!" } 
+      navigate("/organizer/events", {
+        state: { toastMessage: isEditMode ? "Event successfully updated!" : "Event successfully created!" }
       });
 
     } catch (err: any) {
@@ -385,13 +385,13 @@ export default function EventForm() {
                 </div>
                 <div>
                      <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase text-left">Venue Location (City)</label>
-                     <input 
-                       type="text" 
-                       required 
-                       placeholder="e.g. Kochi" 
-                       value={city} 
-                       onChange={e => setCity(e.target.value)} 
-                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                     <input
+                       type="text"
+                       required
+                       placeholder="e.g. Kochi"
+                       value={city}
+                       onChange={e => setCity(e.target.value)}
+                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                      />
                 </div>
               </div>
@@ -424,14 +424,14 @@ export default function EventForm() {
                           <div>
                               <label className="block text-sm font-bold text-gray-900 tracking-wide mb-1 uppercase">Total Capacity</label>
                               <p className="text-xs text-gray-500 mb-4">Set the maximum number of people who can attend for free.</p>
-                              <input 
-                                type="number" 
-                                required 
-                                min="1" 
-                                placeholder="e.g. 500" 
-                                value={freeQuantity || ''} 
-                                onChange={e => setFreeQuantity(Number(e.target.value))} 
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                placeholder="e.g. 500"
+                                value={freeQuantity || ''}
+                                onChange={e => setFreeQuantity(Number(e.target.value))}
+                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                               />
                           </div>
                       </div>
@@ -480,7 +480,7 @@ export default function EventForm() {
                            </div>
                        ))}
                    </div>
- 
+
                    <div className="grid grid-cols-2 gap-6 mt-6">
                        <div>
                            <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Capacity</label>

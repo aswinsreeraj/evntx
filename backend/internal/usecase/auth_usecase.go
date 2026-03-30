@@ -134,7 +134,6 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 				return nil, nil, "", "", err
 			}
 
-			// Create a wallet for the new user
 			wallet := &domain.Wallet{
 				ID:               uuid.NewString(),
 				UserID:           user.ID,
@@ -355,7 +354,6 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 			return "", "", err
 		}
 
-		// Create a wallet for the new user
 		wallet := &domain.Wallet{
 			ID:               uuid.NewString(),
 			UserID:           user.ID,

@@ -21,11 +21,10 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useAuthStore();
-  
+
   const createOrderMutation = useCreateRazorpayOrder();
   const verifyPaymentMutation = useVerifyRazorpayPayment();
 
-  // Handle automatic opening if requested
   React.useEffect(() => {
     if (autoOpen && !isProcessing && !createOrderMutation.isSuccess && !verifyPaymentMutation.isSuccess) {
       handlePayment();
@@ -44,15 +43,14 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
 
   const handlePayment = async () => {
     setIsProcessing(true);
-    
+
     try {
-      // 1. Load Razorpay Script
+
       const res = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
       if (!res) {
         throw new Error("Razorpay SDK failed to load. Are you online?");
       }
 
-      // 2. Create Order on Backend
       const order = await createOrderMutation.mutateAsync(bookingId);
 
       if (order.is_free_booking) {
@@ -60,7 +58,6 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
         return;
       }
 
-      // 3. Open Razorpay Checkout
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -71,7 +68,7 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
         handler: async (response: RazorpayResponse) => {
           try {
             setIsProcessing(true);
-            // 4. Verify Payment on Backend
+
             await verifyPaymentMutation.mutateAsync({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -123,8 +120,8 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
           <span>Pay with Razorpay</span>
         </>
       )}
-      
-      {/* Subtle shine effect */}
+
+      {}
       <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]" />
     </button>
   );

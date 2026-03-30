@@ -142,7 +142,7 @@ func (u *WalletUsecase) RequestPayout(userID string, amount float64, accountName
 	}
 
 	normalizedAmount := normalizeWalletAmount(amount)
-	
+
 	lockedAmount := 0.0
 	if wallet.ReserveBalance < 0 {
 		lockedAmount = math.Abs(wallet.ReserveBalance)
@@ -189,7 +189,7 @@ func (u *WalletUsecase) CreateAddFundOrder(userID string, amount float64) (*doma
 	wallet, err := u.repo.GetWalletByUserID(userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// Initialize missing wallet for the user
+
 			wallet = &domain.Wallet{
 				ID:               uuid.NewString(),
 				UserID:           userID,
