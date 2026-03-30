@@ -23,6 +23,7 @@ export type UserBooking = {
   coverImageUrl: string;
   venue: string;
   tags: string[];
+  event_status: string;
 };
 
 export type UserTicket = {
@@ -123,5 +124,22 @@ export const userApi = {
 
   async refundBooking(bookingId: string): Promise<void> {
     await api.post(`/bookings/${bookingId}/refund`);
+  },
+
+  async requestPayout(payload: { amount: number; account_name: string; account_number: string; ifsc_code: string }): Promise<void> {
+    await api.post("/users/me/wallet/payout", payload);
+  },
+
+  async createAddFundOrder(amount: number): Promise<{ id: string; amount: number; currency: string; razorpay_key: string }> {
+    const res = await api.post("/users/me/wallet/add-fund", { amount });
+    return res.data.data;
+  },
+
+  async verifyAddFundPayment(payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<void> {
+    await api.post("/users/me/wallet/add-fund/verify", payload);
+  },
+
+  async payWithWallet(bookingId: string): Promise<void> {
+    await api.post(`/bookings/${bookingId}/pay-with-wallet`);
   },
 };

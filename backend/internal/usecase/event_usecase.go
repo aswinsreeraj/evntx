@@ -498,6 +498,10 @@ func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, even
 		return apiErrors.ErrForbiddenAction
 	}
 
+	if event.Status == "completed" || event.Status == "live" {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Cannot delete a completed or live event")
+	}
+
 	err = u.repo.DeleteEvent(ctx, eventID)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Failed to delete event")

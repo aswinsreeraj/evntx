@@ -84,6 +84,80 @@ func (h *UserHandler) GetWallet(c *gin.Context) {
 	})
 }
 
+func (h *UserHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount        float64 `json:"amount" binding:"required"`
+		AccountName   string  `json:"account_name" binding:"required"`
+		AccountNumber string  `json:"account_number" binding:"required"`
+		IFSCCode      string  `json:"ifsc_code" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(userID, req.Amount, req.AccountName, req.AccountNumber, req.IFSCCode); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Payout request submitted", gin.H{
+		"amount": req.Amount,
+		"status": "completed",
+	})
+}
+
+func (h *UserHandler) CreateAddFundOrder(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	resp, err := h.walletUsecase.CreateAddFundOrder(userID, req.Amount)
+	if err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Add Fund order created", resp)
+}
+
+func (h *UserHandler) VerifyAddFundPayment(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		RazorpayOrderID   string `json:"razorpay_order_id" binding:"required"`
+		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
+		RazorpaySignature string `json:"razorpay_signature" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.VerifyAddFundPayment(
+		userID,
+		req.RazorpayOrderID,
+		req.RazorpayPaymentID,
+		req.RazorpaySignature,
+	); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Funds added successfully", nil)
+}
+
 func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
 	userID := c.GetString("user_id")
 
@@ -324,6 +398,7 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 			"coverImageUrl":    b.CoverImageURL,
 			"venue":            b.VenueName,
 			"tags":             strings.Split(b.Tags, ","),
+			"event_status":     b.EventStatus,
 		})
 	}
 

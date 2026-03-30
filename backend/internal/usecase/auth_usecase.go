@@ -24,6 +24,7 @@ type AuthUsecase struct {
 	sessionRepo repository.UserSessionRepository
 	emailSender repository.EmailSender
 	roleRepo    repository.UserRoleRepository
+	walletRepo  repository.WalletRepository
 }
 
 func NewAuthUsecase(
@@ -32,6 +33,7 @@ func NewAuthUsecase(
 	sessionRepo repository.UserSessionRepository,
 	emailSender repository.EmailSender,
 	roleRepo repository.UserRoleRepository,
+	walletRepo repository.WalletRepository,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		otpRepo:     otpRepo,
@@ -39,6 +41,7 @@ func NewAuthUsecase(
 		sessionRepo: sessionRepo,
 		emailSender: emailSender,
 		roleRepo:    roleRepo,
+		walletRepo:  walletRepo,
 	}
 }
 
@@ -129,6 +132,20 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 
 			if err := u.userRepo.Create(user); err != nil {
 				return nil, nil, "", "", err
+			}
+
+			// Create a wallet for the new user
+			wallet := &domain.Wallet{
+				ID:               uuid.NewString(),
+				UserID:           user.ID,
+				AvailableBalance: 0,
+				PendingBalance:   0,
+				TotalCredited:    0,
+				TotalDebited:     0,
+				UpdatedAt:        time.Now(),
+			}
+			if err := u.walletRepo.CreateWallet(wallet); err != nil {
+				logger.Log.Error().Err(err).Msg("failed to create wallet for user during authentication/registration")
 			}
 		} else {
 			return nil, nil, "", "", err
@@ -336,6 +353,20 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 		}
 		if err := u.userRepo.Create(user); err != nil {
 			return "", "", err
+		}
+
+		// Create a wallet for the new user
+		wallet := &domain.Wallet{
+			ID:               uuid.NewString(),
+			UserID:           user.ID,
+			AvailableBalance: 0,
+			PendingBalance:   0,
+			TotalCredited:    0,
+			TotalDebited:     0,
+			UpdatedAt:        time.Now(),
+		}
+		if err := u.walletRepo.CreateWallet(wallet); err != nil {
+			logger.Log.Error().Err(err).Msg("failed to create wallet for user during Google login")
 		}
 	} else if !user.IsActive {
 		return "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())

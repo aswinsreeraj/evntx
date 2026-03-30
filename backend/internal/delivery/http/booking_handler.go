@@ -107,3 +107,15 @@ func (h *BookingHandler) RefundBooking(c *gin.Context) {
 
 	response.Success(c, "Refund processed successfully", nil)
 }
+
+func (h *BookingHandler) PayWithWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+	bookingID := c.Param("booking_id")
+
+	if err := h.bookingUsecase.PayWithWallet(c.Request.Context(), bookingID, userID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payment processed successfully via wallet", nil)
+}

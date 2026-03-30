@@ -26,13 +26,11 @@ function getStatusColor(status: string) {
 }
 
 function canApprove(status: string) {
-  const normalizedStatus = status.toLowerCase();
-  return normalizedStatus !== "approved" && normalizedStatus !== "live" && normalizedStatus !== "completed";
+  return status.toLowerCase() === "pending";
 }
 
 function canReject(status: string) {
-  const normalizedStatus = status.toLowerCase();
-  return normalizedStatus !== "rejected" && normalizedStatus !== "completed";
+  return status.toLowerCase() === "pending";
 }
 
 export default function EventManagementPage() {

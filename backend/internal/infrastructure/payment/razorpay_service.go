@@ -9,6 +9,7 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/repository"
 	razorpay "github.com/razorpay/razorpay-go"
 	"github.com/razorpay/razorpay-go/utils"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 )
 
 type RazorpayService struct {
@@ -35,6 +36,7 @@ func (s *RazorpayService) GetKeyID() string {
 
 func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.RazorpayOrder, error) {
 	if s.keyID == "" || s.keySecret == "" {
+		logger.Log.Error().Msg("razorpay credentials are not configured in environment")
 		return nil, fmt.Errorf("razorpay credentials are not configured")
 	}
 
@@ -46,7 +48,10 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 
 	body, err := s.client.Order.Create(orderData, nil)
 	if err != nil {
-		fmt.Println("Error point 2", err)
+		logger.Log.Error().
+			Err(err).
+			Interface("order_data", orderData).
+			Msg("razorpay order creation failed at SDK level")
 		return nil, fmt.Errorf("razorpay order creation failed: %w", err)
 	}
 
@@ -77,4 +82,27 @@ func (s *RazorpayService) VerifySignature(orderID string, paymentID string, sign
 	}
 
 	return utils.VerifyPaymentSignature(params, signature, s.keySecret), nil
+}
+
+func (s *RazorpayService) FetchOrder(orderID string) (*domain.RazorpayOrder, error) {
+	if s.keyID == "" || s.keySecret == "" {
+		return nil, fmt.Errorf("razorpay credentials are not configured")
+	}
+
+	body, err := s.client.Order.Fetch(orderID, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch razorpay order: %w", err)
+	}
+
+	respBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal razorpay response: %w", err)
+	}
+
+	var order domain.RazorpayOrder
+	if err := json.Unmarshal(respBody, &order); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal razorpay response to domain: %w", err)
+	}
+
+	return &order, nil
 }

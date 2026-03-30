@@ -62,12 +62,12 @@ func main() {
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo)
+	razorpayService := paymentImpl.NewRazorpayService()
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService)
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
-	razorpayService := paymentImpl.NewRazorpayService()
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase)
 
@@ -78,7 +78,7 @@ func main() {
 
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
@@ -143,25 +143,34 @@ func main() {
 	userGroup.Use(middleware.JWTAuthMiddleware())
 
 	userGroup.GET("/me", userHandler.GetProfile)
+	//=== Wallet
 	userGroup.GET("/me/wallet", userHandler.GetWallet)
+	userGroup.POST("/me/wallet/payout", userHandler.RequestPayout)
+	userGroup.POST("/me/wallet/add-fund", userHandler.CreateAddFundOrder)
+	userGroup.POST("/me/wallet/add-fund/verify", userHandler.VerifyAddFundPayment)
 	userGroup.GET("/me/wallet/transactions", userHandler.GetWalletTransactions)
+	//=== Booking
 	userGroup.GET("/me/bookings", userHandler.GetMyBookingsHandler)
 	userGroup.GET("/me/tickets", userHandler.GetMyTicketsHandler)
+	//=== Profile
 	userGroup.PUT("/me", userHandler.UpdateProfile)
 	userGroup.POST("/me/image", userHandler.UploadProfileImage)
 
+	// Notification endpoints
 	notificationGroup := router.Group("/notifications")
 	notificationGroup.Use(middleware.JWTAuthMiddleware())
 	notificationGroup.GET("", notificationHandler.GetNotifications)
 	notificationGroup.PATCH("/:id/read", notificationHandler.MarkAsRead)
 	notificationGroup.PATCH("/read-all", notificationHandler.MarkAllAsRead)
+	notificationGroup.DELETE("", notificationHandler.ClearAll)
 
-	// Booking endpoint
+	// Booking endpoints
 	bookingGroup := router.Group("/bookings")
 	bookingGroup.Use(middleware.JWTAuthMiddleware())
 	bookingGroup.POST("/reserve", bookingHandler.ReserveTickets)
 	bookingGroup.POST("/:booking_id/cancel", bookingHandler.CancelBooking)
 	bookingGroup.POST("/:booking_id/refund", bookingHandler.RefundBooking)
+	bookingGroup.POST("/:booking_id/pay-with-wallet", bookingHandler.PayWithWallet)
 
 	// Payment endpoints
 	paymentGroup := router.Group("/payments")
@@ -175,9 +184,11 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
+	//=== Wallet
 	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
 	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
+	//=== Event
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
@@ -194,6 +205,7 @@ func main() {
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
+	//=== Event
 	adminGroup.GET("/events", adminHandler.AdminListEvents)
 	adminGroup.GET("/events/slug/:slug", adminHandler.AdminGetEvent)
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)

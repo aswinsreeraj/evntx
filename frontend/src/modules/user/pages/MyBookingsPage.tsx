@@ -61,8 +61,7 @@ export default function MyBookingsPage() {
   }, [])
 
   const filteredBookings = bookings.filter((booking) => {
-    const bookingDate = new Date(booking.event_start_time)
-    const bookingStatus = bookingDate.getTime() >= Date.now() ? "upcoming" : "finished"
+    const bookingStatus = booking.event_status === "completed" ? "finished" : "upcoming"
     return bookingStatus === activeTab
   })
 
@@ -135,32 +134,26 @@ export default function MyBookingsPage() {
     if (!cancellationModal) return
 
     const { booking } = cancellationModal
-    const totalCancelled = selection.reduce((sum, item) => sum + item.cancelCount, 0)
-    const shouldRefundToWallet = totalCancelled > 0 && totalCancelled === cancellationModal.tickets.length
-
-    const items = selection.map(s => ({
+    const items = selection.map((s) => ({
       ticket_type: s.ticketType,
-      quantity: s.cancelCount
-    }))
+      quantity: s.cancelCount,
+    }));
 
-    setRefundNotice("")
-    setBookingActionError("")
+    setRefundNotice("");
+    setBookingActionError("");
 
     try {
-      await userApi.cancelBooking(booking.booking_id, { items })
+      await userApi.cancelBooking(booking.booking_id, { items });
 
-      if (shouldRefundToWallet) {
-        await userApi.refundBooking(booking.booking_id)
-        setRefundNotice("Ticket amount refunded to wallet. Platform fee is non-refundable.")
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: walletQueryKey }),
-          queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
-        ])
-      }
+      setRefundNotice("Tickets cancelled. If eligible (24h before event), the amount has been refunded to your wallet. Platform fee is non-refundable.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: walletQueryKey }),
+        queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
+      ]);
 
-      const data = await userApi.getMyBookings()
-      const validBookings = (data || []).filter(b => b.ticket_count > 0)
-      setBookings(validBookings)
+      const data = await userApi.getMyBookings();
+      const validBookings = (data || []).filter((b) => b.ticket_count > 0);
+      setBookings(validBookings);
     } catch (error: any) {
       setBookingActionError(
         error?.response?.data?.error?.message || "Failed to process cancellation.",
@@ -222,7 +215,7 @@ export default function MyBookingsPage() {
           {!loading && filteredBookings.map((booking) => {
             const savedFeedback = feedbackMap[booking.booking_id]
             const currentDraft = draftFeedback[booking.booking_id] ?? savedFeedback ?? { rating: 0, comment: "" }
-            const isFinished = new Date(booking.event_start_time).getTime() < Date.now()
+            const isFinished = booking.event_status === "completed"
             const showFeedbackForm = isFinished && !!draftFeedback[booking.booking_id]
 
             return (

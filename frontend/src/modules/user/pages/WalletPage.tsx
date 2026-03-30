@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { useWallet, useWalletTransactions } from "../hooks";
+import { useWallet, useWalletTransactions, walletQueryKey, walletTransactionsQueryKey } from "../hooks";
+import PayoutModal, { type PayoutFormData } from "../../../shared/components/PayoutModal";
+import AddFundModal, { type AddFundFormData } from "../../../shared/components/AddFundModal";
+import { userApi } from "../api";
+import { useQueryClient } from "@tanstack/react-query";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -40,6 +44,64 @@ export default function WalletPage() {
   const transactions = transactionsData?.transactions ?? [];
   const pagination = transactionsData?.pagination;
   const totalPages = pagination ? Math.max(1, Math.ceil(pagination.total / pagination.limit)) : 1;
+  const queryClient = useQueryClient();
+  const [isPayoutModalOpen, setPayoutModalOpen] = useState(false);
+  const [isAddFundModalOpen, setAddFundModalOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const handleAddFundSubmit = async (data: AddFundFormData) => {
+    setActionError(null);
+    try {
+      const order = await userApi.createAddFundOrder(data.amount);
+      console.log("order", order);
+      const options = {
+        key: order.razorpay_key,
+        amount: order.amount,
+        currency: order.currency,
+        name: "EvntX",
+        description: "Add funds to wallet",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            await userApi.verifyAddFundPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            await queryClient.invalidateQueries({ queryKey: walletQueryKey });
+            await queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+          } catch (verifyErr: any) {
+            setActionError(verifyErr?.response?.data?.error?.message || "Failed to verify transaction.");
+          }
+        },
+        theme: {
+          color: "#111827",
+        },
+      };
+
+      const razorpay = new (window as any).Razorpay(options);
+      razorpay.on("payment.failed", (res: any) => {
+        setActionError(res.error.description || "Payment failed.");
+      });
+      razorpay.open();
+    } catch (err: any) {
+      console.log(err)
+      setActionError(err?.response?.data?.error?.message || "Failed to initiate add fund.");
+      throw err;
+    }
+  };
+
+  const handlePayoutSubmit = async (data: PayoutFormData) => {
+    setActionError(null);
+    await userApi.requestPayout({
+      amount: data.amount,
+      account_name: data.account,
+      account_number: data.accountNumber,
+      ifsc_code: data.ifsc,
+    });
+    await queryClient.invalidateQueries({ queryKey: walletQueryKey });
+    await queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+  };
 
   const formatTransactionDate = (value: string) =>
     new Intl.DateTimeFormat("en-IN", {
@@ -60,11 +122,35 @@ export default function WalletPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-5 py-10">
       <div className="mx-auto max-w-5xl rounded-3xl border border-gray-100 bg-white p-8 shadow-sm md:p-10">
-        <div className="flex flex-col gap-2 border-b border-gray-100 pb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#ff445d]">Wallet</p>
-          <h1 className="text-3xl font-semibold text-[#111827]">Your wallet overview</h1>
-          <p className="text-sm text-[#6b7280]">Track your available and pending balances in one place.</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-6">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#ff445d]">Wallet</p>
+            <h1 className="text-3xl font-semibold text-[#111827]">Your wallet overview</h1>
+            <p className="text-sm text-[#6b7280]">Track your available and pending balances in one place.</p>
+          </div>
+          <div className="flex gap-3 mt-4 sm:mt-0">
+            <button
+              type="button"
+              onClick={() => setAddFundModalOpen(true)}
+              className="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-gray-50 w-full sm:w-auto"
+            >
+              Add Fund
+            </button>
+            <button
+              type="button"
+              onClick={() => setPayoutModalOpen(true)}
+              className="rounded-full bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-black w-full sm:w-auto"
+            >
+              Request Payout
+            </button>
+          </div>
         </div>
+
+        {actionError && (
+          <div className="mt-6 rounded-2xl border border-[#ffd7dd] bg-[#fff5f7] px-6 py-4 text-sm font-medium text-[#d22d4c]">
+            {actionError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex min-h-[360px] items-center justify-center">
@@ -154,11 +240,10 @@ export default function WalletPage() {
                                 {formatReferenceType(transaction.reference_type)}
                               </span>
                               <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                                  isCredit
+                                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${isCredit
                                     ? "bg-[#ebfff1] text-[#0f9f4b]"
                                     : "bg-[#fff1f3] text-[#e53e5d]"
-                                }`}
+                                  }`}
                               >
                                 {isCredit ? "Credit" : "Debit"}
                               </span>
@@ -171,9 +256,8 @@ export default function WalletPage() {
 
                           <div className="text-left md:text-right">
                             <div
-                              className={`text-xl font-semibold ${
-                                isCredit ? "text-[#0f9f4b]" : "text-[#e53e5d]"
-                              }`}
+                              className={`text-xl font-semibold ${isCredit ? "text-[#0f9f4b]" : "text-[#e53e5d]"
+                                }`}
                             >
                               {isCredit ? "+" : "-"}₹{formatCurrency(transaction.amount)}
                             </div>
@@ -218,6 +302,19 @@ export default function WalletPage() {
           </>
         ) : null}
       </div>
+
+      <PayoutModal
+        isOpen={isPayoutModalOpen}
+        onClose={() => setPayoutModalOpen(false)}
+        onSubmit={handlePayoutSubmit}
+        maxAmount={wallet?.available_balance || 0}
+      />
+
+      <AddFundModal
+        isOpen={isAddFundModalOpen}
+        onClose={() => setAddFundModalOpen(false)}
+        onSubmit={handleAddFundSubmit}
+      />
     </div>
   );
 }

@@ -70,6 +70,7 @@ func (h *OrganizerHandler) GetWallet(c *gin.Context) {
 	response.Success(c, "Organizer wallet retrieved successfully", gin.H{
 		"available_balance": wallet.AvailableBalance,
 		"pending_balance":   wallet.PendingBalance,
+		"reserve_balance":   wallet.ReserveBalance,
 		"total_credited":    wallet.TotalCredited,
 		"total_debited":     wallet.TotalDebited,
 	})
@@ -79,7 +80,10 @@ func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		Amount float64 `json:"amount" binding:"required"`
+		Amount        float64 `json:"amount" binding:"required"`
+		AccountName   string  `json:"account_name" binding:"required"`
+		AccountNumber string  `json:"account_number" binding:"required"`
+		IFSCCode      string  `json:"ifsc_code" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -87,7 +91,7 @@ func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
 		return
 	}
 
-	if err := h.walletUsecase.RequestPayout(userID, req.Amount); err != nil {
+	if err := h.walletUsecase.RequestPayout(userID, req.Amount, req.AccountName, req.AccountNumber, req.IFSCCode); err != nil {
 		response.AppError(c, err)
 		return
 	}
@@ -157,6 +161,7 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 		VenueName:     req.VenueName,
 		Category:      req.Category,
 		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
 		Tags:          tagsStr,
 		CoverImageURL: req.CoverImageURL,
 	}

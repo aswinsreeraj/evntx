@@ -141,50 +141,6 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 		userPlatformFee := float64(totalTickets * 30)
 		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
 
-		// 1. User Wallet: Deduct normalizedAmount
-		var userWallet WalletModel
-		errUserWallet := tx.Where("user_id = ?", booking.UserID).First(&userWallet).Error
-		if errUserWallet == gorm.ErrRecordNotFound {
-			userWallet = WalletModel{
-				ID:               uuid.NewString(),
-				UserID:           booking.UserID,
-				AvailableBalance: 0,
-				PendingBalance:   0,
-				ReserveBalance:   0,
-				TotalCredited:    0,
-				TotalDebited:     0,
-				UpdatedAt:        now,
-			}
-			if err := tx.Create(&userWallet).Error; err != nil {
-				return err
-			}
-		} else if errUserWallet != nil {
-			return errUserWallet
-		}
-
-		if err := tx.Create(&WalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      userWallet.ID,
-			Type:          domain.WalletTransactionTypeDebit,
-			Amount:        normalizedAmount,
-			ReferenceType: domain.WalletReferenceTypePurchase,
-			ReferenceID:   bookingID,
-			Status:        domain.WalletTransactionStatusCompleted,
-			CreatedAt:     now,
-		}).Error; err != nil {
-			return err
-		}
-
-		userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance-normalizedAmount)*100) / 100
-		userWallet.TotalDebited = math.Round((userWallet.TotalDebited+normalizedAmount)*100) / 100
-		if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
-			"available_balance": userWallet.AvailableBalance,
-			"total_debited":     userWallet.TotalDebited,
-			"updated_at":        now,
-		}).Error; err != nil {
-			return err
-		}
-
 		// 2. Platform Wallet: Credit userPlatformFee
 		var platformWallet PlatformWalletModel
 		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {

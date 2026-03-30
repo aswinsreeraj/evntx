@@ -5,10 +5,11 @@ import "time"
 const (
 	PlatformWalletID = "00000000-0000-0000-0000-000000000001"
 
-	PlatformRefTypePayment  = "payment"
-	PlatformRefTypeRefund   = "refund"
-	PlatformRefTypePayout   = "payout"
-	PlatformRefTypeEarning  = "earning"
+	PlatformRefTypePayment      = "payment"
+	PlatformRefTypeRefund       = "refund"
+	PlatformRefTypePayout       = "payout"
+	PlatformRefTypeEarning      = "earning"
+	PlatformRefTypeFundAddition = "fund_addition"
 )
 
 type PlatformWallet struct {

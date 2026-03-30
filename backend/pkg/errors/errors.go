@@ -14,6 +14,7 @@ const (
 	InvalidOTP             = "EVT_011"
 	EventNotLive           = "EVT_012"
 	RateLimitExceeded      = "EVT_013"
+	BookingExpired         = "EVT_014"
 	InternalServerError    = "EVT_999"
 )
 
@@ -31,5 +32,6 @@ var (
 	ErrInvalidOTP             = New(400, InvalidOTP, "Invalid OTP")
 	ErrEventNotLive           = New(400, EventNotLive, "Event not live")
 	ErrRateLimitExceeded      = New(429, RateLimitExceeded, "Rate limit exceeded")
+	ErrBookingExpired         = New(400, BookingExpired, "Booking has expired")
 	ErrInternalServerError    = New(500, InternalServerError, "Internal server error")
 )

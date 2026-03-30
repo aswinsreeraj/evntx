@@ -36,6 +36,13 @@ export default function NotificationMenu({
     },
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: () => notificationsApi.clearAll(),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -73,14 +80,24 @@ export default function NotificationMenu({
         <div className={panelClassName ?? "absolute right-0 top-12 w-80 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.12)]"}>
           <div className="flex items-center justify-between px-2 py-1">
             <div className="text-sm font-semibold text-[#111827]">Notifications</div>
-            <button
-              type="button"
-              onClick={() => markAllAsReadMutation.mutate()}
-              disabled={markAllAsReadMutation.isPending || unreadCount === 0}
-              className="text-xs font-medium text-[#ff445d] disabled:cursor-not-allowed disabled:text-gray-300"
-            >
-              Mark all read
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => clearAllMutation.mutate()}
+                disabled={clearAllMutation.isPending || notifications.length === 0}
+                className="text-xs font-medium text-[#6b7280] hover:text-[#111827] disabled:cursor-not-allowed disabled:text-gray-300 transition"
+              >
+                Clear all
+              </button>
+              <button
+                type="button"
+                onClick={() => markAllAsReadMutation.mutate()}
+                disabled={markAllAsReadMutation.isPending || unreadCount === 0}
+                className="text-xs font-medium text-[#ff445d] disabled:cursor-not-allowed disabled:text-gray-300"
+              >
+                Mark all read
+              </button>
+            </div>
           </div>
 
           <div className="mt-2 flex max-h-96 flex-col gap-2 overflow-y-auto">
@@ -93,7 +110,7 @@ export default function NotificationMenu({
                 No notifications yet.
               </div>
             ) : (
-              notifications.map((notification) => (
+              notifications.slice(0, 5).map((notification) => (
                 <button
                   key={notification.id}
                   type="button"

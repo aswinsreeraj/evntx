@@ -10,12 +10,14 @@ const (
 	WalletTransactionStatusCompleted = "completed"
 	WalletTransactionStatusFailed    = "failed"
 
-	WalletReferenceTypeRefund               = "refund"
-	WalletReferenceTypeEarning              = "earning"
-	WalletReferenceTypeSettlement           = "settlement"
-	WalletReferenceTypePlatformFee          = "platform_fee"
-	WalletReferenceTypePurchase             = "purchase"
-	WalletReferenceTypeUserCancellation     = "user_cancellation"
+	WalletReferenceTypeRefund                = "refund"
+	WalletReferenceTypeEarning               = "earning"
+	WalletReferenceTypeSettlement            = "settlement"
+	WalletReferenceTypePayout                = "payout"
+	WalletReferenceTypeFundAddition          = "fund_addition"
+	WalletReferenceTypePlatformFee           = "platform_fee"
+	WalletReferenceTypePurchase              = "purchase"
+	WalletReferenceTypeUserCancellation      = "user_cancellation"
 	WalletReferenceTypeOrganizerCancellation = "organizer_cancellation"
 )
 

@@ -13,6 +13,7 @@ export type BookingRecord = {
   coverImageUrl: string
   venue: string
   tags: string[]
+  event_status: string
 }
 
 export type TicketRecord = {

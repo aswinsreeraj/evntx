@@ -7,8 +7,8 @@ import { buildDisplayEvent, formatCurrency } from "../eventBookingData"
 import { eventsApi } from "../api"
 import { useAuthStore } from "../../auth/store/authStore"
 import RazorpayButton from "../../payments/components/RazorpayButton"
-
-const PLATFORM_FEE_RATE = 0.05
+import { useWallet } from "../../user/hooks"
+import { userApi } from "../../user/api"
 
 export default function EventBookingPage() {
   const { eventId } = useParams()
@@ -30,6 +30,8 @@ export default function EventBookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
+  const { data: wallet } = useWallet()
+  const [isPayingWithWallet, setIsPayingWithWallet] = useState(false)
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -38,7 +40,8 @@ export default function EventBookingPage() {
   }))
 
   const totalAmount = ticketRows.reduce((sum, ticket) => sum + ticket.amount, 0)
-  const platformFee = totalAmount > 0 ? Math.round(totalAmount * PLATFORM_FEE_RATE) : 0
+  const totalTickets = ticketRows.reduce((sum, ticket) => sum + ticket.quantity, 0)
+  const platformFee = totalAmount > 0 ? 30 * totalTickets : 0
   const finalAmount = totalAmount + platformFee
 
   const selectedTickets = ticketRows.filter((ticket) => ticket.quantity > 0)
@@ -87,6 +90,20 @@ export default function EventBookingPage() {
       )
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handlePayWithWallet = async () => {
+    if (!reservedBookingId) return
+    setIsPayingWithWallet(true)
+    setError(null)
+    try {
+      await userApi.payWithWallet(reservedBookingId)
+      navigate("/profile/bookings")
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Wallet payment failed.")
+    } finally {
+      setIsPayingWithWallet(false)
     }
   }
  
@@ -240,8 +257,8 @@ export default function EventBookingPage() {
                 <span>Order Amount</span>
                 <span>{formatCurrency(totalAmount)}</span>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Platform fee (5%)</span>
+              <div className="flex items-center justify-between gap-3 text-sm text-[#5d6573]">
+                <span>Platform fee (₹30 per ticket)</span>
                 <span>{formatCurrency(platformFee)}</span>
               </div>
             </div>
@@ -261,20 +278,36 @@ export default function EventBookingPage() {
           ) : null}
 
           {reservedBookingId ? (
-            <RazorpayButton
-              bookingId={reservedBookingId}
-              eventTitle={displayEvent.title}
-              autoOpen={true}
-              onSuccess={() => {
-                setCheckoutOpen(false)
-                navigate("/profile/bookings", { replace: true })
-              }}
-              onError={(msg) => setError(msg)}
-            />
+            <div className="flex w-full flex-col gap-2">
+              <RazorpayButton
+                bookingId={reservedBookingId}
+                eventTitle={displayEvent.title}
+                onSuccess={() => {
+                  setCheckoutOpen(false)
+                  navigate("/profile/bookings", { replace: true })
+                }}
+                onError={(msg) => setError(msg)}
+              />
+              {wallet && wallet.available_balance >= finalAmount && (
+                <button
+                  type="button"
+                  disabled={isPayingWithWallet}
+                  onClick={handlePayWithWallet}
+                  className="flex w-full items-center justify-center rounded-xl border border-[#111827] bg-white px-6 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-[#f7f7f7] disabled:opacity-50"
+                >
+                  {isPayingWithWallet ? "Processing Wallet Payment..." : "Pay with Wallet"}
+                </button>
+              )}
+              {wallet && wallet.available_balance < finalAmount && wallet.available_balance > 0 && (
+                <p className="text-center text-[10px] text-gray-400">
+                  Insufficient wallet balance ({formatCurrency(wallet.available_balance)})
+                </p>
+              )}
+            </div>
           ) : (
             <button
               type="button"
-              className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
+              className="w-full rounded-xl bg-[#0b101e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
               onClick={handleReservation}
               disabled={isSubmitting}
             >

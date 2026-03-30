@@ -13,7 +13,7 @@ export default function EventForm() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Comedy");
   const [startTime, setStartTime] = useState("");
-  const [endTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [status, setStatus] = useState("draft");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
@@ -56,6 +56,12 @@ export default function EventForm() {
               const st = new Date(event.start_time);
               st.setMinutes(st.getMinutes() - st.getTimezoneOffset());
               setStartTime(st.toISOString().slice(0, 16));
+            }
+
+            if (event.end_time) {
+              const et = new Date(event.end_time);
+              et.setMinutes(et.getMinutes() - et.getTimezoneOffset());
+              setEndTime(et.toISOString().slice(0, 16));
             }
 
             if (event.tags) {
@@ -201,7 +207,7 @@ export default function EventForm() {
         venue_name: venueName,
         category,
         start_time: new Date(startTime).toISOString(),
-        end_time: endTime ? new Date(endTime).toISOString() : new Date(startTime).toISOString(),
+        end_time: endTime ? new Date(endTime).toISOString() : new Date(new Date(startTime).getTime() + 2 * 60 * 60 * 1000).toISOString(),
         tags: tags,
         cover_image_url: finalCoverUrl || (coverImagePreview ? coverImagePreview.replace(import.meta.env.VITE_API_BASE_URL || "", "") : ""),
         status: (isEditMode && status.toLowerCase() === "approved") ? "draft" : status,
@@ -296,7 +302,7 @@ export default function EventForm() {
                       <option value="Conference">Conference</option>
                   </select>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 col-span-2">
                   <div className="flex-1">
                       <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">Start Date & Time</label>
                       <input
@@ -305,6 +311,16 @@ export default function EventForm() {
                         min={new Date().toISOString().slice(0, 16)}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
+                      />
+                  </div>
+                  <div className="flex-1">
+                      <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">End Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        min={startTime || new Date().toISOString().slice(0, 16)}
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                       />
                   </div>

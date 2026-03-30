@@ -254,16 +254,22 @@ func (u *PaymentUsecase) VerifyPayment(
 					Msg("notification_send_failed")
 			}
 
+			ticketsInBooking, _ := u.bookingRepo.GetTicketCountByBookingID(ctx, booking.ID)
+			organizerEarnings := payment.Amount - 30*float64(ticketsInBooking)
+			if organizerEarnings < 0 {
+				organizerEarnings = 0
+			}
+
 			if notifyErr := u.notificationUsecase.SendNotification(
 				event.OrganizerID,
 				domain.NotificationTypePaymentSuccess,
 				"New booking received",
-				"New booking received. You earned ₹"+strconv.FormatFloat(payment.Amount, 'f', 2, 64),
+				"New booking received. You will earn ₹"+strconv.FormatFloat(organizerEarnings, 'f', 2, 64)+" after settlement.",
 				map[string]interface{}{
 					"booking_id":  booking.ID,
 					"event_id":    event.ID,
 					"event_title": event.Title,
-					"amount":      payment.Amount,
+					"amount":      organizerEarnings,
 				},
 			); notifyErr != nil {
 				logger.Log.Warn().

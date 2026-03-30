@@ -7,21 +7,25 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type WalletUsecase struct {
 	repo               repository.WalletRepository
 	roleRepo           repository.UserRoleRepository
 	platformWalletRepo repository.PlatformWalletRepository
+	razorpayService    repository.RazorpayService
 }
 
 func NewWalletUsecase(
 	repo repository.WalletRepository,
 	roleRepo repository.UserRoleRepository,
 	platformWalletRepo repository.PlatformWalletRepository,
+	razorpayService repository.RazorpayService,
 ) *WalletUsecase {
-	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo}
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -123,26 +127,13 @@ func (u *WalletUsecase) GetTransactionsByUserID(
 	return u.repo.GetTransactionsByWalletID(wallet.ID, filters, page, limit)
 }
 
-func (u *WalletUsecase) RequestPayout(userID string, amount float64) error {
+func (u *WalletUsecase) RequestPayout(userID string, amount float64, accountName, accountNumber, ifscCode string) error {
 	if amount <= 0 {
 		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
 	}
 
-	roles, err := u.roleRepo.GetRolesByUserID(userID)
-	if err != nil {
-		return err
-	}
-
-	isOrganizer := false
-	for _, role := range roles {
-		if role == domain.RoleOrganizer {
-			isOrganizer = true
-			break
-		}
-	}
-
-	if !isOrganizer {
-		return apiErrors.ErrForbiddenAction
+	if accountName == "" || accountNumber == "" || ifscCode == "" {
+		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Bank details are required")
 	}
 
 	wallet, err := u.repo.GetWalletByUserID(userID)
@@ -188,4 +179,97 @@ func (u *WalletUsecase) RequestPayout(userID string, amount float64) error {
 
 func normalizeWalletAmount(amount float64) float64 {
 	return math.Round(amount*100) / 100
+}
+
+func (u *WalletUsecase) CreateAddFundOrder(userID string, amount float64) (*domain.PaymentOrderResponse, error) {
+	if amount <= 0 {
+		return nil, apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
+	}
+
+	wallet, err := u.repo.GetWalletByUserID(userID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Initialize missing wallet for the user
+			wallet = &domain.Wallet{
+				ID:               uuid.NewString(),
+				UserID:           userID,
+				AvailableBalance: 0,
+				PendingBalance:   0,
+				UpdatedAt:        time.Now(),
+			}
+			if createErr := u.repo.CreateWallet(wallet); createErr != nil {
+				logger.Log.Error().Err(createErr).Str("user_id", userID).Msg("failed to create missing wallet during add-fund")
+				return nil, apiErrors.Wrap(createErr, 500, apiErrors.InternalServerError, "Failed to initialize wallet")
+			}
+		} else {
+			return nil, err
+		}
+	}
+
+	amountPaise := int64(amount * 100)
+	receipt := "fund_" + wallet.ID[:8]
+
+	order, err := u.razorpayService.CreateOrder(amountPaise, receipt)
+	if err != nil {
+		logger.Log.Error().
+			Err(err).
+			Str("user_id", userID).
+			Float64("amount", amount).
+			Msg("failed to create razorpay order in usecase")
+		return nil, apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to create payment order")
+	}
+
+	return &domain.PaymentOrderResponse{
+		OrderID:     order.ID,
+		Amount:      order.Amount,
+		Currency:    order.Currency,
+		RazorpayKey: u.razorpayService.GetKeyID(),
+	}, nil
+}
+
+func (u *WalletUsecase) VerifyAddFundPayment(userID string, razorpayOrderID, razorpayPaymentID, razorpaySignature string) error {
+	wallet, err := u.repo.GetWalletByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	isValid, err := u.razorpayService.VerifySignature(razorpayOrderID, razorpayPaymentID, razorpaySignature)
+	if err != nil {
+		return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to verify payment signature")
+	}
+
+	if !isValid {
+		return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
+	}
+
+	orderData, err := u.razorpayService.FetchOrder(razorpayOrderID)
+	if err != nil {
+		return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to fetch order details")
+	}
+
+	amount := float64(orderData.Amount) / 100
+
+	err = u.ApplyTransaction(
+		wallet.ID,
+		domain.WalletTransactionTypeCredit,
+		amount,
+		domain.WalletReferenceTypeFundAddition,
+		razorpayOrderID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if u.platformWalletRepo != nil {
+		if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
+			domain.WalletTransactionTypeCredit,
+			amount,
+			domain.PlatformRefTypeFundAddition,
+			userID,
+		); notifyErr != nil {
+			logger.Log.Error().Err(notifyErr).Msg("Failed to apply platform transaction for fund addition")
+		}
+	}
+
+	return nil
 }

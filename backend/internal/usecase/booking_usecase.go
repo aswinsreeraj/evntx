@@ -196,11 +196,9 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 	}
 
 	timeUntilEvent := time.Until(event.StartTime)
-	if timeUntilEvent < 48*time.Hour {
-		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Cannot cancel booking less than 48 hours before the event")
-	}
+	isRefundable := timeUntilEvent >= 24*time.Hour
 
-	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
+	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
 	if err != nil {
 		return err
 	}
@@ -253,4 +251,60 @@ func (u *BookingUsecase) CheckInTicket(
 	}
 
 	return u.bookingRepo.CheckInTicket(ctx, eventID, ticketCode)
+}
+
+func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, userID string) error {
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	if booking.UserID != userID {
+		return apiErrors.ErrForbiddenAction
+	}
+
+	if booking.Status != "reserved" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	// Double check expiration
+	if time.Now().After(booking.ExpiresAt) {
+		return apiErrors.ErrBookingExpired
+	}
+
+	err = u.bookingRepo.PayWithWallet(ctx, bookingID, userID, booking.TotalAmount)
+	if err != nil {
+		return err
+	}
+
+	// Send notifications
+	if u.notificationUsecase != nil {
+		event, _ := u.eventRepo.GetEventByID(booking.EventID)
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypePaymentSuccess,
+			"Payment successful",
+			"Payment successful via wallet. Tickets confirmed.",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+				"amount":      booking.TotalAmount,
+			},
+		)
+
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypeTicketGenerated,
+			"Your tickets are generated",
+			"Your tickets are generated",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+			},
+		)
+	}
+
+	return nil
 }

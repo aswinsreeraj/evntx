@@ -61,3 +61,15 @@ func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
 
 	response.Success(c, "All notifications marked as read", nil)
 }
+
+func (h *NotificationHandler) ClearAll(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	if err := h.notificationUsecase.ClearAll(userID); err != nil {
+		response.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "All notifications cleared", nil)
+}
+

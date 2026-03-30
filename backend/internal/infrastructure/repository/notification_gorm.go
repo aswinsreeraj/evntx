@@ -109,3 +109,8 @@ func (r *notificationGormRepository) MarkAllAsRead(userID string) error {
 		Where("user_id = ? AND is_read = ?", userID, false).
 		Update("is_read", true).Error
 }
+
+func (r *notificationGormRepository) ClearAll(userID string) error {
+	return r.db.Where("user_id = ?", userID).Delete(&NotificationModel{}).Error
+}
+
