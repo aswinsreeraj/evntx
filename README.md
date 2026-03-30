@@ -11,8 +11,9 @@ EVNTX is a scalable, multi-role event management platform that enables users to 
 * Discover and explore events
 * View event details and ticket types
 * Reserve and book tickets
-* Manage bookings and issued tickets
-* Wallet system for refunds and payments
+* Secure payment system integration (Razorpay) for ticket purchases
+* Manage bookings and generated tickets (PDF / QR Code)
+* Wallet system for easy refunds and seamless checkouts
 * Calendar view for upcoming events
 * Passwordless authentication (Email OTP & Google OAuth)
 
@@ -21,7 +22,9 @@ EVNTX is a scalable, multi-role event management platform that enables users to 
 * Create and manage events
 * Submit events for approval
 * Track revenue and engagement analytics
-* Manage wallet and request payouts
+* Generate and manage tickets for attendees
+* Organizer wallet for receiving direct earnings
+* Request payouts from wallet balance
 
 ### Admin
 
@@ -65,6 +68,7 @@ The backend strictly follows **Clean Architecture**, ensuring separation between
 * **ORM:** GORM
 * **Database:** PostgreSQL
 * **Authentication:** JWT + Refresh Tokens
+* **Payments:** Razorpay API Integration
 * **Hashing:** `crypto/sha256`
 * **Logging:** Zerolog
 
@@ -86,7 +90,8 @@ backend/
 ├── cmd/
 │   ├── server/      # Application entrypoint
 │   ├── admin/       # Admin utilities
-│   └── seeder/      # DB seeding scripts
+│   ├── seeder/      # DB seeding scripts
+│   └── wallet_seeder/ # Wallet initializer
 │
 ├── internal/
 │   ├── domain/      # Core entities
@@ -95,6 +100,7 @@ backend/
 │   ├── infrastructure/
 │   │   ├── database/
 │   │   ├── email/
+│   │   ├── payment/   # Payment gateway integration
 │   │   └── repository/  # Implementations
 │   ├── delivery/
 │   │   └── http/    # Gin handlers
@@ -122,12 +128,14 @@ frontend/
 ├── src/
 │   ├── app/             # App-level setup (routing, providers)
 │   ├── modules/         # Feature-based modules
+│   │   ├── admin/
 │   │   ├── auth/
 │   │   ├── events/
+│   │   ├── home/
+│   │   ├── notifications/
 │   │   ├── organizer/
-│   │   ├── admin/
-│   │   ├── user/
-│   │   └── home/
+│   │   ├── payments/
+│   │   └── user/
 │   │
 │   ├── services/        # API layer (Axios)
 │   └── shared/
@@ -252,6 +260,8 @@ GOOGLE_CLIENT_ID=googleclientid
 
 ADMIN_EMAIL=adminemail@mail.com
 
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 ```
 
 ---
