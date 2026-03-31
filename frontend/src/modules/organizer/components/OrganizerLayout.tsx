@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
 import NotificationMenu from "../../../shared/components/NotificationMenu";
-import { Bell, CircleUserRound, Plus } from "lucide-react";
+import { CircleUserRound, Plus } from "lucide-react";
 import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 
 interface OrganizerLayoutProps {

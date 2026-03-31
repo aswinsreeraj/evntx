@@ -16,7 +16,7 @@ type BookingUsecase struct {
 	bookingRepo         repository.BookingRepository
 	eventRepo           repository.EventRepository
 	notificationUsecase *NotificationUsecase
-	roleRepo    repository.UserRoleRepository
+	roleRepo            repository.UserRoleRepository
 }
 
 func NewBookingUsecase(
