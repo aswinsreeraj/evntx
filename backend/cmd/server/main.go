@@ -53,6 +53,9 @@ func main() {
 	db.AutoMigrate(&repoImpl.PayoutRequestModel{})
 	db.AutoMigrate(&repoImpl.PayoutCredentialModel{})
 	db.AutoMigrate(&repoImpl.RefundRequestModel{})
+	db.AutoMigrate(&repoImpl.VisitorSessionModel{})
+	db.AutoMigrate(&repoImpl.EngagementEventModel{})
+	db.AutoMigrate(&repoImpl.EventEngagementDailyModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -74,8 +77,11 @@ func main() {
 
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
+	engagementRepo := repoImpl.NewEngagementGormRepository(db)
+
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
-	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase)
+	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase, engagementRepo)
+	engagementUsecase := usecase.NewEngagementUsecase(engagementRepo)
 
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
@@ -89,15 +95,16 @@ func main() {
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
-	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
+	engagementHandler := httpDelivery.NewEngagementHandler(engagementUsecase)
 
 	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
 	go expirationWorker.Start()
 
-	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase)
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase)
 
 	router := gin.New()
 
@@ -191,6 +198,9 @@ func main() {
 	organizerGroup.Use(middleware.JWTAuthMiddleware())
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
+	organizerGroup.GET("/dashboard", organizerHandler.GetDashboard)
+	organizerGroup.GET("/reports/sales", organizerHandler.GetSalesReport)
+	organizerGroup.GET("/reports/engagement", organizerHandler.GetEngagementReport)
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
 	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
 	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
@@ -211,6 +221,7 @@ func main() {
 	adminGroup.Use(middleware.JWTAuthMiddleware())
 	adminGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleAdmin))
 
+	adminGroup.GET("/dashboard", adminHandler.GetAdminDashboard)
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
@@ -240,6 +251,11 @@ func main() {
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
 	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
+
+	// Engagement endpoints
+	engagementGroup := router.Group("/engagement")
+	engagementGroup.POST("/session", engagementHandler.InitializeSession)
+	engagementGroup.POST("/track", engagementHandler.TrackEvent)
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)

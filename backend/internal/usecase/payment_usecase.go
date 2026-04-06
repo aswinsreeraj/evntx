@@ -21,6 +21,7 @@ type PaymentUsecase struct {
 	paymentRepo         repository.PaymentRepository
 	razorpayService     repository.RazorpayService
 	notificationUsecase *NotificationUsecase
+	engagementRepo      repository.EngagementRepository
 }
 
 func NewPaymentUsecase(
@@ -29,6 +30,7 @@ func NewPaymentUsecase(
 	paymentRepo repository.PaymentRepository,
 	razorpayService repository.RazorpayService,
 	notificationUsecase *NotificationUsecase,
+	engagementRepo repository.EngagementRepository,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
 		bookingRepo:         bookingRepo,
@@ -36,6 +38,7 @@ func NewPaymentUsecase(
 		paymentRepo:         paymentRepo,
 		razorpayService:     razorpayService,
 		notificationUsecase: notificationUsecase,
+		engagementRepo:      engagementRepo,
 	}
 }
 
@@ -75,6 +78,10 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 
 		if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, booking.ID, booking.EventID, 0); err != nil {
 			return nil, err
+		}
+
+		if u.engagementRepo != nil {
+			_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID)
 		}
 
 		logger.Log.Info().
@@ -225,6 +232,10 @@ func (u *PaymentUsecase) VerifyPayment(
 			return apiErrors.ErrBookingExpiredPaymentSuccess
 		}
 		return err
+	}
+
+	if u.engagementRepo != nil {
+		_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID)
 	}
 
 	if u.notificationUsecase != nil {

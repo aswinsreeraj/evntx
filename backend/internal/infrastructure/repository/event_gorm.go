@@ -1007,3 +1007,415 @@ func (r *eventGormRepository) FindPastLiveEvents(ctx context.Context, now time.T
 
 	return events, nil
 }
+
+func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error) {
+	var events []EventModel
+	if err := r.db.Where("organizer_id = ?", organizerID).Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	eventIDs := make([]string, 0, len(events))
+	var activeEvents, pendingEvents int
+	var activeEventsPrevMonth int
+	var eventTitleMap = make(map[string]string)
+
+	now := time.Now()
+	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	firstDayPrevMonth := firstDayThisMonth.AddDate(0, -1, 0)
+
+	for _, e := range events {
+		eventIDs = append(eventIDs, e.ID)
+		eventTitleMap[e.ID] = e.Title
+		
+		if e.Status == "live" {
+			activeEvents++
+			if time.Unix(e.CreatedAt, 0).Before(firstDayThisMonth) {
+			    activeEventsPrevMonth++
+			}
+		} else if e.Status == "pending" {
+			pendingEvents++
+		}
+	}
+
+	var stats domain.OrganizerDashboardStats
+	if len(eventIDs) == 0 {
+		return &stats, nil
+	}
+
+	var bookings []struct {
+		EventID     string
+		TotalAmount float64
+		CreatedAt   int64 `gorm:"column:created_at"` // Because BookingModel handles unix timestamp
+		Tickets     int
+	}
+
+	r.db.Table("bookings").
+	    Select("bookings.event_id, bookings.total_amount, bookings.created_at, (SELECT count(*) FROM booking_tickets WHERE booking_tickets.booking_id = bookings.id) as tickets").
+		Where("bookings.event_id IN ? AND bookings.status IN ?", eventIDs, []string{"paid", "completed"}).
+		Find(&bookings)
+
+	var totalRev, totalRevPrev float64
+	var totalTkt, totalTktPrev int
+
+	var revenueByMonth = make(map[string]float64)
+	for i := 11; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0)
+		revenueByMonth[m.Format("Jan")] = 0
+	}
+
+	var revenueByEvent = make(map[string]float64)
+
+	for _, b := range bookings {
+		totalRev += b.TotalAmount
+		totalTkt += b.Tickets
+		
+		bCreatedAt := time.Unix(b.CreatedAt, 0)
+		if bCreatedAt.After(firstDayPrevMonth) && bCreatedAt.Before(firstDayThisMonth) {
+			totalRevPrev += b.TotalAmount
+			totalTktPrev += b.Tickets
+		}
+
+		revenueByEvent[b.EventID] += b.TotalAmount
+
+		monthStr := bCreatedAt.Format("Jan")
+		if _, exists := revenueByMonth[monthStr]; exists {
+			revenueByMonth[monthStr] += b.TotalAmount
+		}
+	}
+    
+	var revPercentage, tktPercentage, activePercentage float64
+    if totalRevPrev > 0 {
+        revPercentage = ((totalRev - totalRevPrev) / totalRevPrev) * 100
+    }
+	if totalTktPrev > 0 {
+        tktPercentage = float64(totalTkt - totalTktPrev) / float64(totalTktPrev) * 100
+    }
+	if activeEventsPrevMonth > 0 {
+        activePercentage = float64(activeEvents - activeEventsPrevMonth) / float64(activeEventsPrevMonth) * 100
+    }
+
+	stats.TotalRevenue = domain.StatCard{Value: totalRev, Percentage: revPercentage}
+	stats.TicketsSold = domain.StatCard{Value: float64(totalTkt), Percentage: tktPercentage}
+	stats.ActiveEvents = domain.StatCard{Value: float64(activeEvents), Percentage: activePercentage}
+	stats.PendingEvents = domain.StatCard{Value: float64(pendingEvents), Percentage: 0}
+
+	for i := 11; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0).Format("Jan")
+		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
+			Date:   m,
+			Amount: revenueByMonth[m],
+		})
+	}
+
+	for evtID, val := range revenueByEvent {
+        if val > 0 && eventTitleMap[evtID] != "" {
+		    stats.SalesBreakdown = append(stats.SalesBreakdown, domain.EventSalesBreakdown{
+			    EventName: eventTitleMap[evtID],
+			    Revenue:   val,
+		    })
+        }
+	}
+
+	return &stats, nil
+}
+
+func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error) {
+	var events []EventModel
+	query := r.db.Where("organizer_id = ?", organizerID)
+	if eventID != "" && eventID != "all" {
+		query = query.Where("id = ?", eventID)
+	}
+
+	if err := query.Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	eventIDs := make([]string, 0, len(events))
+	var eventTitleMap = make(map[string]string)
+	for _, e := range events {
+		eventIDs = append(eventIDs, e.ID)
+		eventTitleMap[e.ID] = e.Title
+	}
+
+	var stats domain.SalesReportStats
+	if len(eventIDs) == 0 {
+		return &stats, nil
+	}
+
+	var startTime, endTime time.Time
+	var validRange bool
+	if startDate != "" && endDate != "" {
+		st, err1 := time.Parse(time.RFC3339, startDate)
+		et, err2 := time.Parse(time.RFC3339, endDate)
+		if err1 == nil && err2 == nil {
+			startTime = st
+			endTime = et
+			validRange = true
+		}
+	}
+
+	if !validRange { // Default to last 30 days if invalid/missing
+		endTime = time.Now()
+		startTime = endTime.AddDate(0, 0, -30)
+	}
+
+	duration := endTime.Sub(startTime)
+	prevStartTime := startTime.Add(-duration)
+
+	var bookings []struct {
+		EventID     string
+		TotalAmount float64
+		CreatedAt   int64 `gorm:"column:created_at"`
+		Tickets     int
+	}
+
+	// Fetch all paid/completed bookings for these events
+	r.db.Table("bookings").
+		Select("bookings.event_id, bookings.total_amount, bookings.created_at, (SELECT count(*) FROM booking_tickets WHERE booking_tickets.booking_id = bookings.id) as tickets").
+		Where("bookings.event_id IN ? AND bookings.status IN ?", eventIDs, []string{"paid", "completed"}).
+		Find(&bookings)
+
+	var totalRev, totalRevPrev float64
+	var totalTkt, totalTktPrev int
+
+	// Dynamic bucketing (group by day if range <= 31 days, else month)
+	useDays := duration.Hours() <= 31*24
+	var revenueMap = make(map[string]float64)
+	
+	// Pre-fill timeline to ensure 0s are graphed properly
+	if useDays {
+		days := int(duration.Hours() / 24)
+		for i := 0; i <= days; i++ {
+			d := startTime.AddDate(0, 0, i)
+			revenueMap[d.Format("Jan 02")] = 0
+		}
+	} else {
+		months := int(duration.Hours() / (24 * 30))
+		for i := 0; i <= months; i++ {
+			m := startTime.AddDate(0, i, 0)
+			revenueMap[m.Format("Jan 2006")] = 0
+		}
+	}
+
+	var ticketsByEvent = make(map[string]int)
+
+	for _, b := range bookings {
+		bCreatedAt := time.Unix(b.CreatedAt, 0)
+
+		// Current Period
+		if bCreatedAt.After(startTime) && bCreatedAt.Before(endTime) {
+			totalRev += b.TotalAmount
+			totalTkt += b.Tickets
+			ticketsByEvent[b.EventID] += b.Tickets
+			
+			var timeKey string
+			if useDays {
+				timeKey = bCreatedAt.Format("Jan 02")
+			} else {
+				timeKey = bCreatedAt.Format("Jan 2006")
+			}
+			if _, exists := revenueMap[timeKey]; exists {
+				revenueMap[timeKey] += b.TotalAmount
+			}
+		}
+
+		// Previous Period
+		if bCreatedAt.After(prevStartTime) && bCreatedAt.Before(startTime) {
+			totalRevPrev += b.TotalAmount
+			totalTktPrev += b.Tickets
+		}
+	}
+
+	var revPercentage, tktPercentage float64
+	if totalRevPrev > 0 {
+		revPercentage = ((totalRev - totalRevPrev) / totalRevPrev) * 100
+	}
+	if totalTktPrev > 0 {
+		tktPercentage = float64(totalTkt - totalTktPrev) / float64(totalTktPrev) * 100
+	}
+
+	stats.TotalRevenue = domain.StatCard{Value: totalRev, Percentage: revPercentage}
+	stats.TicketsSold = domain.StatCard{Value: float64(totalTkt), Percentage: tktPercentage}
+
+	// Extract formatted timeline sorting logically
+	if useDays {
+		days := int(duration.Hours() / 24)
+		for i := 0; i <= days; i++ {
+			d := startTime.AddDate(0, 0, i).Format("Jan 02")
+			stats.RevenueOverTime = append(stats.RevenueOverTime, domain.RevenuePoint{
+				Date:   d,
+				Amount: revenueMap[d],
+			})
+		}
+	} else {
+		months := int(duration.Hours() / (24 * 30))
+		for i := 0; i <= months; i++ {
+			m := startTime.AddDate(0, i, 0).Format("Jan 2006")
+			stats.RevenueOverTime = append(stats.RevenueOverTime, domain.RevenuePoint{
+				Date:   m,
+				Amount: revenueMap[m],
+			})
+		}
+	}
+
+	// Calculate Proportional Sales Segment
+	for evtID, tkts := range ticketsByEvent {
+		if tkts > 0 && eventTitleMap[evtID] != "" {
+			percentage := 0.0
+			if totalTkt > 0 {
+				percentage = float64(tkts) / float64(totalTkt) * 100
+			}
+			stats.TicketsPerEvent = append(stats.TicketsPerEvent, domain.TicketSalesProportion{
+				EventName:       eventTitleMap[evtID],
+				TicketsSold:     tkts,
+				PercentageTotal: percentage,
+			})
+		}
+	}
+
+	return &stats, nil
+}
+
+func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
+	now := time.Now()
+	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	firstDayPrevMonth := firstDayThisMonth.AddDate(0, -1, 0)
+	firstDayThisMonthUnix := firstDayThisMonth.Unix()
+	firstDayPrevMonthUnix := firstDayPrevMonth.Unix()
+
+	var stats domain.AdminDashboardStats
+
+	// --- Revenue ---
+	var totalRevResult struct{ Total float64 }
+	r.db.Table("bookings").Where("status IN ?", []string{"paid", "completed"}).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&totalRevResult)
+
+	var prevRevResult struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"}, firstDayPrevMonthUnix, firstDayThisMonthUnix).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevRevResult)
+
+	var thisRevResult struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonthUnix).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisRevResult)
+
+	revPct := 0.0
+	if prevRevResult.Total > 0 {
+		revPct = (thisRevResult.Total - prevRevResult.Total) / prevRevResult.Total * 100
+	}
+	stats.Revenue = domain.AdminStatCard{Value: totalRevResult.Total, Percentage: revPct}
+
+	// --- Total Users ---
+	var totalUsers, prevMonthUsers, thisMonthUsers int64
+	r.db.Table("users").Count(&totalUsers)
+	r.db.Table("users").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevMonthUsers)
+	r.db.Table("users").Where("created_at >= ?", firstDayThisMonthUnix).Count(&thisMonthUsers)
+
+	usersPct := 0.0
+	if prevMonthUsers > 0 {
+		usersPct = float64(thisMonthUsers-prevMonthUsers) / float64(prevMonthUsers) * 100
+	}
+	stats.TotalUsers = domain.AdminStatCard{Value: float64(totalUsers), Percentage: usersPct}
+
+	// --- Total Organizers (users with organizer role) ---
+	var totalOrgs, prevOrgs, thisOrgs int64
+	r.db.Table("user_roles").Where("role = ?", "organizer").Count(&totalOrgs)
+	r.db.Table("user_roles").Where("role = ? AND created_at >= ? AND created_at < ?", "organizer", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevOrgs)
+	r.db.Table("user_roles").Where("role = ? AND created_at >= ?", "organizer", firstDayThisMonthUnix).Count(&thisOrgs)
+
+	orgsPct := 0.0
+	if prevOrgs > 0 {
+		orgsPct = float64(thisOrgs-prevOrgs) / float64(prevOrgs) * 100
+	}
+	stats.TotalOrganizers = domain.AdminStatCard{Value: float64(totalOrgs), Percentage: orgsPct}
+
+	// --- Total Events ---
+	var totalEvents, prevEvents, thisMonthEvents int64
+	r.db.Table("events").Count(&totalEvents)
+	r.db.Table("events").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevEvents)
+	r.db.Table("events").Where("created_at >= ?", firstDayThisMonthUnix).Count(&thisMonthEvents)
+
+	eventsPct := 0.0
+	if prevEvents > 0 {
+		eventsPct = float64(thisMonthEvents-prevEvents) / float64(prevEvents) * 100
+	}
+	stats.TotalEvents = domain.AdminStatCard{Value: float64(totalEvents), Percentage: eventsPct}
+
+	// --- Refund Rate = refunded bookings / total bookings ---
+	var totalBookings, refundedBookings int64
+	r.db.Table("bookings").Count(&totalBookings)
+	r.db.Table("bookings").Where("status = ?", "refunded").Count(&refundedBookings)
+	refundRate := 0.0
+	if totalBookings > 0 {
+		refundRate = float64(refundedBookings) / float64(totalBookings) * 100
+	}
+	// prev month refund rate
+	var prevTotal, prevRefunded int64
+	r.db.Table("bookings").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevTotal)
+	r.db.Table("bookings").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevRefunded)
+	prevRefundRate := 0.0
+	if prevTotal > 0 {
+		prevRefundRate = float64(prevRefunded) / float64(prevTotal) * 100
+	}
+	refundRatePct := 0.0
+	if prevRefundRate > 0 {
+		refundRatePct = (refundRate - prevRefundRate) / prevRefundRate * 100
+	}
+	stats.RefundRate = domain.AdminStatCard{Value: refundRate, Percentage: refundRatePct}
+
+	// --- User Growth (new users this month) ---
+	var prevGrowth int64
+	r.db.Table("users").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0).Unix(), firstDayPrevMonthUnix).Count(&prevGrowth)
+	growthPct := 0.0
+	if prevGrowth > 0 {
+		growthPct = float64(thisMonthUsers-prevGrowth) / float64(prevGrowth) * 100
+	}
+	stats.UserGrowth = domain.AdminStatCard{Value: float64(thisMonthUsers), Percentage: growthPct}
+
+	// --- Pending Approvals ---
+	var pendingEvents int64
+	r.db.Table("events").Where("status = ?", "pending").Count(&pendingEvents)
+	stats.PendingApprovals = domain.AdminStatCard{Value: float64(pendingEvents)}
+
+	// --- Active Events ---
+	var activeEvents, prevActiveEvents int64
+	r.db.Table("events").Where("status = ?", "live").Count(&activeEvents)
+	r.db.Table("events").Where("status = ? AND created_at >= ? AND created_at < ?", "live", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevActiveEvents)
+	activePct := 0.0
+	if prevActiveEvents > 0 {
+		activePct = float64(activeEvents-prevActiveEvents) / float64(prevActiveEvents) * 100
+	}
+	stats.ActiveEvents = domain.AdminStatCard{Value: float64(activeEvents), Percentage: activePct}
+
+	// --- Monthly Revenue Overview (last 12 months) ---
+	var bookingRows []struct {
+		TotalAmount float64
+		CreatedAt   int64 `gorm:"column:created_at"`
+	}
+	r.db.Table("bookings").
+		Select("total_amount, created_at").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
+		Find(&bookingRows)
+
+	revenueByMonth := make(map[string]float64)
+	for i := 11; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0).Format("Jan")
+		revenueByMonth[m] = 0
+	}
+	for _, b := range bookingRows {
+		key := time.Unix(b.CreatedAt, 0).Format("Jan")
+		if _, ok := revenueByMonth[key]; ok {
+			revenueByMonth[key] += b.TotalAmount
+		}
+	}
+	for i := 11; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0).Format("Jan")
+		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
+			Date:   m,
+			Amount: revenueByMonth[m],
+		})
+	}
+
+	return &stats, nil
+}

@@ -64,6 +64,65 @@ export interface OrganizerWalletSummary {
   total_debited: number;
 }
 
+// -- Dashboard Stats Data Types --
+export interface StatCardData {
+  value: number;
+  percentage: number;
+  label?: string;
+}
+
+export interface RevenuePointData {
+  date: string;
+  amount: number;
+}
+
+export interface EventSalesBreakdownData {
+  name: string;
+  value: number;
+}
+
+export interface OrganizerDashboardStats {
+  total_revenue: StatCardData;
+  tickets_sold: StatCardData;
+  active_events: StatCardData;
+  pending_events: StatCardData;
+  revenue_overview: RevenuePointData[];
+  sales_breakdown: EventSalesBreakdownData[];
+}
+
+export interface TicketSalesProportionData {
+  name: string;
+  tickets_sold: number;
+  percentage_total: number;
+}
+
+export interface SalesReportStats {
+  total_revenue: StatCardData;
+  tickets_sold: StatCardData;
+  revenue_over_time: RevenuePointData[];
+  tickets_per_event: TicketSalesProportionData[];
+}
+
+// -- Engagement Report --
+export interface FunnelStepData {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+export interface PeakUsagePointData {
+  label: string;
+  viewing: number;
+  checkout: number;
+}
+
+export interface EngagementReportStats {
+  page_views: StatCardData;
+  conversion_rate: StatCardData;
+  user_journey: FunnelStepData[];
+  peak_usage: PeakUsagePointData[];
+}
+
 export interface CheckInResponse {
   ticket_id: string;
   ticket_code: string;
@@ -80,6 +139,29 @@ export const organizerApi = {
   async updateEvent(eventId: string, payload: UpdateEventPayload) {
     const res = await api.put(`/organizer/events/${eventId}`, payload);
     return res.data;
+  },
+
+  async getDashboardStats(): Promise<OrganizerDashboardStats> {
+    const res = await api.get(`/organizer/dashboard`);
+    return res.data.data;
+  },
+
+  async getSalesReportStats(eventId?: string, startDate?: string, endDate?: string): Promise<SalesReportStats> {
+    const params = new URLSearchParams();
+    if (eventId) params.append("event_id", eventId);
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    const res = await api.get(`/organizer/reports/sales?${params.toString()}`);
+    return res.data.data;
+  },
+
+  async getEngagementReportStats(eventId?: string, startDate?: string, endDate?: string): Promise<EngagementReportStats> {
+    const params = new URLSearchParams();
+    if (eventId) params.append("event_id", eventId);
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    const res = await api.get(`/organizer/reports/engagement?${params.toString()}`);
+    return res.data.data;
   },
 
   async getOrganizerEvents(status?: string) {

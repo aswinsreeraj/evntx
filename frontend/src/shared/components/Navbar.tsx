@@ -24,10 +24,6 @@ function Navbar() {
   const isGoer = isAuthenticated && !isAdmin && !isOrganizer
   const currentRole = isAdmin ? "admin" : isOrganizer ? "organizer" : isGoer ? "goer" : null
   const { data: wallet, isLoading: walletLoading } = useWallet({ enabled: currentRole !== "admin" })
-  const notifications = [
-    { id: 1, title: "Booking confirmed", body: "Your ticket for Sand Castle Workshop is active." },
-    { id: 2, title: "Event reminder", body: "Premium Roy by Shreya starts tomorrow at 6:00 PM." },
-  ]
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
