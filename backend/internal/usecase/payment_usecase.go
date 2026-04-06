@@ -201,6 +201,29 @@ func (u *PaymentUsecase) VerifyPayment(
 	}
 
 	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID, event.OrganizerID, payment.Amount); err != nil {
+		if errors.Is(err, apiErrors.ErrBookingExpiredPaymentSuccess) {
+			if lateErr := u.paymentRepo.HandleLatePayment(payment.ID, payment.BookingID, booking.UserID, payment.Amount); lateErr != nil {
+				return lateErr
+			}
+			if u.notificationUsecase != nil {
+				u.notificationUsecase.SendNotification(
+					booking.UserID,
+					domain.NotificationTypePaymentSuccess,
+					"Payment received but booking expired",
+					"Your payment was successful but the booking expired. The amount will be refunded to your given payment details in 3-5 working days. Please update your payment details in your profile if you haven't.",
+					map[string]interface{}{
+						"booking_id": payment.BookingID,
+						"payment_id": payment.ID,
+						"is_late_payment": true,
+					},
+				)
+			}
+			logger.Log.Info().
+				Str("payment_id", payment.ID).
+				Str("booking_id", payment.BookingID).
+				Msg("payment_success_but_booking_expired_handled")
+			return apiErrors.ErrBookingExpiredPaymentSuccess
+		}
 		return err
 	}
 

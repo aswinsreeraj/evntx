@@ -56,9 +56,21 @@ func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
 	}
 
 	if err := h.paymentUsecase.VerifyPayment(c.Request.Context(), req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature); err != nil {
+		if err == apiErrors.ErrBookingExpiredPaymentSuccess {
+			c.JSON(http.StatusOK, response.APIResponse{
+				Success: true,
+				Message: "Payment received but booking had expired",
+				Data: map[string]interface{}{
+					"is_late_payment": true,
+				},
+			})
+			return
+		}
 		response.AppError(c, err)
 		return
 	}
 
-	response.Success(c, "Payment verified successfully", nil)
+	response.Success(c, "Payment verified successfully", map[string]interface{}{
+		"is_late_payment": false,
+	})
 }

@@ -11,6 +11,23 @@ export interface AdminPayoutsResponse {
   total: number;
 }
 
+export interface AdminRefundDetail {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  booking_id: string;
+  amount: number;
+  status: "pending" | "processed";
+  requested_at: string;
+  processed_at?: string;
+}
+
+export interface AdminRefundsResponse {
+  refunds: AdminRefundDetail[];
+  total: number;
+}
+
 export const adminApi = {
   async getUsers(params?: {
     page?: number;
@@ -91,6 +108,16 @@ export const adminApi = {
 
   async bulkApprovePayouts(payoutIds: string[]) {
     const response = await api.post(`/admin/payouts/bulk-approve`, { payout_ids: payoutIds });
+    return response.data;
+  },
+
+  async getRefunds(params?: { status?: string }): Promise<AdminRefundsResponse> {
+    const response = await api.get("/admin/refunds", { params });
+    return response.data.data;
+  },
+
+  async processRefund(refundId: string) {
+    const response = await api.patch(`/admin/refunds/${refundId}/process`);
     return response.data;
   },
 };

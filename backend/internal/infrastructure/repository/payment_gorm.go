@@ -122,6 +122,13 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return bookingResult.Error
 		}
 		if bookingResult.RowsAffected == 0 {
+			var checkBooking BookingModel
+			if err := tx.Where("id = ?", bookingID).First(&checkBooking).Error; err != nil {
+				return err
+			}
+			if checkBooking.Status == "expired" {
+				return apiErrors.ErrBookingExpiredPaymentSuccess
+			}
 			return apiErrors.ErrInvalidStateTransition
 		}
 
@@ -289,5 +296,66 @@ func (r *paymentGormRepository) RefundPaymentToWallet(
 				TotalCredited:    wallet.TotalCredited,
 				UpdatedAt:        wallet.UpdatedAt,
 			}).Error
+	})
+}
+
+func (r *paymentGormRepository) HandleLatePayment(paymentID string, bookingID string, userID string, amount float64) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		paymentResult := tx.Model(&PaymentModel{}).
+			Where("id = ?", paymentID).
+			Update("status", "success_late")
+		if paymentResult.Error != nil {
+			return paymentResult.Error
+		}
+
+		normalizedAmount := math.Round(amount*100) / 100
+		now := time.Now()
+
+		var platformWallet PlatformWalletModel
+		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Create(&PlatformWalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      domain.PlatformWalletID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.PlatformRefTypeLatePayment,
+			ReferenceID:   bookingID,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		platformWallet.RefundReserve = math.Round((platformWallet.RefundReserve+normalizedAmount)*100) / 100
+		platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+normalizedAmount)*100) / 100
+
+		if err := tx.Model(&PlatformWalletModel{}).
+			Where("id = ?", domain.PlatformWalletID).
+			Select("refund_reserve", "total_credited", "updated_at").
+			Updates(PlatformWalletModel{
+				RefundReserve: platformWallet.RefundReserve,
+				TotalCredited: platformWallet.TotalCredited,
+				UpdatedAt:     now,
+			}).Error; err != nil {
+			return err
+		}
+
+		refundReq := RefundRequestModel{
+			ID:          uuid.NewString(),
+			UserID:      userID,
+			BookingID:   bookingID,
+			Amount:      normalizedAmount,
+			Status:      "pending",
+			RequestedAt: now,
+			CreatedAt:   now,
+		}
+
+		if err := tx.Create(&refundReq).Error; err != nil {
+			return err
+		}
+
+		return nil
 	})
 }

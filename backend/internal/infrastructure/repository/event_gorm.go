@@ -98,7 +98,7 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 		Row().Scan(&globalMin, &globalMax)
 
 	query := r.db.Model(&EventModel{}).
-		Select("event_models.*, COALESCE((SELECT MIN(price) FROM ticket_type_models WHERE event_id = event_models.id), 0) as min_price, COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
+		Select("event_models.*, COALESCE((SELECT MIN(price) FROM ticket_type_models WHERE event_id = event_models.id), 0) as min_price, COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("status IN ?", []string{"live", "approved"})
 
 	if city != "" {
@@ -269,7 +269,12 @@ func (r *eventGormRepository) AdminSearchEvents(
 				SELECT SUM(bk.total_amount)
 				FROM booking_models bk
 				WHERE bk.event_id = event_models.id AND bk.status IN ('paid', 'confirmed')
-			), 0) AS revenue
+			), 0) AS revenue,
+			COALESCE((
+				SELECT SUM(available_quantity)
+				FROM ticket_type_models
+				WHERE event_id = event_models.id
+			), 0) AS available_capacity
 		`).
 		Joins("LEFT JOIN user_models ON user_models.id::text = event_models.organizer_id")
 
@@ -324,7 +329,8 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 
 	var model EventModel
 
-	err := r.db.
+	err := r.db.Model(&EventModel{}).
+		Select("event_models.*, COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("slug = ? OR id = ?", slug, slug).
 		First(&model).Error
 
@@ -333,21 +339,22 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 	}
 
 	return &domain.Event{
-		ID:            model.ID,
-		OrganizerID:   model.OrganizerID,
-		Title:         model.Title,
-		Slug:          model.Slug,
-		Status:        model.Status,
-		City:          model.City,
-		VenueName:     model.VenueName,
-		Category:      model.Category,
-		StartTime:     time.Unix(model.StartTime, 0),
-		EndTime:       time.Unix(model.EndTime, 0),
-		Tags:          model.Tags,
-		CoverImageURL: model.CoverImageURL,
-		Settled:       model.Settled,
-		CreatedAt:     time.Unix(model.CreatedAt, 0),
-		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
+		ID:                model.ID,
+		OrganizerID:       model.OrganizerID,
+		Title:             model.Title,
+		Slug:              model.Slug,
+		Status:            model.Status,
+		City:              model.City,
+		VenueName:         model.VenueName,
+		Category:          model.Category,
+		StartTime:         time.Unix(model.StartTime, 0),
+		EndTime:           time.Unix(model.EndTime, 0),
+		Tags:              model.Tags,
+		CoverImageURL:     model.CoverImageURL,
+		AvailableCapacity: model.AvailableCapacity,
+		Settled:           model.Settled,
+		CreatedAt:         time.Unix(model.CreatedAt, 0),
+		UpdatedAt:         time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -355,7 +362,8 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 
 	var model EventModel
 
-	err := r.db.
+	err := r.db.Model(&EventModel{}).
+		Select("event_models.*, COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("id = ?", eventID).
 		First(&model).Error
 
@@ -364,21 +372,22 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 	}
 
 	return &domain.Event{
-		ID:            model.ID,
-		OrganizerID:   model.OrganizerID,
-		Title:         model.Title,
-		Slug:          model.Slug,
-		Status:        model.Status,
-		City:          model.City,
-		VenueName:     model.VenueName,
-		Category:      model.Category,
-		StartTime:     time.Unix(model.StartTime, 0),
-		EndTime:       time.Unix(model.EndTime, 0),
-		Tags:          model.Tags,
-		CoverImageURL: model.CoverImageURL,
-		Settled:       model.Settled,
-		CreatedAt:     time.Unix(model.CreatedAt, 0),
-		UpdatedAt:     time.Unix(model.UpdatedAt, 0),
+		ID:                model.ID,
+		OrganizerID:       model.OrganizerID,
+		Title:             model.Title,
+		Slug:              model.Slug,
+		Status:            model.Status,
+		City:              model.City,
+		VenueName:         model.VenueName,
+		Category:          model.Category,
+		StartTime:         time.Unix(model.StartTime, 0),
+		EndTime:           time.Unix(model.EndTime, 0),
+		Tags:              model.Tags,
+		CoverImageURL:     model.CoverImageURL,
+		AvailableCapacity: model.AvailableCapacity,
+		Settled:           model.Settled,
+		CreatedAt:         time.Unix(model.CreatedAt, 0),
+		UpdatedAt:         time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -386,7 +395,8 @@ func (r *eventGormRepository) GetEventDetails(eventID string) (*domain.EventDeta
 
 	var model EventDetailsModel
 
-	err := r.db.
+	err := r.db.Model(&EventDetailsModel{}).
+		Select("event_details_models.*, COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_details_models.event_id), 0) as available_capacity").
 		Where("event_id = ?", eventID).
 		First(&model).Error
 
@@ -794,7 +804,7 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 	query := r.db.Model(&EventModel{}).
 		Select("event_models.*, "+
 			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action IN ('rejected', 'suspended') ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
-			"COALESCE((SELECT available_capacity FROM event_details_models WHERE event_id = event_models.id), 0) as available_capacity").
+			"COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("organizer_id = ?", organizerID)
 
 	if status != "" && status != "All" && status != "all" {

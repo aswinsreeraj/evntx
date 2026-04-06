@@ -20,6 +20,7 @@ import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
 import PayoutsPage from "../modules/admin/pages/PayoutsPage";
+import RefundsPage from "../modules/admin/pages/RefundsPage";
 
 export const router = createBrowserRouter([
     {
@@ -156,6 +157,14 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <PayoutsPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/refunds",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <RefundsPage />
             </ProtectedRoute>
         ),
     }

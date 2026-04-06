@@ -32,6 +32,8 @@ export default function EventBookingPage() {
   const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
   const { data: wallet } = useWallet()
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [isLatePaymentMessage, setIsLatePaymentMessage] = useState(false)
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -282,9 +284,15 @@ export default function EventBookingPage() {
               <RazorpayButton
                 bookingId={reservedBookingId}
                 eventTitle={displayEvent.title}
-                onSuccess={() => {
-                  setCheckoutOpen(false)
-                  navigate("/profile/bookings", { replace: true })
+                onSuccess={(isLatePayment) => {
+                  if (isLatePayment) {
+                    setIsLatePaymentMessage(true);
+                  } else {
+                    setPaymentSuccess(true);
+                    setTimeout(() => {
+                      navigate("/user/tickets", { replace: true })
+                    }, 2000)
+                  }
                 }}
                 onError={(msg) => setError(msg)}
               />
@@ -313,6 +321,44 @@ export default function EventBookingPage() {
             >
               {isSubmitting ? "Processing..." : "Reserve Booking"}
             </button>
+          )}
+
+          {paymentSuccess && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/95 text-center backdrop-blur-sm z-50">
+              <div className="mb-4 text-[#34c759]">
+                 {/* Success Tick */}
+                <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-[#111111]">Payment Successful!</h2>
+              <p className="mt-2 text-sm text-[#8d949e]">Your tickets have been confirmed.</p>
+              <p className="mt-1 text-xs text-[#8d949e]">Redirecting...</p>
+            </div>
+          )}
+
+          {isLatePaymentMessage && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-[#fff5f6] text-center p-6 z-50">
+              <div className="mb-4 text-[#e53e5d]">
+                 {/* Warning/Alert */}
+                <svg className="h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-[#111111] mb-2">Payment Received</h2>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                Your payment was successful, but the booking expiration time had already passed. 
+              </p>
+              <p className="text-sm text-gray-700 leading-relaxed mt-2 font-medium">
+                The amount will be refunded to you within 3-5 working days. Please ensure your payout details are updated in your Profile.
+              </p>
+              <button 
+                 onClick={() => navigate("/user/profile")}
+                 className="mt-6 bg-[#0b101e] text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors"
+              >
+                Go to Profile
+              </button>
+            </div>
           )}
         </div>
       </Modal>
