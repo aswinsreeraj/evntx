@@ -1,11 +1,13 @@
 package usecase
 
 import (
+	"context"
 	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	"github.com/aswinsreeraj/evntx/pkg/encryption"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
@@ -17,6 +19,8 @@ type WalletUsecase struct {
 	roleRepo           repository.UserRoleRepository
 	platformWalletRepo repository.PlatformWalletRepository
 	razorpayService    repository.RazorpayService
+	bookingRepo        repository.BookingRepository
+	payoutRepo         repository.PayoutRepository
 }
 
 func NewWalletUsecase(
@@ -24,8 +28,10 @@ func NewWalletUsecase(
 	roleRepo repository.UserRoleRepository,
 	platformWalletRepo repository.PlatformWalletRepository,
 	razorpayService repository.RazorpayService,
+	bookingRepo repository.BookingRepository,
+	payoutRepo repository.PayoutRepository,
 ) *WalletUsecase {
-	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService}
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -124,16 +130,105 @@ func (u *WalletUsecase) GetTransactionsByUserID(
 		return nil, 0, err
 	}
 
-	return u.repo.GetTransactionsByWalletID(wallet.ID, filters, page, limit)
+	txns, total, err := u.repo.GetTransactionsByWalletID(wallet.ID, filters, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var bookingIDs []string
+	for _, txn := range txns {
+		if txn.ReferenceType == domain.WalletReferenceTypePurchase ||
+			txn.ReferenceType == domain.WalletReferenceTypeUserCancellation ||
+			txn.ReferenceType == domain.WalletReferenceTypeOrganizerCancellation ||
+			txn.ReferenceType == domain.WalletReferenceTypeEarning ||
+			txn.ReferenceType == domain.WalletReferenceTypeRefund {
+			bookingIDs = append(bookingIDs, txn.ReferenceID)
+		}
+	}
+
+	var contexts map[string]domain.BookingContextDetails
+	if len(bookingIDs) > 0 && u.bookingRepo != nil {
+		contexts, _ = u.bookingRepo.GetBookingContextsByIDs(context.Background(), bookingIDs)
+	}
+
+	for i, txn := range txns {
+		txnCtx := &domain.WalletTransactionContext{
+			Type: txn.ReferenceType,
+		}
+
+		if (txn.ReferenceType == domain.WalletReferenceTypePurchase ||
+			txn.ReferenceType == domain.WalletReferenceTypeUserCancellation ||
+			txn.ReferenceType == domain.WalletReferenceTypeOrganizerCancellation ||
+			txn.ReferenceType == domain.WalletReferenceTypeEarning ||
+			txn.ReferenceType == domain.WalletReferenceTypeRefund) &&
+			contexts != nil {
+
+			if bDetail, ok := contexts[txn.ReferenceID]; ok {
+				txnCtx.Details = bDetail
+			}
+		} else if txn.ReferenceType == domain.WalletReferenceTypePayout {
+			txnCtx.Details = domain.PayoutContextDetails{
+				Amount:      txn.Amount,
+				Status:      txn.Status,
+				ProcessedAt: txn.CreatedAt,
+			}
+		} else if txn.ReferenceType == domain.WalletReferenceTypeFundAddition {
+			txnCtx.Details = map[string]interface{}{
+				"method": "razorpay",
+				"id":     txn.ReferenceID,
+			}
+		}
+
+		txns[i].Context = txnCtx
+	}
+
+	return txns, total, nil
 }
 
-func (u *WalletUsecase) RequestPayout(userID string, amount float64, accountName, accountNumber, ifscCode string) error {
+func (u *WalletUsecase) AddPayoutCredentials(ctx context.Context, userID, holderName, accNumber, ifsc, upi string) error {
+	if holderName == "" || accNumber == "" || ifsc == "" {
+		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Account Name, Number and IFSC are required")
+	}
+
+	encAcc, err := encryption.EncryptAES(accNumber)
+	if err != nil {
+		return apiErrors.ErrInternalServerError
+	}
+	encIFSC, err := encryption.EncryptAES(ifsc)
+	if err != nil {
+		return apiErrors.ErrInternalServerError
+	}
+	var encUPI *string
+	if upi != "" {
+		e, err := encryption.EncryptAES(upi)
+		if err != nil {
+			return apiErrors.ErrInternalServerError
+		}
+		encUPI = &e
+	}
+
+	cred := &domain.PayoutCredential{
+		ID:                     uuid.NewString(),
+		UserID:                 userID,
+		AccountHolderName:      holderName,
+		AccountNumberEncrypted: encAcc,
+		IFSCCodeEncrypted:      encIFSC,
+		UPIIDEncrypted:         encUPI,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
+	}
+
+	return u.payoutRepo.UpsertCredential(ctx, cred)
+}
+
+func (u *WalletUsecase) RequestPayout(ctx context.Context, userID string, amount float64) error {
 	if amount <= 0 {
 		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
 	}
 
-	if accountName == "" || accountNumber == "" || ifscCode == "" {
-		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Bank details are required")
+	_, err := u.payoutRepo.GetCredentialByUserID(ctx, userID)
+	if err != nil {
+		return apiErrors.New(400, apiErrors.InvalidRequestBody, "Payout credentials not found. Please set them up first.")
 	}
 
 	wallet, err := u.repo.GetWalletByUserID(userID)
@@ -153,28 +248,45 @@ func (u *WalletUsecase) RequestPayout(userID string, amount float64, accountName
 		return apiErrors.New(400, apiErrors.InsufficientBalance, "Insufficient withdrawable balance. Please note any reserve deficits.")
 	}
 
-	if err := u.ApplyTransaction(
-		wallet.ID,
-		domain.WalletTransactionTypeDebit,
-		normalizedAmount,
-		"payout",
-		userID,
-	); err != nil {
-		return err
-	}
+	return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error {
+		wallet.AvailableBalance -= normalizedAmount
+		wallet.PendingBalance += normalizedAmount
+		wallet.UpdatedAt = time.Now()
 
-	if u.platformWalletRepo != nil {
-		if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
-			domain.WalletTransactionTypeDebit,
-			normalizedAmount,
-			domain.PlatformRefTypePayout,
-			userID,
-		); notifyErr != nil {
-			return notifyErr
+		if err := txRepo.UpdateWallet(wallet); err != nil {
+			return err
 		}
-	}
 
-	return nil
+		payoutReq := &domain.PayoutRequest{
+			ID:          uuid.NewString(),
+			UserID:      userID,
+			Amount:      normalizedAmount,
+			Status:      domain.PayoutStatusPending,
+			RequestedAt: time.Now(),
+			CreatedAt:   time.Now(),
+		}
+
+		if err := u.payoutRepo.CreatePayoutRequest(ctx, payoutReq); err != nil {
+			return err
+		}
+
+		txn := &domain.WalletTransaction{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeDebit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.WalletReferenceTypePayout,
+			ReferenceID:   payoutReq.ID,
+			Status:        "pending",
+			CreatedAt:     time.Now(),
+		}
+
+		if err := txRepo.CreateTransaction(txn); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func normalizeWalletAmount(amount float64) float64 {
@@ -272,4 +384,73 @@ func (u *WalletUsecase) VerifyAddFundPayment(userID string, razorpayOrderID, raz
 	}
 
 	return nil
+}
+
+func (u *WalletUsecase) AdminApprovePayout(ctx context.Context, adminID, payoutID string) error {
+	p, err := u.payoutRepo.GetPayoutRequestByID(ctx, payoutID)
+	if err != nil {
+		return err
+	}
+	if p.Status != domain.PayoutStatusPending {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Only pending payouts can be approved")
+	}
+
+	return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &adminID, nil)
+}
+
+func (u *WalletUsecase) AdminRejectPayout(ctx context.Context, adminID, payoutID, reason string) error {
+	p, err := u.payoutRepo.GetPayoutRequestByID(ctx, payoutID)
+	if err != nil {
+		return err
+	}
+	if p.Status != domain.PayoutStatusPending {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Only pending payouts can be rejected")
+	}
+
+	wallet, err := u.repo.GetWalletByUserID(p.UserID)
+	if err != nil {
+		return err
+	}
+
+	return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error {
+		wallet.PendingBalance -= p.Amount
+		wallet.AvailableBalance += p.Amount
+		wallet.UpdatedAt = time.Now()
+
+		if err := txRepo.UpdateWallet(wallet); err != nil {
+			return err
+		}
+
+		txn := &domain.WalletTransaction{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        p.Amount,
+			ReferenceType: "payout_refund",
+			ReferenceID:   payoutID,
+			Status:        "completed",
+			CreatedAt:     time.Now(),
+		}
+
+		if err := txRepo.CreateTransaction(txn); err != nil {
+			return err
+		}
+
+		return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusRejected, &adminID, &reason)
+	})
+}
+
+func (u *WalletUsecase) AdminBulkApprovePayouts(ctx context.Context, adminID string, payoutIDs []string) error {
+	for _, id := range payoutIDs {
+		_ = u.AdminApprovePayout(ctx, adminID, id)
+	}
+	return nil
+}
+
+func (u *WalletUsecase) GetPayoutRequestsByUser(ctx context.Context, userID string, page, limit int) ([]domain.PayoutRequest, int64, error) {
+	return u.payoutRepo.GetPayoutRequestsByUserID(ctx, userID, page, limit)
+}
+
+func (u *WalletUsecase) AdminGetPayoutRequests(ctx context.Context, status string, page, limit int) ([]domain.AdminPayoutDetail, int64, error) {
+	return u.payoutRepo.AdminGetPayoutRequests(ctx, status, page, limit)
 }

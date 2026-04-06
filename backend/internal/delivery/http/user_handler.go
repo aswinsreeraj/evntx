@@ -84,14 +84,14 @@ func (h *UserHandler) GetWallet(c *gin.Context) {
 	})
 }
 
-func (h *UserHandler) RequestPayout(c *gin.Context) {
+func (h *UserHandler) AddPayoutCredentials(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		Amount        float64 `json:"amount" binding:"required"`
-		AccountName   string  `json:"account_name" binding:"required"`
-		AccountNumber string  `json:"account_number" binding:"required"`
-		IFSCCode      string  `json:"ifsc_code" binding:"required"`
+		AccountHolderName string `json:"account_holder_name" binding:"required"`
+		AccountNumber     string `json:"account_number" binding:"required"`
+		IFSCCode          string `json:"ifsc_code" binding:"required"`
+		UPIID             string `json:"upi_id"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -99,14 +99,49 @@ func (h *UserHandler) RequestPayout(c *gin.Context) {
 		return
 	}
 
-	if err := h.walletUsecase.RequestPayout(userID, req.Amount, req.AccountName, req.AccountNumber, req.IFSCCode); err != nil {
+	if err := h.walletUsecase.AddPayoutCredentials(c.Request.Context(), userID, req.AccountHolderName, req.AccountNumber, req.IFSCCode, req.UPIID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Payout credentials saved securely", nil)
+}
+
+func (h *UserHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(c.Request.Context(), userID, req.Amount); err != nil {
 		apiResponse.AppError(c, err)
 		return
 	}
 
 	apiResponse.Success(c, "Payout request submitted", gin.H{
 		"amount": req.Amount,
-		"status": "completed",
+		"status": "pending",
+	})
+}
+
+func (h *UserHandler) GetPayouts(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	payouts, total, err := h.walletUsecase.GetPayoutRequestsByUser(c.Request.Context(), userID, 1, 50)
+	if err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	apiResponse.Success(c, "Payouts retrieved successfully", gin.H{
+		"payouts": payouts,
+		"total":   total,
 	})
 }
 
@@ -216,6 +251,7 @@ func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
 			"reference_id":   txn.ReferenceID,
 			"status":         txn.Status,
 			"created_at":     txn.CreatedAt,
+			"context":        txn.Context,
 		})
 	}
 

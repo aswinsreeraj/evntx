@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 
 export interface PayoutFormData {
   amount: number;
-  account: string;
-  accountNumber: string;
-  ifsc: string;
 }
 
 interface PayoutModalProps {
@@ -16,18 +13,12 @@ interface PayoutModalProps {
 
 export default function PayoutModal({ isOpen, onClose, onSubmit, maxAmount }: PayoutModalProps) {
   const [amount, setAmount] = useState<string>("");
-  const [account, setAccount] = useState<string>("");
-  const [accountNumber, setAccountNumber] = useState<string>("");
-  const [ifsc, setIfsc] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setAmount("");
-      setAccount("");
-      setAccountNumber("");
-      setIfsc("");
       setError("");
     }
   }, [isOpen]);
@@ -49,18 +40,10 @@ export default function PayoutModal({ isOpen, onClose, onSubmit, maxAmount }: Pa
       return;
     }
 
-    if (!account.trim() || !accountNumber.trim() || !ifsc.trim()) {
-      setError("Please fill in all bank details.");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await onSubmit({
         amount: parsedAmount,
-        account: account.trim(),
-        accountNumber: accountNumber.trim(),
-        ifsc: ifsc.trim(),
       });
       onClose();
     } catch (err: any) {
@@ -98,41 +81,6 @@ export default function PayoutModal({ isOpen, onClose, onSubmit, maxAmount }: Pa
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#111827]">Account Holder Name</label>
-            <input
-              type="text"
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#111827] focus:bg-white transition"
-              placeholder="Full Name"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#111827]">Account Number</label>
-            <input
-              type="text"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#111827] focus:bg-white transition"
-              placeholder="Bank Account Number"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#111827]">IFSC Code</label>
-            <input
-              type="text"
-              value={ifsc}
-              onChange={(e) => setIfsc(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-[#111827] focus:bg-white transition uppercase font-mono"
-              placeholder="e.g. SBIN0001234"
-            />
-          </div>
 
           <div className="mt-4 flex gap-3">
             <button

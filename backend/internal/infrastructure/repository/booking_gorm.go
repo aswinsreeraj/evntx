@@ -631,6 +631,94 @@ func (r *bookingGormRepository) GetTicketCountByBookingID(ctx context.Context, b
 	return total, nil
 }
 
+func (r *bookingGormRepository) GetBookingContextsByIDs(ctx context.Context, bookingIDs []string) (map[string]domain.BookingContextDetails, error) {
+	result := make(map[string]domain.BookingContextDetails)
+	if len(bookingIDs) == 0 {
+		return result, nil
+	}
+
+	var bookings []struct {
+		BookingID      string
+		Status         string
+		TotalAmount    float64
+		CreatedAt      int64
+		EventID        string
+		EventTitle     string
+		EventCity      string
+		EventStartTime int64
+	}
+
+	if err := r.db.WithContext(ctx).Table("booking_models").
+		Select(`
+			booking_models.id AS booking_id,
+			booking_models.status AS status,
+			booking_models.total_amount,
+			booking_models.created_at,
+			event_models.id AS event_id,
+			event_models.title AS event_title,
+			event_models.city AS event_city,
+			event_models.start_time AS event_start_time
+		`).
+		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
+		Where("booking_models.id IN ?", bookingIDs).
+		Find(&bookings).Error; err != nil {
+		return nil, err
+	}
+
+	var tickets []struct {
+		BookingID    string
+		TicketTypeID string
+		Name         string
+		Quantity     int
+	}
+
+	if err := r.db.WithContext(ctx).Table("booking_ticket_models").
+		Select(`
+			booking_ticket_models.booking_id,
+			booking_ticket_models.ticket_type_id,
+			ticket_type_models.name,
+			SUM(booking_ticket_models.quantity) AS quantity
+		`).
+		Joins("JOIN ticket_type_models ON ticket_type_models.id = booking_ticket_models.ticket_type_id").
+		Where("booking_ticket_models.booking_id IN ?", bookingIDs).
+		Group("booking_ticket_models.booking_id, booking_ticket_models.ticket_type_id, ticket_type_models.name").
+		Find(&tickets).Error; err != nil {
+		return nil, err
+	}
+
+	ticketsMap := make(map[string][]domain.TicketContextDetails)
+	for _, t := range tickets {
+		ticketsMap[t.BookingID] = append(ticketsMap[t.BookingID], domain.TicketContextDetails{
+			TicketTypeID: t.TicketTypeID,
+			Name:         t.Name,
+			Quantity:     t.Quantity,
+		})
+	}
+
+	for _, b := range bookings {
+		bTickets := ticketsMap[b.BookingID]
+		if bTickets == nil {
+			bTickets = []domain.TicketContextDetails{}
+		}
+
+		result[b.BookingID] = domain.BookingContextDetails{
+			BookingID:   b.BookingID,
+			Status:      b.Status,
+			TotalAmount: b.TotalAmount,
+			CreatedAt:   time.Unix(b.CreatedAt, 0),
+			Event: domain.EventContextDetails{
+				EventID:   b.EventID,
+				Title:     b.EventTitle,
+				City:      b.EventCity,
+				StartTime: time.Unix(b.EventStartTime, 0),
+			},
+			Tickets: bTickets,
+		}
+	}
+
+	return result, nil
+}
+
 func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID string, userID string, amount float64) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var booking BookingModel

@@ -16,5 +16,6 @@ type BookingRepository interface {
 	GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error)
 	CheckInTicket(ctx context.Context, eventID string, ticketCode string) (*domain.TicketCheckIn, error)
 	GetTicketCountByBookingID(ctx context.Context, bookingID string) (int, error)
+	GetBookingContextsByIDs(ctx context.Context, bookingIDs []string) (map[string]domain.BookingContextDetails, error)
 	PayWithWallet(ctx context.Context, bookingID string, userID string, amount float64) error
 }

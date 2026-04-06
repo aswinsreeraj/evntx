@@ -50,6 +50,8 @@ func main() {
 	db.AutoMigrate(&repoImpl.NotificationModel{})
 	db.AutoMigrate(&repoImpl.PlatformWalletModel{})
 	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
+	db.AutoMigrate(&repoImpl.PayoutRequestModel{})
+	db.AutoMigrate(&repoImpl.PayoutCredentialModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -60,12 +62,14 @@ func main() {
 		logger.Log.Fatal().Msgf("failed to initialize platform wallet: %v", err)
 	}
 
+	bookingRepo := repoImpl.NewBookingGormRepository(db)
+	payoutRepo := repoImpl.NewPayoutGormRepository(db)
+
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo)
 
-	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
@@ -83,7 +87,7 @@ func main() {
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
-	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, platformWalletRepo)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
@@ -146,6 +150,8 @@ func main() {
 	//=== Wallet
 	userGroup.GET("/me/wallet", userHandler.GetWallet)
 	userGroup.POST("/me/wallet/payout", userHandler.RequestPayout)
+	userGroup.POST("/me/payout/credentials", userHandler.AddPayoutCredentials)
+	userGroup.GET("/me/payouts", userHandler.GetPayouts)
 	userGroup.POST("/me/wallet/add-fund", userHandler.CreateAddFundOrder)
 	userGroup.POST("/me/wallet/add-fund/verify", userHandler.VerifyAddFundPayment)
 	userGroup.GET("/me/wallet/transactions", userHandler.GetWalletTransactions)
@@ -184,9 +190,10 @@ func main() {
 	organizerGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleOrganizer))
 
 	organizerGroup.GET("/me", organizerHandler.GetProfile)
-	//=== Wallet
 	organizerGroup.GET("/wallet", organizerHandler.GetWallet)
 	organizerGroup.POST("/wallet/payout", organizerHandler.RequestPayout)
+	organizerGroup.POST("/payout/credentials", organizerHandler.AddPayoutCredentials)
+	organizerGroup.GET("/payouts", organizerHandler.GetPayouts)
 	organizerGroup.POST("/events", organizerHandler.CreateEvent)
 	//=== Event
 	organizerGroup.GET("/events", organizerHandler.GetMyEvents)
@@ -214,6 +221,11 @@ func main() {
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)
+
+	adminGroup.GET("/payouts", adminHandler.AdminGetPayouts)
+	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)
+	adminGroup.PATCH("/payouts/:id/reject", adminHandler.AdminRejectPayout)
+	adminGroup.POST("/payouts/bulk-approve", adminHandler.AdminBulkApprovePayouts)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})

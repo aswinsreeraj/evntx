@@ -5,6 +5,7 @@ import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 import { userApi } from "../../user/api";
 import { walletTransactionsQueryKey } from "../../user/hooks";
 import PayoutModal, { type PayoutFormData } from "../../../shared/components/PayoutModal";
+import PayoutCredentialsModal from "../../../shared/components/PayoutCredentialsModal";
 import AddFundModal, { type AddFundFormData } from "../../../shared/components/AddFundModal";
 
 function formatCurrency(amount: number) {
@@ -50,11 +51,124 @@ function SummaryCard({
   );
 }
 
+const TransactionRow = ({ transaction }: { transaction: any }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isCredit = transaction.type === "cr";
+
+  const toggleExpand = () => setExpanded(!expanded);
+
+  const contextHasDetails = !!transaction.context && !!transaction.context.details;
+
+  return (
+    <div className="group border-b border-gray-100 bg-white last:border-b-0 hover:bg-gray-50/50 transition">
+      <div 
+        onClick={contextHasDetails ? toggleExpand : undefined}
+        className={`flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between ${contextHasDetails ? "cursor-pointer" : ""}`}
+      >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-base font-semibold text-[#111827]">
+              {formatReferenceType(transaction.reference_type)}
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${isCredit
+                  ? "bg-[#ebfff1] text-[#0f9f4b]"
+                  : "bg-[#fff1f3] text-[#e53e5d]"
+                }`}
+            >
+              {isCredit ? "Credit" : "Debit"}
+            </span>
+            {contextHasDetails && (
+               <span className="text-gray-400">
+                 {expanded ? (
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                 ) : (
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                 )}
+               </span>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#6b7280]">
+            <span>{formatTransactionDate(transaction.created_at)}</span>
+            <span className="uppercase tracking-[0.12em]">{transaction.status}</span>
+          </div>
+        </div>
+
+        <div className="text-left md:text-right">
+          <div
+            className={`text-xl font-semibold ${isCredit ? "text-[#0f9f4b]" : "text-[#e53e5d]"
+              }`}
+          >
+            {isCredit ? "+" : "-"}₹{formatCurrency(transaction.amount)}
+          </div>
+          <div className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-[#94a3b8]">
+            {transaction.reference_id}
+          </div>
+        </div>
+      </div>
+      
+      {expanded && contextHasDetails && (
+        <div className="px-6 pb-5 pt-0 text-sm">
+           <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-700">
+              {["purchase", "user_cancellation", "organizer_cancellation", "earning", "refund", "booking"].includes(transaction.context.type) ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <div className="font-semibold text-gray-900 mb-1">Event Details</div>
+                    {transaction.context.details?.event?.title || "Unknown Event"}<br/>
+                    <span className="text-gray-500">
+                      {transaction.context.details?.event?.city ? transaction.context.details.event.city + " • " : ""}
+                      {transaction.context.details?.event?.start_time ? new Date(transaction.context.details.event.start_time).toLocaleString("en-IN", {
+                         day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit"
+                      }) : ""}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 mb-1">Ticket Summary</div>
+                    {transaction.context.details?.tickets && transaction.context.details.tickets.length > 0 ? (
+                       <ul className="list-disc list-inside">
+                         {transaction.context.details.tickets.map((t: any, i: number) => (
+                           <li key={i}>{t.quantity} × {t.name}</li>
+                         ))}
+                       </ul>
+                    ) : (
+                      "No tickets data available"
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 mb-1">Booking Info</div>
+                    Status: <span className="uppercase">{transaction.context.details?.status || "Unknown"}</span><br/>
+                    Total Amount: ₹{formatCurrency(transaction.context.details?.total_amount || 0)}
+                  </div>
+                </div>
+              ) : transaction.context.type === "payout" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                     <div className="font-semibold text-gray-900 mb-1">Payout Status</div>
+                     <span className="uppercase font-medium">{transaction.context.details?.status}</span>
+                   </div>
+                   <div>
+                     <div className="font-semibold text-gray-900 mb-1">Processed At</div>
+                     {transaction.context.details?.processed_at ? new Date(transaction.context.details.processed_at).toLocaleString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit"
+                     }) : "Pending"}
+                   </div>
+                </div>
+              ) : (
+                <div className="text-gray-500 italic">Contextual details formatted layout not available for type: {transaction.context.type}.</div>
+              )}
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function OrganizerWalletPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [isPayoutModalOpen, setPayoutModalOpen] = useState(false);
   const [isAddFundModalOpen, setAddFundModalOpen] = useState(false);
+  const [isPayoutCredentialsModalOpen, setPayoutCredentialsModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const limit = 10;
 
@@ -123,16 +237,26 @@ export default function OrganizerWalletPage() {
 
   const handlePayoutSubmit = async (data: PayoutFormData) => {
     setActionError(null);
-    await organizerApi.requestPayout({
-      amount: data.amount,
-      account_name: data.account,
-      account_number: data.accountNumber,
-      ifsc_code: data.ifsc,
-    });
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: organizerWalletSummaryQueryKey }),
-      queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
-    ]);
+    try {
+      await organizerApi.requestPayout(data.amount);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: organizerWalletSummaryQueryKey }),
+        queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
+      ]);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.error?.message || "Failed to submit payout request.");
+      throw err;
+    }
+  };
+
+  const handleCredentialsSubmit = async (data: any) => {
+    setActionError(null);
+    try {
+      await organizerApi.addPayoutCredentials(data);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.error?.message || "Failed to save payout credentials.");
+      throw err;
+    }
   };
 
   const transactions = transactionsData?.transactions ?? [];
@@ -206,6 +330,13 @@ export default function OrganizerWalletPage() {
                 <div className="flex gap-3">
                   <button
                     type="button"
+                    onClick={() => setPayoutCredentialsModalOpen(true)}
+                    className="rounded-full border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-100 whitespace-nowrap"
+                  >
+                    Payout Settings
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setPayoutModalOpen(true)}
                     className="rounded-full bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-[#1f2937] focus:outline-none focus:ring-4 focus:ring-gray-100 whitespace-nowrap"
                   >
@@ -263,50 +394,9 @@ export default function OrganizerWalletPage() {
                 ) : (
                   <div className="mt-6 overflow-hidden rounded-3xl border border-gray-100">
                     <div className="divide-y divide-gray-100 bg-white">
-                      {transactions.map((transaction) => {
-                        const isCredit = transaction.type === "cr";
-
-                        return (
-                          <div
-                            key={transaction.id}
-                            className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-3">
-                                <span className="text-base font-semibold text-[#111827]">
-                                  {formatReferenceType(transaction.reference_type)}
-                                </span>
-                                <span
-                                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-                                    isCredit
-                                      ? "bg-[#ebfff1] text-[#0f9f4b]"
-                                      : "bg-[#fff1f3] text-[#e53e5d]"
-                                  }`}
-                                >
-                                  {isCredit ? "Credit" : "Debit"}
-                                </span>
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[#6b7280]">
-                                <span>{formatTransactionDate(transaction.created_at)}</span>
-                                <span className="uppercase tracking-[0.12em]">{transaction.status}</span>
-                              </div>
-                            </div>
-
-                            <div className="text-left md:text-right">
-                              <div
-                                className={`text-xl font-semibold ${
-                                  isCredit ? "text-[#0f9f4b]" : "text-[#e53e5d]"
-                                }`}
-                              >
-                                {isCredit ? "+" : "-"}₹{formatCurrency(transaction.amount)}
-                              </div>
-                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-[#94a3b8]">
-                                {transaction.reference_id}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {transactions.map((transaction) => (
+                        <TransactionRow key={transaction.id} transaction={transaction} />
+                      ))}
                     </div>
 
                     <div className="flex flex-col gap-3 border-t border-gray-100 bg-[#fcfcfd] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -348,6 +438,12 @@ export default function OrganizerWalletPage() {
         onClose={() => setPayoutModalOpen(false)}
         onSubmit={handlePayoutSubmit}
         maxAmount={Math.max(0, (wallet?.available_balance || 0) - Math.abs(Math.min(0, wallet?.reserve_balance || 0)))}
+      />
+
+      <PayoutCredentialsModal
+        isOpen={isPayoutCredentialsModalOpen}
+        onClose={() => setPayoutCredentialsModalOpen(false)}
+        onSubmit={handleCredentialsSubmit}
       />
 
       <AddFundModal
