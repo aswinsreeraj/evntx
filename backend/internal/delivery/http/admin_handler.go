@@ -40,6 +40,95 @@ func (h *AdminHandler) GetAdminDashboard(c *gin.Context) {
 	c.JSON(200, gin.H{"data": stats})
 }
 
+func (h *AdminHandler) GetAdminRevenueReport(c *gin.Context) {
+	var startDate, endDate time.Time
+	if s := c.Query("start_date"); s != "" {
+		startDate, _ = time.Parse(time.RFC3339, s)
+	}
+	if e := c.Query("end_date"); e != "" {
+		endDate, _ = time.Parse(time.RFC3339, e)
+	}
+
+	report, err := h.eventUsecase.GetAdminRevenueReport(startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve revenue report"})
+		return
+	}
+	c.JSON(200, gin.H{"data": report})
+}
+
+func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
+	organizerID := c.Query("organizer_id")
+	eventIDParam := c.Query("event_id")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	// Resolve event IDs — admin has access to all events, optionally scoped by organizer
+	if organizerID != "" {
+		events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), organizerID, "")
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to retrieve events for organizer"})
+			return
+		}
+		var eventIDs []string
+		for _, e := range events {
+			if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID {
+				eventIDs = append(eventIDs, e.ID)
+			}
+		}
+		var startDate, endDate time.Time
+		if startDateStr != "" {
+			startDate, _ = time.Parse(time.RFC3339, startDateStr)
+		}
+		if endDateStr != "" {
+			endDate, _ = time.Parse(time.RFC3339, endDateStr)
+		}
+		if startDate.IsZero() {
+			endDate = time.Now()
+			startDate = endDate.AddDate(0, 0, -30)
+		}
+		report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
+			return
+		}
+		c.JSON(200, gin.H{"data": report})
+		return
+	}
+
+	// No organizer filter — get all event IDs across the entire platform
+	adminEvents, _, err := h.eventUsecase.AdminSearchEvents("", "", 1, 10000)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve events"})
+		return
+	}
+	var eventIDs []string
+	for _, e := range adminEvents {
+		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID {
+			eventIDs = append(eventIDs, e.ID)
+		}
+	}
+
+	var startDate, endDate time.Time
+	if startDateStr != "" {
+		startDate, _ = time.Parse(time.RFC3339, startDateStr)
+	}
+	if endDateStr != "" {
+		endDate, _ = time.Parse(time.RFC3339, endDateStr)
+	}
+	if startDate.IsZero() {
+		endDate = time.Now()
+		startDate = endDate.AddDate(0, 0, -30)
+	}
+
+	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
+		return
+	}
+	c.JSON(200, gin.H{"data": report})
+}
+
 func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 	search := c.Query("search")
 	status := c.Query("status")

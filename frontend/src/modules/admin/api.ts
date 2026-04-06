@@ -47,10 +47,71 @@ export interface AdminDashboardStats {
   revenue_overview: { date: string; amount: number }[];
 }
 
+// -- Admin Revenue Report --
+export interface CategoryRevenueData {
+  category: string;
+  revenue: number;
+}
+
+export interface RefundDataPoint {
+  month: string;
+  amount: number;
+}
+
+export interface TopOrganizerEntry {
+  name: string;
+  revenue: number;
+  active_events: number;
+  pending_events: number;
+  avg_event_rating: number;
+}
+
+export interface TopUserEntry {
+  name: string;
+  events_attended: number;
+  total_spent: number;
+}
+
+export interface AdminRevenueReport {
+  revenue_today: AdminStatCardData;
+  revenue_this_month: AdminStatCardData;
+  total_revenue: AdminStatCardData;
+  growth_rate: AdminStatCardData;
+  revenue_over_time: { date: string; amount: number }[];
+  category_breakdown: CategoryRevenueData[];
+  refund_analytics: RefundDataPoint[];
+  refund_total: AdminStatCardData;
+  top_organizers: TopOrganizerEntry[];
+  top_users: TopUserEntry[];
+}
+
 export const adminApi = {
   async getDashboardStats(): Promise<AdminDashboardStats> {
     const response = await api.get("/admin/dashboard");
     return response.data.data;
+  },
+
+  async getRevenueReport(startDate?: string, endDate?: string): Promise<AdminRevenueReport> {
+    const params: Record<string, string> = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    const response = await api.get("/admin/reports/revenue", { params });
+    return response.data.data;
+  },
+
+  async getEngagementReportStats(
+    organizerId?: string,
+    eventId?: string,
+    startDate?: string,
+    endDate?: string
+  ) {
+    const params: Record<string, string> = {};
+    if (organizerId && organizerId !== "all") params.organizer_id = organizerId;
+    if (eventId && eventId !== "all") params.event_id = eventId;
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    const res = await api.get("/admin/reports/engagement", { params });
+    return res.data.data;
   },
 
   async getUsers(params?: {

@@ -11,6 +11,7 @@ import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import EventBookingPage from "../modules/events/pages/EventBookingPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import AdminDashboard from "../modules/admin/pages/AdminDashboard";
+import AdminReports from "../modules/admin/pages/AdminReports";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
 import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
 import EventManagementPage from "../modules/admin/pages/EventManagementPage";
@@ -144,6 +145,14 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <AdminDashboard />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/reports",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <AdminReports />
             </ProtectedRoute>
         ),
     },

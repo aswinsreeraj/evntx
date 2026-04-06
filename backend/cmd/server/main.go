@@ -222,6 +222,8 @@ func main() {
 	adminGroup.Use(middleware.RBACMiddleware(roleRepo, domain.RoleAdmin))
 
 	adminGroup.GET("/dashboard", adminHandler.GetAdminDashboard)
+	adminGroup.GET("/reports/revenue", adminHandler.GetAdminRevenueReport)
+	adminGroup.GET("/reports/engagement", adminHandler.GetAdminEngagementReport)
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
