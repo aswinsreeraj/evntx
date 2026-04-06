@@ -16,6 +16,9 @@ type EventRepository interface {
 	GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error)
 	GetTicketTypesByEventID(eventID string) ([]domain.TicketType, error)
 	GetEventByID(eventID string) (*domain.Event, error)
+	GetDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error)
+	GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error)
+	GetAdminDashboardStats() (*domain.AdminDashboardStats, error)
 	CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType, personnels []domain.EventPersonnel) error
 	UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType, personnelUpdates []domain.EventPersonnel) error
 	UpdateEventStatus(ctx context.Context, eventID string, status string) error

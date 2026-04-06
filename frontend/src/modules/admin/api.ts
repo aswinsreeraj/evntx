@@ -28,7 +28,31 @@ export interface AdminRefundsResponse {
   total: number;
 }
 
+// -- Admin Dashboard --
+export interface AdminStatCardData {
+  value: number;
+  percentage: number;
+  subtitle?: string;
+}
+
+export interface AdminDashboardStats {
+  revenue: AdminStatCardData;
+  total_users: AdminStatCardData;
+  total_organizers: AdminStatCardData;
+  total_events: AdminStatCardData;
+  refund_rate: AdminStatCardData;
+  user_growth: AdminStatCardData;
+  pending_approvals: AdminStatCardData;
+  active_events: AdminStatCardData;
+  revenue_overview: { date: string; amount: number }[];
+}
+
 export const adminApi = {
+  async getDashboardStats(): Promise<AdminDashboardStats> {
+    const response = await api.get("/admin/dashboard");
+    return response.data.data;
+  },
+
   async getUsers(params?: {
     page?: number;
     limit?: number;

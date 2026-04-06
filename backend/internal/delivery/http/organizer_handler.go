@@ -19,13 +19,14 @@ import (
 )
 
 type OrganizerHandler struct {
-	eventUsecase  *usecase.EventUsecase
-	userUsecase   *usecase.UserUsecase
-	walletUsecase *usecase.WalletUsecase
+	eventUsecase      *usecase.EventUsecase
+	userUsecase       *usecase.UserUsecase
+	walletUsecase     *usecase.WalletUsecase
+	engagementUsecase *usecase.EngagementUsecase
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -56,6 +57,88 @@ func (h *OrganizerHandler) GetProfile(c *gin.Context) {
 		"organization_name": orgName,
 		"address":           address,
 	})
+}
+
+func (h *OrganizerHandler) GetDashboard(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	stats, err := h.eventUsecase.GetOrganizerDashboardStats(userID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve dashboard stats"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": stats})
+}
+
+func (h *OrganizerHandler) GetSalesReport(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	eventID := c.Query("event_id")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	stats, err := h.eventUsecase.GetSalesReport(userID, eventID, startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve sales report stats"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": stats})
+}
+
+func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	eventIDParam := c.Query("event_id")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	// Resolve which event IDs belong to this organizer (RBAC)
+	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), userID, "")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve organizer events"})
+		return
+	}
+
+	var eventIDs []string
+	for _, e := range events {
+		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID {
+			eventIDs = append(eventIDs, e.ID)
+		}
+	}
+
+	var startDate, endDate time.Time
+	if startDateStr != "" {
+		startDate, _ = time.Parse(time.RFC3339, startDateStr)
+	}
+	if endDateStr != "" {
+		endDate, _ = time.Parse(time.RFC3339, endDateStr)
+	}
+	if startDate.IsZero() {
+		endDate = time.Now()
+		startDate = endDate.AddDate(0, 0, -30)
+	}
+
+	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": report})
 }
 
 func (h *OrganizerHandler) GetWallet(c *gin.Context) {

@@ -1,0 +1,80 @@
+package domain
+
+type StatCard struct {
+	Value      float64 `json:"value"`
+	Percentage float64 `json:"percentage"`
+	Label      string  `json:"label,omitempty"`
+}
+
+type RevenuePoint struct {
+	Date   string  `json:"date"` // Usually "Jan", "Feb" etc OR "2024-01-01"
+	Amount float64 `json:"amount"`
+}
+
+type EventSalesBreakdown struct {
+	EventName string  `json:"name"`
+	Revenue   float64 `json:"value"`
+}
+
+type OrganizerDashboardStats struct {
+	TotalRevenue    StatCard              `json:"total_revenue"`
+	TicketsSold     StatCard              `json:"tickets_sold"`
+	ActiveEvents    StatCard              `json:"active_events"`
+	PendingEvents   StatCard              `json:"pending_events"`
+	RevenueOverview []RevenuePoint        `json:"revenue_overview"`
+	SalesBreakdown  []EventSalesBreakdown `json:"sales_breakdown"`
+}
+
+type TicketSalesProportion struct {
+	EventName       string  `json:"name"`
+	TicketsSold     int     `json:"tickets_sold"`
+	PercentageTotal float64 `json:"percentage_total"`
+}
+
+type SalesReportStats struct {
+	TotalRevenue    StatCard                `json:"total_revenue"`
+	TicketsSold     StatCard                `json:"tickets_sold"`
+	RevenueOverTime []RevenuePoint          `json:"revenue_over_time"`
+	TicketsPerEvent []TicketSalesProportion `json:"tickets_per_event"`
+}
+
+// -- Engagement Report --
+
+type FunnelStep struct {
+	Label      string  `json:"label"`
+	Count      int     `json:"count"`
+	Percentage float64 `json:"percentage"` // relative to the first step (visitors)
+}
+
+type PeakUsagePoint struct {
+	Label   string `json:"label"` // Day of week: "Mon", "Tue", etc.
+	Viewing int    `json:"viewing"`
+	Checkout int   `json:"checkout"`
+}
+
+type EngagementReportStats struct {
+	PageViews      StatCard       `json:"page_views"`
+	ConversionRate StatCard       `json:"conversion_rate"`
+	UserJourney    []FunnelStep   `json:"user_journey"`
+	PeakUsage      []PeakUsagePoint `json:"peak_usage"`
+}
+
+// -- Admin Dashboard --
+
+type AdminStatCard struct {
+	Value      float64 `json:"value"`
+	Percentage float64 `json:"percentage"`
+	Subtitle   string  `json:"subtitle,omitempty"`
+}
+
+type AdminDashboardStats struct {
+	Revenue           AdminStatCard  `json:"revenue"`
+	TotalUsers        AdminStatCard  `json:"total_users"`
+	TotalOrganizers   AdminStatCard  `json:"total_organizers"`
+	TotalEvents       AdminStatCard  `json:"total_events"`
+	RefundRate        AdminStatCard  `json:"refund_rate"`
+	UserGrowth        AdminStatCard  `json:"user_growth"`
+	PendingApprovals  AdminStatCard  `json:"pending_approvals"`
+	ActiveEvents      AdminStatCard  `json:"active_events"`
+	RevenueOverview   []RevenuePoint `json:"revenue_overview"`
+}

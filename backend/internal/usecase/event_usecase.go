@@ -31,6 +31,18 @@ func (u *EventUsecase) AdminSearchEvents(search string, status string, page int,
 	return u.repo.AdminSearchEvents(search, status, page, limit)
 }
 
+func (u *EventUsecase) GetOrganizerDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error) {
+	return u.repo.GetDashboardStats(organizerID)
+}
+
+func (u *EventUsecase) GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error) {
+	return u.repo.GetSalesReport(organizerID, eventID, startDate, endDate)
+}
+
+func (u *EventUsecase) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
+	return u.repo.GetAdminDashboardStats()
+}
+
 func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)

@@ -64,9 +64,9 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
 
         <div className="flex flex-col gap-1 mb-8">
           <p className="px-4 text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Main</p>
-          <SidebarItem label="Dashboard" />
+          <SidebarItem label="Dashboard" route="/organizer/dashboard" />
           <SidebarItem label="My Events" route="/organizer/events" />
-          <SidebarItem label="Reports" />
+          <SidebarItem label="Reports" route="/organizer/reports" />
           <SidebarItem label="Wallet" route="/organizer/wallet" />
         </div>
 

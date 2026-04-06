@@ -10,12 +10,15 @@ import EventListPage from "../modules/events/pages/EventListPage";
 import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import EventBookingPage from "../modules/events/pages/EventBookingPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
+import AdminDashboard from "../modules/admin/pages/AdminDashboard";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
 import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
 import EventManagementPage from "../modules/admin/pages/EventManagementPage";
 import OrganizerProfile from "../modules/organizer/pages/Profile";
 import EventForm from "../modules/organizer/pages/EventForm";
 import MyEvents from "../modules/organizer/pages/MyEvents";
+import OrganizerDashboard from "../modules/organizer/pages/Dashboard";
+import OrganizerReports from "../modules/organizer/pages/Reports";
 import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
@@ -80,6 +83,22 @@ export const router = createBrowserRouter([
         ),
     },
     {
+        path: "/organizer/dashboard",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerDashboard />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/organizer/reports",
+        element: (
+            <ProtectedRoute roles={["organizer"]}>
+                <OrganizerReports />
+            </ProtectedRoute>
+        ),
+    },
+    {
         path: "/organizer/events/create",
         element: (
             <ProtectedRoute roles={["organizer"]}>
@@ -120,6 +139,14 @@ export const router = createBrowserRouter([
         ),
     },
     { path: "/admin/login", element: <AdminLoginPage /> },
+    {
+        path: "/admin/dashboard",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <AdminDashboard />
+            </ProtectedRoute>
+        ),
+    },
     {
         path: "/admin/users",
         element: (

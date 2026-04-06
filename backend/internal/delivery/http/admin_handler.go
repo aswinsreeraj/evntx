@@ -3,6 +3,7 @@ package http
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
@@ -17,15 +18,26 @@ type AdminHandler struct {
 	userUsecase         *usecase.UserUsecase
 	walletUsecase       *usecase.WalletUsecase
 	platformWalletRepo  repository.PlatformWalletRepository
+	engagementUsecase   *usecase.EngagementUsecase
 }
 
-func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase, walletUsecase *usecase.WalletUsecase, platformWalletRepo repository.PlatformWalletRepository) *AdminHandler {
+func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase, walletUsecase *usecase.WalletUsecase, platformWalletRepo repository.PlatformWalletRepository, engagementUsecase *usecase.EngagementUsecase) *AdminHandler {
 	return &AdminHandler{
 		eventUsecase:       eventUsecase,
 		userUsecase:        userUsecase,
 		walletUsecase:      walletUsecase,
 		platformWalletRepo: platformWalletRepo,
+		engagementUsecase:  engagementUsecase,
 	}
+}
+
+func (h *AdminHandler) GetAdminDashboard(c *gin.Context) {
+	stats, err := h.eventUsecase.GetAdminDashboardStats()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve dashboard stats"})
+		return
+	}
+	c.JSON(200, gin.H{"data": stats})
 }
 
 func (h *AdminHandler) AdminListEvents(c *gin.Context) {
@@ -330,4 +342,33 @@ func (h *AdminHandler) AdminProcessRefund(c *gin.Context) {
 	}
 
 	response.Success(c, "Refund processed successfully", nil)
+}
+
+func (h *AdminHandler) GetEventEngagement(c *gin.Context) {
+	eventID := c.Param("event_id")
+	if eventID == "" {
+		c.JSON(400, gin.H{"error": "Event ID is required"})
+		return
+	}
+
+	dateStr := c.Query("date")
+	
+	reports, err := h.engagementUsecase.GetDailyReport(c.Request.Context(), eventID, time.Time{}, time.Time{})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to load engagement records"})
+		return
+	}
+	
+	if dateStr != "" {
+		filtered := make([]domain.EventEngagementDaily, 0)
+		for _, v := range reports {
+			if v.Date.Format("2006-01-02") == dateStr {
+				filtered = append(filtered, v)
+			}
+		}
+		c.JSON(200, filtered)
+		return
+	}
+
+	c.JSON(200, reports)
 }
