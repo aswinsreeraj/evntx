@@ -1419,3 +1419,271 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 
 	return &stats, nil
 }
+
+func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) {
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	firstDayPrevMonth := firstDayThisMonth.AddDate(0, -1, 0)
+
+	if startDate.IsZero() {
+		startDate = now.AddDate(-1, 0, 0)
+	}
+	if endDate.IsZero() {
+		endDate = now
+	}
+
+	var report domain.AdminRevenueReport
+
+	// --- Revenue Today ---
+	var todayRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, todayStart.Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&todayRev)
+
+	var yesterdayRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
+			todayStart.AddDate(0, 0, -1).Unix(), todayStart.Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&yesterdayRev)
+
+	todayPct := 0.0
+	if yesterdayRev.Total > 0 {
+		todayPct = (todayRev.Total - yesterdayRev.Total) / yesterdayRev.Total * 100
+	}
+	report.RevenueToday = domain.AdminStatCard{Value: todayRev.Total, Percentage: todayPct}
+
+	// --- Revenue This Month ---
+	var thisMonthRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth.Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisMonthRev)
+
+	var prevMonthRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
+			firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevMonthRev)
+
+	monthPct := 0.0
+	if prevMonthRev.Total > 0 {
+		monthPct = (thisMonthRev.Total - prevMonthRev.Total) / prevMonthRev.Total * 100
+	}
+	report.RevenueThisMonth = domain.AdminStatCard{Value: thisMonthRev.Total, Percentage: monthPct}
+
+	// --- Total Revenue ---
+	var totalRev struct{ Total float64 }
+	r.db.Table("bookings").Where("status IN ?", []string{"paid", "completed"}).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&totalRev)
+
+	// Total revenue prev year for growth rate
+	var prevYearRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
+			now.AddDate(-2, 0, 0).Unix(), now.AddDate(-1, 0, 0).Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevYearRev)
+
+	var thisYearRev struct{ Total float64 }
+	r.db.Table("bookings").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
+		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisYearRev)
+
+	totalPct := 0.0
+	if prevYearRev.Total > 0 {
+		totalPct = (thisYearRev.Total - prevYearRev.Total) / prevYearRev.Total * 100
+	}
+	report.TotalRevenue = domain.AdminStatCard{Value: totalRev.Total, Percentage: totalPct}
+
+	// Growth Rate (MoM)
+	growthRate := monthPct
+	report.GrowthRate = domain.AdminStatCard{Value: growthRate, Percentage: monthPct}
+
+	// --- Revenue Over Time (monthly, within selected date range) ---
+	var bookingRows []struct {
+		TotalAmount float64
+		CreatedAt   int64 `gorm:"column:created_at"`
+	}
+	r.db.Table("bookings").
+		Select("total_amount, created_at").
+		Where("status IN ? AND created_at >= ? AND created_at <= ?", []string{"paid", "completed"}, startDate.Unix(), endDate.Unix()).
+		Find(&bookingRows)
+
+	revenueByMonth := make(map[string]float64)
+	months := int(endDate.Sub(startDate).Hours() / (24 * 30))
+	if months < 1 {
+		months = 1
+	}
+	for i := months; i >= 0; i-- {
+		m := startDate.AddDate(0, i, 0)
+		if m.After(endDate) {
+			continue
+		}
+		key := startDate.AddDate(0, months-i, 0).Format("Jan")
+		revenueByMonth[key] = 0
+	}
+	// Simpler: pre-fill month by month from startDate to endDate
+	revenueByMonth = make(map[string]float64)
+	cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+	for !cur.After(endDate) {
+		revenueByMonth[cur.Format("Jan")] = 0
+		cur = cur.AddDate(0, 1, 0)
+	}
+
+	for _, b := range bookingRows {
+		key := time.Unix(b.CreatedAt, 0).Format("Jan")
+		if _, ok := revenueByMonth[key]; ok {
+			revenueByMonth[key] += b.TotalAmount
+		}
+	}
+
+	cur = time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+	for !cur.After(endDate) {
+		key := cur.Format("Jan")
+		report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
+			Date:   key,
+			Amount: revenueByMonth[key],
+		})
+		cur = cur.AddDate(0, 1, 0)
+	}
+
+	// --- Category Breakdown (revenue by event category) ---
+	var catRows []struct {
+		Category string
+		Revenue  float64
+	}
+	r.db.Table("bookings").
+		Joins("JOIN events ON events.id = bookings.event_id").
+		Select("events.category as category, COALESCE(SUM(bookings.total_amount), 0) as revenue").
+		Where("bookings.status IN ?", []string{"paid", "completed"}).
+		Group("events.category").
+		Order("revenue DESC").
+		Scan(&catRows)
+
+	for _, row := range catRows {
+		cat := row.Category
+		if cat == "" {
+			cat = "Others"
+		}
+		report.CategoryBreakdown = append(report.CategoryBreakdown, domain.CategoryRevenue{
+			Category: cat,
+			Revenue:  row.Revenue,
+		})
+	}
+
+	// --- Refund Analytics (last 6 months, monthly refund amounts) ---
+	var refundRows []struct {
+		TotalAmount float64
+		CreatedAt   int64 `gorm:"column:created_at"`
+	}
+	r.db.Table("bookings").
+		Select("total_amount, created_at").
+		Where("status = ? AND created_at >= ?", "refunded", now.AddDate(0, -6, 0).Unix()).
+		Find(&refundRows)
+
+	refundByMonth := make(map[string]float64)
+	for i := 5; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0).Format("Jan")
+		refundByMonth[m] = 0
+	}
+	for _, r2 := range refundRows {
+		key := time.Unix(r2.CreatedAt, 0).Format("Jan")
+		if _, ok := refundByMonth[key]; ok {
+			refundByMonth[key] += r2.TotalAmount
+		}
+	}
+
+	// Prev month refund total for delta
+	var prevRefundTotal float64
+	for k, v := range refundByMonth {
+		if k == firstDayPrevMonth.Format("Jan") {
+			prevRefundTotal = v
+		}
+	}
+	thisMonthRefund := refundByMonth[now.Format("Jan")]
+	refundPct := 0.0
+	if prevRefundTotal > 0 {
+		refundPct = (thisMonthRefund - prevRefundTotal) / prevRefundTotal * 100
+	}
+
+	var totalRefundAmount float64
+	for _, v := range refundByMonth {
+		totalRefundAmount += v
+	}
+	report.RefundTotal = domain.AdminStatCard{Value: totalRefundAmount, Percentage: refundPct}
+
+	for i := 5; i >= 0; i-- {
+		m := now.AddDate(0, -i, 0)
+		report.RefundAnalytics = append(report.RefundAnalytics, domain.RefundDataPoint{
+			Month:  m.Format("Jan"),
+			Amount: refundByMonth[m.Format("Jan")],
+		})
+	}
+
+	// --- Top Organizers By Revenue (top 5) ---
+	var orgRows []struct {
+		OrganizerID   string
+		Name          string
+		TotalRevenue  float64
+		ActiveEvents  int
+		PendingEvents int
+	}
+	r.db.Table("bookings").
+		Joins("JOIN events ON events.id = bookings.event_id").
+		Joins("JOIN users ON users.id = events.organizer_id").
+		Select(`events.organizer_id,
+			users.name,
+			COALESCE(SUM(bookings.total_amount), 0) as total_revenue,
+			COUNT(DISTINCT CASE WHEN events.status = 'live' THEN events.id END) as active_events,
+			COUNT(DISTINCT CASE WHEN events.status = 'pending' THEN events.id END) as pending_events`).
+		Where("bookings.status IN ?", []string{"paid", "completed"}).
+		Group("events.organizer_id, users.name").
+		Order("total_revenue DESC").
+		Limit(5).
+		Scan(&orgRows)
+
+	for _, o := range orgRows {
+		var avgRating struct{ Avg float64 }
+		r.db.Table("event_details").
+			Joins("JOIN events ON events.id = event_details.event_id").
+			Where("events.organizer_id = ?", o.OrganizerID).
+			Select("COALESCE(AVG(event_details.rating), 0) as avg").
+			Scan(&avgRating)
+
+		report.TopOrganizers = append(report.TopOrganizers, domain.TopOrganizerEntry{
+			Name:           o.Name,
+			Revenue:        o.TotalRevenue,
+			ActiveEvents:   o.ActiveEvents,
+			PendingEvents:  o.PendingEvents,
+			AvgEventRating: math.Round(avgRating.Avg*10) / 10,
+		})
+	}
+
+	// --- Top Spending Users (top 5) ---
+	var userRows []struct {
+		UserID        string
+		Name          string
+		TotalSpent    float64
+		BookingsCount int
+	}
+	r.db.Table("bookings").
+		Joins("JOIN users ON users.id = bookings.user_id").
+		Select(`bookings.user_id,
+			users.name,
+			COALESCE(SUM(bookings.total_amount), 0) as total_spent,
+			COUNT(*) as bookings_count`).
+		Where("bookings.status IN ?", []string{"paid", "completed"}).
+		Group("bookings.user_id, users.name").
+		Order("total_spent DESC").
+		Limit(5).
+		Scan(&userRows)
+
+	for _, u := range userRows {
+		report.TopUsers = append(report.TopUsers, domain.TopUserEntry{
+			Name:           u.Name,
+			EventsAttended: u.BookingsCount,
+			TotalSpent:     u.TotalSpent,
+		})
+	}
+
+	return &report, nil
+}

@@ -137,3 +137,8 @@ func (u *UserUsecase) UploadProfileImage(userID string, imageURL string) error {
 	user.ProfileImage = imageURL
 	return u.repo.Update(user)
 }
+
+func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) {
+	return u.repo.FindUsersByRole(domain.RoleAdmin)
+}
+

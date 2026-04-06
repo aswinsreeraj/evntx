@@ -346,3 +346,29 @@ func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {
 		Where("id = ?", userID).
 		Update("is_active", isActive).Error
 }
+
+func (r *userGormRepository) FindUsersByRole(role domain.UserRole) ([]domain.User, error) {
+	var models []UserModel
+	err := r.db.Table("user_models").
+		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", role).
+		Order("user_models.created_at DESC").
+		Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+	users := make([]domain.User, 0, len(models))
+	for _, m := range models {
+		users = append(users, domain.User{
+			ID:            m.ID,
+			Name:          m.Name,
+			Email:         m.Email,
+			Mobile:        m.Mobile,
+			IsActive:      m.IsActive,
+			EmailVerified: m.EmailVerified,
+			CreatedAt:     m.CreatedAt,
+			UpdatedAt:     m.UpdatedAt,
+		})
+	}
+	return users, nil
+}
+

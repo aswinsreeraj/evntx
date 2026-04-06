@@ -11,6 +11,7 @@ import EventDetailPage from "../modules/events/pages/EventDetailPage";
 import EventBookingPage from "../modules/events/pages/EventBookingPage";
 import AdminLoginPage from "../modules/admin/pages/AdminLoginPage";
 import AdminDashboard from "../modules/admin/pages/AdminDashboard";
+import AdminReports from "../modules/admin/pages/AdminReports";
 import UserManagementPage from "../modules/admin/pages/UserManagementPage";
 import OrganizerManagementPage from "../modules/admin/pages/OrganizerManagementPage";
 import EventManagementPage from "../modules/admin/pages/EventManagementPage";
@@ -24,6 +25,8 @@ import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
 import PayoutsPage from "../modules/admin/pages/PayoutsPage";
 import RefundsPage from "../modules/admin/pages/RefundsPage";
+import SettingsPage from "../modules/admin/pages/SettingsPage";
+import AuditLogsPage from "../modules/admin/pages/AuditLogsPage";
 
 export const router = createBrowserRouter([
     {
@@ -148,6 +151,14 @@ export const router = createBrowserRouter([
         ),
     },
     {
+        path: "/admin/reports",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <AdminReports />
+            </ProtectedRoute>
+        ),
+    },
+    {
         path: "/admin/users",
         element: (
             <ProtectedRoute roles={["admin"]}>
@@ -192,6 +203,22 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <RefundsPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/settings",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <SettingsPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/audit-logs",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <AuditLogsPage />
             </ProtectedRoute>
         ),
     }

@@ -23,4 +23,5 @@ type UserRepository interface {
 	) ([]domain.OrganizerDetails, int64, error)
 
 	UpdateStatus(userID string, isActive bool) error
+	FindUsersByRole(role domain.UserRole) ([]domain.User, error)
 }

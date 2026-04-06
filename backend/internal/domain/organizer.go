@@ -78,3 +78,42 @@ type AdminDashboardStats struct {
 	ActiveEvents      AdminStatCard  `json:"active_events"`
 	RevenueOverview   []RevenuePoint `json:"revenue_overview"`
 }
+
+// -- Admin Revenue Report --
+
+type CategoryRevenue struct {
+	Category string  `json:"category"`
+	Revenue  float64 `json:"revenue"`
+}
+
+type RefundDataPoint struct {
+	Month  string  `json:"month"`
+	Amount float64 `json:"amount"`
+}
+
+type TopOrganizerEntry struct {
+	Name            string  `json:"name"`
+	Revenue         float64 `json:"revenue"`
+	ActiveEvents    int     `json:"active_events"`
+	PendingEvents   int     `json:"pending_events"`
+	AvgEventRating  float64 `json:"avg_event_rating"`
+}
+
+type TopUserEntry struct {
+	Name           string  `json:"name"`
+	EventsAttended int     `json:"events_attended"`
+	TotalSpent     float64 `json:"total_spent"`
+}
+
+type AdminRevenueReport struct {
+	RevenueToday     AdminStatCard      `json:"revenue_today"`
+	RevenueThisMonth AdminStatCard      `json:"revenue_this_month"`
+	TotalRevenue     AdminStatCard      `json:"total_revenue"`
+	GrowthRate       AdminStatCard      `json:"growth_rate"`
+	RevenueOverTime  []RevenuePoint     `json:"revenue_over_time"`
+	CategoryBreakdown []CategoryRevenue `json:"category_breakdown"`
+	RefundAnalytics  []RefundDataPoint  `json:"refund_analytics"`
+	RefundTotal      AdminStatCard      `json:"refund_total"`
+	TopOrganizers    []TopOrganizerEntry `json:"top_organizers"`
+	TopUsers         []TopUserEntry     `json:"top_users"`
+}
