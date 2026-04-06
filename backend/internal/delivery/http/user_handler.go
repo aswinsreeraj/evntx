@@ -19,17 +19,20 @@ type UserHandler struct {
 	userUsecase    *usecase.UserUsecase
 	walletUsecase  *usecase.WalletUsecase
 	bookingUsecase *usecase.BookingUsecase
+	auditUsecase   *usecase.AuditUsecase
 }
 
 func NewUserHandler(
 	userUsecase *usecase.UserUsecase,
 	walletUsecase *usecase.WalletUsecase,
 	bookingUsecase *usecase.BookingUsecase,
+	auditUsecase *usecase.AuditUsecase,
 ) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
 		walletUsecase:  walletUsecase,
 		bookingUsecase: bookingUsecase,
+		auditUsecase:   auditUsecase,
 	}
 }
 
@@ -352,6 +355,24 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 	if err := h.userUsecase.AdminUpdateUserStatus(userID, req.IsActive); err != nil {
 		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
+	}
+
+	if h.auditUsecase != nil {
+		adminID := c.GetString("user_id")
+		clientIP := c.ClientIP()
+		statusText := "suspended"
+		if req.IsActive {
+			statusText = "changed to active"
+		}
+		
+		// Determine if user is organizer based on URL path or default to generically User
+		// Looking at the usecase, it's just a general user table update. So we'll tag it as USER.
+		actionText := "User #" + userID[:6] + " " + statusText
+		
+		h.auditUsecase.LogAction(adminID, actionText, domain.ActionTagUser, map[string]interface{}{
+			"user_id": userID,
+			"status": req.IsActive,
+		}, clientIP)
 	}
 
 	apiResponse.Success(c, "User status updated successfully", nil)

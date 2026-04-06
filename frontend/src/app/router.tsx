@@ -25,6 +25,8 @@ import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
 import PayoutsPage from "../modules/admin/pages/PayoutsPage";
 import RefundsPage from "../modules/admin/pages/RefundsPage";
+import SettingsPage from "../modules/admin/pages/SettingsPage";
+import AuditLogsPage from "../modules/admin/pages/AuditLogsPage";
 
 export const router = createBrowserRouter([
     {
@@ -201,6 +203,22 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <RefundsPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/settings",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <SettingsPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/audit-logs",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <AuditLogsPage />
             </ProtectedRoute>
         ),
     }

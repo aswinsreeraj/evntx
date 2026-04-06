@@ -3,8 +3,6 @@ package repository
 import (
 	"encoding/json"
 	"math"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -12,18 +10,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
-
-func getPlatformFeeRate() float64 {
-	val := os.Getenv("PLATFORM_FEE_PERCENTAGE")
-	if val == "" {
-		return 0.05
-	}
-	f, err := strconv.ParseFloat(val, 64)
-	if err != nil || f < 0 || f > 100 {
-		return 0.05
-	}
-	return f / 100
-}
 
 type PaymentModel struct {
 	ID                string          `gorm:"type:uuid;primaryKey" json:"id"`
@@ -37,11 +23,12 @@ type PaymentModel struct {
 }
 
 type paymentGormRepository struct {
-	db *gorm.DB
+	db           *gorm.DB
+	settingsRepo *settingsGormRepository
 }
 
-func NewPaymentGormRepository(db *gorm.DB) *paymentGormRepository {
-	return &paymentGormRepository{db: db}
+func NewPaymentGormRepository(db *gorm.DB, settingsRepo *settingsGormRepository) *paymentGormRepository {
+	return &paymentGormRepository{db: db, settingsRepo: settingsRepo}
 }
 
 func (r *paymentGormRepository) CreatePayment(payment *domain.Payment) error {
@@ -145,7 +132,21 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return err
 		}
 
-		userPlatformFee := float64(totalTickets * 30)
+		var userPlatformFee float64
+		if r.settingsRepo != nil {
+			if settings, sErr := r.settingsRepo.GetPlatformSettings(); sErr == nil {
+				if settings.PlatformFeeType == domain.PlatformFeeTypeFixed {
+					userPlatformFee = float64(totalTickets) * settings.PlatformFeeValue
+				} else {
+					userPlatformFee = math.Round(normalizedAmount*(settings.PlatformFeeValue/100)*100) / 100
+				}
+			} else {
+				userPlatformFee = float64(totalTickets) * 30
+			}
+		} else {
+			userPlatformFee = float64(totalTickets) * 30
+		}
+		userPlatformFee = math.Round(userPlatformFee*100) / 100
 		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
 
 		var platformWallet PlatformWalletModel

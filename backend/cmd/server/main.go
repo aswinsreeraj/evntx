@@ -56,6 +56,9 @@ func main() {
 	db.AutoMigrate(&repoImpl.VisitorSessionModel{})
 	db.AutoMigrate(&repoImpl.EngagementEventModel{})
 	db.AutoMigrate(&repoImpl.EventEngagementDailyModel{})
+	db.AutoMigrate(&repoImpl.PlatformSettingsModel{})
+	db.AutoMigrate(&repoImpl.PaymentSettingsModel{})
+	db.AutoMigrate(&repoImpl.AuditLogModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -64,6 +67,11 @@ func main() {
 	platformWalletRepo := repoImpl.NewPlatformWalletGormRepository(db)
 	if err := platformWalletRepo.EnsureExists(); err != nil {
 		logger.Log.Fatal().Msgf("failed to initialize platform wallet: %v", err)
+	}
+
+	settingsRepo := repoImpl.NewSettingsGormRepository(db)
+	if err := settingsRepo.EnsureExists(); err != nil {
+		logger.Log.Fatal().Msgf("failed to initialize platform settings: %v", err)
 	}
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
@@ -75,7 +83,10 @@ func main() {
 	razorpayService := paymentImpl.NewRazorpayService()
 	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo)
 
-	paymentRepo := repoImpl.NewPaymentGormRepository(db)
+	auditRepo := repoImpl.NewAuditGormRepository(db)
+	auditUsecase := usecase.NewAuditUsecase(auditRepo, userRepo)
+
+	paymentRepo := repoImpl.NewPaymentGormRepository(db, settingsRepo)
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	engagementRepo := repoImpl.NewEngagementGormRepository(db)
 
@@ -84,7 +95,7 @@ func main() {
 	engagementUsecase := usecase.NewEngagementUsecase(engagementRepo)
 
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
-	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase)
+	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase, auditUsecase)
 
 	emailSender := emailImpl.NewSMTPSender()
 
@@ -95,7 +106,7 @@ func main() {
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
-	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase)
+	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase, settingsRepo, roleRepo, auditUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
@@ -244,6 +255,13 @@ func main() {
 
 	adminGroup.GET("/refunds", adminHandler.AdminGetRefunds)
 	adminGroup.PATCH("/refunds/:id/process", adminHandler.AdminProcessRefund)
+
+	adminGroup.GET("/settings", adminHandler.GetPlatformSettings)
+	adminGroup.PUT("/settings", adminHandler.UpdatePlatformSettings)
+	adminGroup.GET("/payment-settings", adminHandler.GetPaymentSettings)
+	adminGroup.PUT("/payment-settings/:provider", adminHandler.UpdatePaymentProvider)
+	adminGroup.GET("/admins", adminHandler.ListAdmins)
+	adminGroup.GET("/audit-logs", adminHandler.GetAuditLogs)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})

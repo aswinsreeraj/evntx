@@ -65,3 +65,55 @@ export function usePlatformWallet() {
     queryFn: () => adminApi.getPlatformWallet(),
   });
 }
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ["admin-settings"],
+    queryFn: () => adminApi.getPlatformSettings(),
+  });
+}
+
+export function useUpdateSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Partial<Parameters<typeof adminApi.updatePlatformSettings>[0]>) =>
+      adminApi.updatePlatformSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+    },
+  });
+}
+
+export function usePaymentSettings() {
+  return useQuery({
+    queryKey: ["admin-payment-settings"],
+    queryFn: () => adminApi.getPaymentSettings(),
+  });
+}
+
+export function useUpdatePaymentProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ provider, data }: { provider: string; data: { is_enabled: boolean; config: Record<string, any> } }) =>
+      adminApi.updatePaymentProvider(provider, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-payment-settings"] });
+    },
+  });
+}
+
+export function useAdmins() {
+  return useQuery({
+    queryKey: ["admin-users-list"], // To not conflict with useUsers
+    queryFn: () => adminApi.getAdmins(),
+  });
+}
+
+export function useAuditLogs(page: number, limit: number) {
+  return useQuery({
+    queryKey: ["admin-audit-logs", page, limit],
+    queryFn: () => adminApi.getAuditLogs(page, limit),
+  });
+}
