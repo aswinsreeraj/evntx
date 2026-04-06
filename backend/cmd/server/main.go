@@ -52,6 +52,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
 	db.AutoMigrate(&repoImpl.PayoutRequestModel{})
 	db.AutoMigrate(&repoImpl.PayoutCredentialModel{})
+	db.AutoMigrate(&repoImpl.RefundRequestModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -64,11 +65,12 @@ func main() {
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	payoutRepo := repoImpl.NewPayoutGormRepository(db)
+	refundRepo := repoImpl.NewRefundGormRepository(db)
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo)
 
 	paymentRepo := repoImpl.NewPaymentGormRepository(db)
 	eventRepo := repoImpl.NewEventGormRepository(db)
@@ -226,6 +228,9 @@ func main() {
 	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)
 	adminGroup.PATCH("/payouts/:id/reject", adminHandler.AdminRejectPayout)
 	adminGroup.POST("/payouts/bulk-approve", adminHandler.AdminBulkApprovePayouts)
+
+	adminGroup.GET("/refunds", adminHandler.AdminGetRefunds)
+	adminGroup.PATCH("/refunds/:id/process", adminHandler.AdminProcessRefund)
 
 	adminGroup.GET("/dashboard", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "admin access granted"})

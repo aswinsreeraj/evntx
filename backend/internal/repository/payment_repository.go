@@ -9,4 +9,5 @@ type PaymentRepository interface {
 	UpdateStatus(paymentID string, status string) error
 	MarkPaymentSuccess(paymentID string, bookingID string, organizerID string, amount float64) error
 	RefundPaymentToWallet(userID string, paymentID string, bookingID string, refundAmount float64, platformFeeAmount float64) error
+	HandleLatePayment(paymentID string, bookingID string, userID string, amount float64) error
 }

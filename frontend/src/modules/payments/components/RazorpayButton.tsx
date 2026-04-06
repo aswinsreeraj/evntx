@@ -7,7 +7,7 @@ import { CreditCard, Loader2 } from "lucide-react";
 interface RazorpayButtonProps {
   bookingId: string;
   eventTitle: string;
-  onSuccess: () => void;
+  onSuccess: (isLatePayment?: boolean) => void;
   onError: (message: string) => void;
   autoOpen?: boolean;
 }
@@ -69,12 +69,12 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
           try {
             setIsProcessing(true);
 
-            await verifyPaymentMutation.mutateAsync({
+            const result: any = await verifyPaymentMutation.mutateAsync({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            onSuccess();
+            onSuccess(result?.data?.is_late_payment || false);
           } catch (err: any) {
             onError(err?.response?.data?.message || "Payment verification failed.");
           } finally {

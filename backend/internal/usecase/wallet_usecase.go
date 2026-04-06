@@ -21,6 +21,7 @@ type WalletUsecase struct {
 	razorpayService    repository.RazorpayService
 	bookingRepo        repository.BookingRepository
 	payoutRepo         repository.PayoutRepository
+	refundRepo         repository.RefundRepository
 }
 
 func NewWalletUsecase(
@@ -30,8 +31,9 @@ func NewWalletUsecase(
 	razorpayService repository.RazorpayService,
 	bookingRepo repository.BookingRepository,
 	payoutRepo repository.PayoutRepository,
+	refundRepo repository.RefundRepository,
 ) *WalletUsecase {
-	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo}
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo, refundRepo: refundRepo}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -453,4 +455,29 @@ func (u *WalletUsecase) GetPayoutRequestsByUser(ctx context.Context, userID stri
 
 func (u *WalletUsecase) AdminGetPayoutRequests(ctx context.Context, status string, page, limit int) ([]domain.AdminPayoutDetail, int64, error) {
 	return u.payoutRepo.AdminGetPayoutRequests(ctx, status, page, limit)
+}
+
+func (u *WalletUsecase) AdminGetRefundRequests(ctx context.Context, status string, page, limit int) ([]domain.AdminRefundDetail, int64, error) {
+	return u.refundRepo.AdminGetRefundRequests(ctx, status, page, limit)
+}
+
+func (u *WalletUsecase) AdminProcessRefundRequest(ctx context.Context, adminID, refundID string) error {
+	req, err := u.refundRepo.GetRefundRequestByID(ctx, refundID)
+	if err != nil {
+		return err
+	}
+	if req.Status != domain.RefundStatusPending {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Refund is already processed")
+	}
+
+	if err := u.platformWalletRepo.ApplyPlatformTransaction(
+		domain.WalletTransactionTypeDebit,
+		req.Amount,
+		domain.PlatformRefTypeRefund,
+		refundID,
+	); err != nil {
+		return err
+	}
+
+	return u.refundRepo.UpdateRefundRequestStatus(ctx, refundID, domain.RefundStatusProcessed, &adminID)
 }

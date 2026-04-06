@@ -15,6 +15,7 @@ type PlatformWalletModel struct {
 	ID               string    `gorm:"type:uuid;primaryKey"`
 	AvailableBalance float64   `gorm:"type:numeric(18,2);default:0;not null"`
 	PendingBalance   float64   `gorm:"type:numeric(18,2);default:0;not null"`
+	RefundReserve    float64   `gorm:"type:numeric(18,2);default:0;not null"`
 	TotalCredited    float64   `gorm:"type:numeric(18,2);default:0;not null"`
 	TotalDebited     float64   `gorm:"type:numeric(18,2);default:0;not null"`
 	UpdatedAt        time.Time `gorm:"not null"`
@@ -43,6 +44,7 @@ func (r *platformWalletGormRepository) EnsureExists() error {
 		ID:               domain.PlatformWalletID,
 		AvailableBalance: 0,
 		PendingBalance:   0,
+		RefundReserve:    0,
 		TotalCredited:    0,
 		TotalDebited:     0,
 		UpdatedAt:        time.Now(),
@@ -59,6 +61,7 @@ func (r *platformWalletGormRepository) GetPlatformWallet() (*domain.PlatformWall
 		ID:               model.ID,
 		AvailableBalance: model.AvailableBalance,
 		PendingBalance:   model.PendingBalance,
+		RefundReserve:    model.RefundReserve,
 		TotalCredited:    model.TotalCredited,
 		TotalDebited:     model.TotalDebited,
 		UpdatedAt:        model.UpdatedAt,
@@ -113,10 +116,11 @@ func (r *platformWalletGormRepository) ApplyPlatformTransaction(
 
 		return tx.Model(&PlatformWalletModel{}).
 			Where("id = ?", domain.PlatformWalletID).
-			Select("available_balance", "pending_balance", "total_credited", "total_debited", "updated_at").
+			Select("available_balance", "pending_balance", "refund_reserve", "total_credited", "total_debited", "updated_at").
 			Updates(PlatformWalletModel{
 				AvailableBalance: wallet.AvailableBalance,
 				PendingBalance:   wallet.PendingBalance,
+				RefundReserve:    wallet.RefundReserve,
 				TotalCredited:    wallet.TotalCredited,
 				TotalDebited:     wallet.TotalDebited,
 				UpdatedAt:        wallet.UpdatedAt,
