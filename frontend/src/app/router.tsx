@@ -19,6 +19,7 @@ import MyEvents from "../modules/organizer/pages/MyEvents";
 import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
+import PayoutsPage from "../modules/admin/pages/PayoutsPage";
 
 export const router = createBrowserRouter([
     {
@@ -147,6 +148,14 @@ export const router = createBrowserRouter([
         element: (
             <ProtectedRoute roles={["admin"]}>
                 <PlatformWalletPage />
+            </ProtectedRoute>
+        ),
+    },
+    {
+        path: "/admin/payouts",
+        element: (
+            <ProtectedRoute roles={["admin"]}>
+                <PayoutsPage />
             </ProtectedRoute>
         ),
     }

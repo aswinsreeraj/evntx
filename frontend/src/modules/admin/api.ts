@@ -1,4 +1,15 @@
 import api from "../../services/axios";
+import type { PayoutRequestData } from "../user/api";
+
+export interface AdminPayoutDetail extends PayoutRequestData {
+  user_name: string;
+  user_email: string;
+}
+
+export interface AdminPayoutsResponse {
+  payouts: AdminPayoutDetail[];
+  total: number;
+}
 
 export const adminApi = {
   async getUsers(params?: {
@@ -61,5 +72,25 @@ export const adminApi = {
   async getPlatformWallet() {
     const response = await api.get("/admin/platform-wallet");
     return response.data.data;
+  },
+
+  async getPayouts(params?: { status?: string }): Promise<AdminPayoutsResponse> {
+    const response = await api.get("/admin/payouts", { params });
+    return response.data.data;
+  },
+
+  async approvePayout(payoutId: string) {
+    const response = await api.patch(`/admin/payouts/${payoutId}/approve`);
+    return response.data;
+  },
+
+  async rejectPayout(payoutId: string, reason: string) {
+    const response = await api.patch(`/admin/payouts/${payoutId}/reject`, { reason });
+    return response.data;
+  },
+
+  async bulkApprovePayouts(payoutIds: string[]) {
+    const response = await api.post(`/admin/payouts/bulk-approve`, { payout_ids: payoutIds });
+    return response.data;
   },
 };

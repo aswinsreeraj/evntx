@@ -15,13 +15,15 @@ import (
 type AdminHandler struct {
 	eventUsecase        *usecase.EventUsecase
 	userUsecase         *usecase.UserUsecase
+	walletUsecase       *usecase.WalletUsecase
 	platformWalletRepo  repository.PlatformWalletRepository
 }
 
-func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase, platformWalletRepo repository.PlatformWalletRepository) *AdminHandler {
+func NewAdminHandler(eventUsecase *usecase.EventUsecase, userUsecase *usecase.UserUsecase, walletUsecase *usecase.WalletUsecase, platformWalletRepo repository.PlatformWalletRepository) *AdminHandler {
 	return &AdminHandler{
 		eventUsecase:       eventUsecase,
 		userUsecase:        userUsecase,
+		walletUsecase:      walletUsecase,
 		platformWalletRepo: platformWalletRepo,
 	}
 }
@@ -232,4 +234,72 @@ func (h *AdminHandler) GetPlatformWallet(c *gin.Context) {
 		"total_debited":     wallet.TotalDebited,
 		"updated_at":        wallet.UpdatedAt,
 	})
+}
+
+func (h *AdminHandler) AdminGetPayouts(c *gin.Context) {
+	status := c.Query("status")
+
+	payouts, total, err := h.walletUsecase.AdminGetPayoutRequests(c.Request.Context(), status, 1, 50)
+	if err != nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "Payouts retrieved successfully", gin.H{
+		"payouts": payouts,
+		"total":   total,
+	})
+}
+
+func (h *AdminHandler) AdminApprovePayout(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	payoutID := c.Param("id")
+
+	if err := h.walletUsecase.AdminApprovePayout(c.Request.Context(), adminID, payoutID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout approved successfully", nil)
+}
+
+func (h *AdminHandler) AdminRejectPayout(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	payoutID := c.Param("id")
+
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, pkgErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.AdminRejectPayout(c.Request.Context(), adminID, payoutID, req.Reason); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout rejected successfully", nil)
+}
+
+func (h *AdminHandler) AdminBulkApprovePayouts(c *gin.Context) {
+	adminID := c.GetString("user_id")
+
+	var req struct {
+		PayoutIDs []string `json:"payout_ids" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, pkgErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.AdminBulkApprovePayouts(c.Request.Context(), adminID, req.PayoutIDs); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payouts approved successfully", nil)
 }

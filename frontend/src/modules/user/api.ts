@@ -43,6 +43,64 @@ export type WalletData = {
   total_debited: number;
 };
 
+export interface PayoutCredentialPayload {
+  account_holder_name: string;
+  account_number: string;
+  ifsc_code: string;
+  upi_id?: string;
+}
+
+export interface PayoutRequestData {
+  id: string;
+  user_id: string;
+  amount: number;
+  status: string;
+  requested_at: string;
+  reviewed_at?: string;
+  processed_at?: string;
+  admin_id?: string;
+  failure_reason?: string;
+  created_at: string;
+}
+
+export interface PayoutsResponse {
+  payouts: PayoutRequestData[];
+  total: number;
+}
+
+export type TicketContextDetails = {
+  ticket_type_id: string;
+  name: string;
+  quantity: number;
+};
+
+export type EventContextDetails = {
+  event_id: string;
+  title: string;
+  city: string;
+  start_time: string;
+};
+
+export type BookingContextDetails = {
+  booking_id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  event: EventContextDetails;
+  tickets: TicketContextDetails[];
+};
+
+export type PayoutContextDetails = {
+  amount: number;
+  status: string;
+  processed_at: string;
+};
+
+export type WalletTransactionContext = {
+  type: string;
+  details: BookingContextDetails | PayoutContextDetails | any;
+};
+
 export type WalletTransaction = {
   id: string;
   wallet_id: string;
@@ -52,6 +110,7 @@ export type WalletTransaction = {
   reference_id: string;
   status: "pending" | "completed" | "failed";
   created_at: string;
+  context?: WalletTransactionContext;
 };
 
 export type WalletTransactionsResponse = {
@@ -86,6 +145,21 @@ export const userApi = {
     status?: "pending" | "completed" | "failed";
   }): Promise<WalletTransactionsResponse> {
     const res = await api.get("/users/me/wallet/transactions", { params });
+    return res.data.data;
+  },
+
+  async addPayoutCredentials(payload: PayoutCredentialPayload) {
+    const res = await api.post("/users/me/payout/credentials", payload);
+    return res.data;
+  },
+
+  async requestPayout(amount: number) {
+    const res = await api.post("/users/me/wallet/payout", { amount });
+    return res.data;
+  },
+
+  async getPayouts(): Promise<PayoutsResponse> {
+    const res = await api.get("/users/me/payouts");
     return res.data.data;
   },
 
@@ -126,9 +200,7 @@ export const userApi = {
     await api.post(`/bookings/${bookingId}/refund`);
   },
 
-  async requestPayout(payload: { amount: number; account_name: string; account_number: string; ifsc_code: string }): Promise<void> {
-    await api.post("/users/me/wallet/payout", payload);
-  },
+
 
   async createAddFundOrder(amount: number): Promise<{ id: string; amount: number; currency: string; razorpay_key: string }> {
     const res = await api.post("/users/me/wallet/add-fund", { amount });

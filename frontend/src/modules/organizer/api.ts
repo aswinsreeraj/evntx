@@ -1,4 +1,5 @@
 import api from "../../services/axios";
+import type { PayoutCredentialPayload, PayoutsResponse } from "../user/api";
 
 export const organizerWalletSummaryQueryKey = ["organizer-wallet-summary"] as const;
 
@@ -91,9 +92,19 @@ export const organizerApi = {
     return res.data.data;
   },
 
-  async requestPayout(payload: { amount: number; account_name: string; account_number: string; ifsc_code: string }) {
-    const res = await api.post("/organizer/wallet/payout", payload);
+  async addPayoutCredentials(payload: PayoutCredentialPayload) {
+    const res = await api.post("/organizer/payout/credentials", payload);
     return res.data;
+  },
+
+  async requestPayout(amount: number) {
+    const res = await api.post("/organizer/wallet/payout", { amount });
+    return res.data;
+  },
+
+  async getPayouts(): Promise<PayoutsResponse> {
+    const res = await api.get("/organizer/payouts");
+    return res.data.data;
   },
 
   async getEventBySlug(slug: string) {
