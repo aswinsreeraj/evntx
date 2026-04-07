@@ -59,6 +59,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.PlatformSettingsModel{})
 	db.AutoMigrate(&repoImpl.PaymentSettingsModel{})
 	db.AutoMigrate(&repoImpl.AuditLogModel{})
+	db.AutoMigrate(&repoImpl.JobLogModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -112,8 +113,16 @@ func main() {
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
 	engagementHandler := httpDelivery.NewEngagementHandler(engagementUsecase)
 
-	expirationWorker := workers.NewBookingExpirationWorker(bookingUsecase)
-	go expirationWorker.Start()
+	jobRepo := repoImpl.NewJobGormRepository(db)
+	scheduler := workers.NewCronScheduler(jobRepo)
+	
+	// Register the scheduled jobs
+	scheduler.RegisterJob("BookingExpirationJob", "*/5 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
+	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "0 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
+	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "30 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
+
+	scheduler.Start()
+	defer scheduler.Stop()
 
 	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase)
 
