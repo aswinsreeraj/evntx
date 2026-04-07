@@ -7,11 +7,11 @@ import (
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 )
 
-func ProcessExpiredBookingsJob(bookingUsecase *usecase.BookingUsecase) JobFunc {
+func AutoProcessCompletedEventsJob(eventUsecase *usecase.EventUsecase) JobFunc {
 	return func(ctx context.Context) error {
-		logger.Log.Info().Msg("Executing BookingExpirationJob...")
+		logger.Log.Info().Msg("Executing AutoProcessCompletedEventsJob...")
 		
-		err := bookingUsecase.ProcessExpiredBookings(ctx)
+		err := eventUsecase.AutoProcessCompletedEvents(ctx)
 		if err != nil {
 			return err
 		}

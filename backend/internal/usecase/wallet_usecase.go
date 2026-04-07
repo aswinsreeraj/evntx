@@ -481,3 +481,19 @@ func (u *WalletUsecase) AdminProcessRefundRequest(ctx context.Context, adminID, 
 
 	return u.refundRepo.UpdateRefundRequestStatus(ctx, refundID, domain.RefundStatusProcessed, &adminID)
 }
+
+func (u *WalletUsecase) AutoProcessApprovedPayouts(ctx context.Context) error {
+	payouts, _, err := u.AdminGetPayoutRequests(ctx, string(domain.PayoutStatusApproved), 1, 1000)
+	if err != nil {
+		return err
+	}
+
+	systemReason := "Automated processing success"
+	for _, p := range payouts {
+		if p.Status == domain.PayoutStatusApproved {
+			logger.Log.Info().Str("payout_id", p.ID).Msg("Auto-processing approved payout via Cron")
+			u.payoutRepo.UpdatePayoutRequestStatus(ctx, p.ID, domain.PayoutStatusCompleted, nil, &systemReason)
+		}
+	}
+	return nil
+}
