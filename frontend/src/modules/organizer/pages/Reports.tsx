@@ -20,7 +20,7 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState<"sales" | "engagement">("sales");
   const [selectedEventId, setSelectedEventId] = useState<string>("all");
   
-  // Date range presets (mocking UI for simplicity)
+  
   const [dateRange, setDateRange] = useState<"30D" | "90D" | "1Y" | "ALL">("30D");
 
   const getDatesForRange = (range: string) => {
@@ -29,7 +29,7 @@ export default function Reports() {
     if (range === "30D") start.setDate(end.getDate() - 30);
     else if (range === "90D") start.setDate(end.getDate() - 90);
     else if (range === "1Y") start.setFullYear(end.getFullYear() - 1);
-    else if (range === "ALL") start.setFullYear(2020); // Arbitrary old date
+    else if (range === "ALL") start.setFullYear(2020); 
     
     return {
       start: start.toISOString(),
@@ -82,7 +82,7 @@ export default function Reports() {
           </h1>
         </div>
 
-        {/* TABS */}
+        {}
         <div className="flex border-b border-gray-200 mb-8 w-fit gap-8 px-2">
           <button
             className={`pb-4 text-sm font-semibold transition-colors relative ${
@@ -114,7 +114,7 @@ export default function Reports() {
 
         {activeTab === "sales" && (
           <div className="flex flex-col gap-8">
-            {/* FILTERS */}
+            {}
             <div className="flex flex-wrap gap-4 items-center">
               <div className="relative">
                 <select
@@ -123,7 +123,7 @@ export default function Reports() {
                   className="appearance-none bg-white border border-gray-200 text-[#111827] text-sm font-medium rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#e53e5d]/20 transition-all cursor-pointer min-w-[200px]"
                 >
                   <option value="all">All Events</option>
-                  {eventsRes?.data?.map((evt: any) => (
+                  {eventsRes?.events?.map((evt: any) => (
                     <option key={evt.id} value={evt.id}>
                       {evt.title}
                     </option>
@@ -154,10 +154,10 @@ export default function Reports() {
             ) : (
               <>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* LEFT COLLUMN: SUMMARY CARDS & EXPORT */}
+                {}
                 <div className="lg:col-span-5 flex flex-col gap-4">
                   <div className="flex gap-4">
-                    {/* Revenue Card */}
+                    {}
                     <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                       <p className="text-sm font-medium text-[#8b9098] mb-4">
                         Total Revenue
@@ -182,7 +182,7 @@ export default function Reports() {
                       </div>
                     </div>
 
-                    {/* Tickets Card */}
+                    {}
                     <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                       <p className="text-sm font-medium text-[#8b9098] mb-4">
                         Tickets Sold
@@ -215,7 +215,7 @@ export default function Reports() {
                   </button>
                 </div>
 
-                {/* RIGHT COLUMN: PER EVENT TICKETS TABLE */}
+                {}
                 <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                   <h3 className="text-lg font-bold text-[#111827] mb-6">
                     Tickets sold per event
@@ -242,7 +242,7 @@ export default function Reports() {
                             {evt.name}
                           </div>
                           
-                          {/* Progress Bar visual */}
+                          {}
                           <div className="px-4">
                             <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden flex">
                               <div
@@ -265,7 +265,7 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* BOTTOM COLUMN: REVENUE CHART */}
+              {}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mt-8">
                 <div className="mb-6">
                   <h3 className="text-lg font-bold text-[#111827]">
@@ -344,10 +344,10 @@ export default function Reports() {
             ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* LEFT: Stat Cards + Export */}
+                  {}
                   <div className="lg:col-span-5 flex flex-col gap-4">
                     <div className="flex gap-4">
-                      {/* Page Views Card */}
+                      {}
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Page Views</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -366,7 +366,7 @@ export default function Reports() {
                         </div>
                       </div>
 
-                      {/* Conversion Rate Card */}
+                      {}
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Conversion Rate</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -389,7 +389,7 @@ export default function Reports() {
                     </button>
                   </div>
 
-                  {/* RIGHT: User Journey Funnel */}
+                  {}
                   <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-[#111827]">User Journey</h3>
                     <p className="text-xs text-[#8b9098] mt-1 mb-6">
@@ -410,7 +410,7 @@ export default function Reports() {
 
                         return (
                           <div key={step.label} className="flex items-center gap-3">
-                            {/* Vertical connector dot */}
+                            {}
                             <div className="flex flex-col items-center w-3 shrink-0">
                               <div className={`w-2.5 h-2.5 rounded-full ${
                                 isFirst ? "bg-gray-300" : "bg-[#e53e5d]"
@@ -420,7 +420,7 @@ export default function Reports() {
                               )}
                             </div>
 
-                            {/* Bar */}
+                            {}
                             <div
                               className={`flex-1 flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-semibold ${bgColor}`}
                               style={{
@@ -432,7 +432,7 @@ export default function Reports() {
                               <span>{new Intl.NumberFormat("en-IN").format(step.count)}</span>
                             </div>
 
-                            {/* Percentage off first step */}
+                            {}
                             {!isFirst && (
                               <span className="text-sm font-semibold text-[#111827] w-12 text-right shrink-0">
                                 {step.percentage.toFixed(0)}%
@@ -451,7 +451,7 @@ export default function Reports() {
                   </div>
                 </div>
 
-                {/* Peak Usage Bar Chart */}
+                {}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                   <div className="flex items-start justify-between mb-6">
                     <div>

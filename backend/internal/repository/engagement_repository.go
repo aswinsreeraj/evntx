@@ -17,6 +17,6 @@ type EngagementRepository interface {
 	GetDailyAggregates(ctx context.Context, eventID string, startDate, endDate time.Time) ([]domain.EventEngagementDaily, error)
 	GetEngagementReport(ctx context.Context, eventIDs []string, startDate, endDate time.Time) (*domain.EngagementReportStats, error)
 	
-	// IncrementSuccessfulBookings modifies the aggregate directly when a booking completes successfully
+	
 	IncrementSuccessfulBookings(ctx context.Context, eventID string) error
 }

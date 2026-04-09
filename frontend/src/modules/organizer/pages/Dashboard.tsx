@@ -122,7 +122,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* STATS STRIP */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 title="Total Revenue"
@@ -160,7 +160,7 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* CHARTS GRID */}
+            {}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex justify-between items-start mb-6">
@@ -301,7 +301,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* TABLE */}
+            {}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-[#111827]">
@@ -316,14 +316,14 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {events?.data?.length === 0 ? (
+                    {events?.events?.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-6 py-8 text-center text-[#8b9098]">
                           No events found
                         </td>
                       </tr>
                     ) : (
-                      events?.data?.map((event: any) => (
+                      events?.events?.map((event: any) => (
                         <tr
                           key={event.id}
                           className="hover:bg-[#f8fafc] transition-colors"
@@ -361,7 +361,7 @@ export default function Dashboard() {
               </div>
               
               <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-2 text-sm text-[#8b9098]">
-                {/* Visual Pagination Mock matching Figma */}
+                {}
                 <button className="px-2 py-1 hover:text-gray-900">&lt; Prev</button>
                 <button className="w-8 h-8 rounded bg-gray-200 text-gray-900 font-medium flex items-center justify-center">1</button>
                 <button className="w-8 h-8 rounded hover:bg-gray-100 flex items-center justify-center">2</button>

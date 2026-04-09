@@ -28,7 +28,7 @@ type EngagementEvent struct {
 	SessionID  string              `json:"session_id"`
 	EventID    *string             `json:"event_id,omitempty"`
 	EventType  EngagementEventType `json:"event_type"`
-	Metadata   string              `json:"metadata"` // JSON string
+	Metadata   string              `json:"metadata"` 
 	IPAddress  string              `json:"ip_address"`
 	UserAgent  string              `json:"user_agent"`
 	CreatedAt  time.Time           `json:"created_at"`
@@ -37,7 +37,7 @@ type EngagementEvent struct {
 type EventEngagementDaily struct {
 	ID                 string    `json:"id"`
 	EventID            string    `json:"event_id"`
-	Date               time.Time `json:"date"` // stored as date
+	Date               time.Time `json:"date"` 
 	Visitors           int       `json:"visitors"`
 	EventViews         int       `json:"event_views"`
 	TicketsSelected    int       `json:"tickets_selected"`

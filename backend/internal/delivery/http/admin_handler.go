@@ -78,7 +78,7 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
-	// Resolve event IDs — admin has access to all events, optionally scoped by organizer
+	
 	if organizerID != "" {
 		events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), organizerID, "")
 		if err != nil {
@@ -111,7 +111,7 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 		return
 	}
 
-	// No organizer filter — get all event IDs across the entire platform
+	
 	adminEvents, _, err := h.eventUsecase.AdminSearchEvents("", "", 1, 10000)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve events"})
@@ -119,7 +119,7 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	}
 	var eventIDs []string
 	for _, e := range adminEvents {
-		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID {
+		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID || eventIDParam == e.Slug {
 			eventIDs = append(eventIDs, e.ID)
 		}
 	}
@@ -631,7 +631,7 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 		for _, r := range roles {
 			if r == domain.RoleAdmin {
 				role = "Admin"
-				perms = "Root" // Changed to Root matching design since superadmin doesn't exist
+				perms = "Root" 
 			}
 		}
 		status := "Active"
@@ -649,6 +649,43 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 	}
 
 	response.Success(c, "Admins retrieved", gin.H{"admins": admins})
+}
+
+type addAdminRequest struct {
+	Name  string `json:"name" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+}
+
+func (h *AdminHandler) AddAdmin(c *gin.Context) {
+	if h.userUsecase == nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	var req addAdminRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, pkgErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	user, err := h.userUsecase.AddAdmin(req.Name, req.Email)
+	if err != nil {
+		response.AppError(c, pkgErrors.New(500, pkgErrors.InternalServerError, "Failed to create admin user"))
+		return
+	}
+
+	if h.auditUsecase != nil {
+		adminID := c.GetString("user_id")
+		go h.auditUsecase.LogAction(adminID, "Admin user '"+req.Email+"' created", domain.ActionTagSettings, map[string]interface{}{"new_admin_id": user.ID}, c.ClientIP())
+	}
+
+	response.Success(c, "Admin created successfully", gin.H{
+		"admin": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+		},
+	})
 }
 
 func (h *AdminHandler) GetAuditLogs(c *gin.Context) {

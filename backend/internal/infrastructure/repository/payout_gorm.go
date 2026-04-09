@@ -157,7 +157,7 @@ func (r *payoutGormRepository) AdminGetPayoutRequests(ctx context.Context, statu
 
 	query := r.db.WithContext(ctx).Table("payout_requests pr").
 		Select("pr.*, u.name as user_name, u.email as user_email").
-		Joins("LEFT JOIN users u ON pr.user_id = u.id")
+		Joins("LEFT JOIN user_models u ON pr.user_id::uuid = u.id::uuid")
 
 	if status != "" {
 		query = query.Where("pr.status = ?", status)

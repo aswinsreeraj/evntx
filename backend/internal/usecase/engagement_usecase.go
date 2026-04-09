@@ -43,8 +43,21 @@ func (u *EngagementUsecase) TrackEvent(
 	eventID *string,
 	metadata, ipAddress, userAgent string,
 ) error {
-	// Let's attempt to update the session `last_seen_at` and potentially bind the `user_id` if we hadn't already
+	
 	_ = u.repo.UpdateSessionLastSeen(ctx, sessionID, userID)
+
+	
+	if eventID != nil && *eventID != "" {
+		if _, err := uuid.Parse(*eventID); err != nil {
+			
+			
+			eventID = nil
+		}
+	}
+
+	if metadata == "" {
+		metadata = "{}"
+	}
 
 	evt := &domain.EngagementEvent{
 		ID:        uuid.NewString(),

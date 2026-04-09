@@ -155,14 +155,14 @@ export default function AdminDashboard() {
       ]
     : [];
 
-  // Filter revenue data based on span
+  
   const getChartData = () => {
     if (!stats?.revenue_overview) return [];
     const all = stats.revenue_overview;
-    if (revenueSpan === "7D") return all.slice(-1); // not great but backend only gives monthly data
+    if (revenueSpan === "7D") return all.slice(-1); 
     if (revenueSpan === "30D") return all.slice(-1);
     if (revenueSpan === "90D") return all.slice(-3);
-    return all; // 1Y = all 12 months
+    return all; 
   };
 
   return (
@@ -173,14 +173,14 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {/* STAT CARDS - 4 per row */}
+          {}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {statCards.map((card) => (
               <StatCard key={card.title} {...card} />
             ))}
           </div>
 
-          {/* PERFORMANCE SUMMARY + REVENUE CHART */}
+          {}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <div className="mb-6">
               <h3 className="text-lg font-bold text-[#111827]">Performance Summary</h3>
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            {/* Chart header + toggle */}
+            {}
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-[#111827]">Revenue Overview</h4>
               <div className="flex bg-gray-100 rounded-lg p-1">

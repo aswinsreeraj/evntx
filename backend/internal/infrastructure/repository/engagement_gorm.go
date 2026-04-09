@@ -24,15 +24,15 @@ func (VisitorSessionModel) TableName() string {
 }
 
 type EngagementEventModel struct {
-	ID         string  `gorm:"type:uuid;primaryKey"`
-	UserID     *string `gorm:"type:uuid"`
-	SessionID  string  `gorm:"type:uuid;index"`
-	EventID    *string `gorm:"type:uuid;index"`
-	EventType  string  `gorm:"index"`
-	Metadata   string  `gorm:"type:json"`
-	IPAddress  string  `gorm:"type:varchar"`
-	UserAgent  string  `gorm:"type:text"`
-	CreatedAt  time.Time `gorm:"index"`
+	ID        string    `gorm:"type:uuid;primaryKey"`
+	UserID    *string   `gorm:"type:uuid"`
+	SessionID string    `gorm:"type:uuid;index"`
+	EventID   *string   `gorm:"type:uuid;index"`
+	EventType string    `gorm:"index"`
+	Metadata  string    `gorm:"type:json"`
+	IPAddress string    `gorm:"type:varchar"`
+	UserAgent string    `gorm:"type:text"`
+	CreatedAt time.Time `gorm:"index"`
 }
 
 func (EngagementEventModel) TableName() string {
@@ -102,7 +102,6 @@ func (r *engagementGormRepository) UpdateSessionLastSeen(ctx context.Context, se
 
 func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.EngagementEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Log the individual event
 		evtModel := EngagementEventModel{
 			ID:        event.ID,
 			UserID:    event.UserID,
@@ -118,7 +117,6 @@ func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.E
 			return err
 		}
 
-		// Update daily aggregates if it's related to an event
 		if event.EventID != nil {
 			dateStr := event.CreatedAt.Format("2006-01-02")
 			dateParsed, _ := time.Parse("2006-01-02", dateStr)
@@ -130,32 +128,30 @@ func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.E
 				CreatedAt: time.Now(),
 			}
 
-			// Based on the event type, prepare the UPSERT clause
-			var updateCol string
+			updates := make(map[string]interface{})
 			switch event.EventType {
 			case domain.EngagementEventEventView:
 				upsertModel.EventViews = 1
-				updateCol = "event_views"
+				upsertModel.Visitors = 1
+				updates["event_views"] = gorm.Expr("event_engagement_daily.event_views + 1")
+				updates["visitors"] = gorm.Expr("event_engagement_daily.visitors + 1")
 			case domain.EngagementEventTicketSelected:
 				upsertModel.TicketsSelected = 1
-				updateCol = "tickets_selected"
+				updates["tickets_selected"] = gorm.Expr("event_engagement_daily.tickets_selected + 1")
 			case domain.EngagementEventCheckoutStarted:
 				upsertModel.CheckoutStarted = 1
-				updateCol = "checkout_started"
+				updates["checkout_started"] = gorm.Expr("event_engagement_daily.checkout_started + 1")
 			case domain.EngagementEventPageView:
 				upsertModel.Visitors = 1
-				updateCol = "visitors"
+				updates["visitors"] = gorm.Expr("event_engagement_daily.visitors + 1")
 			}
 
-			// If it's an event we track in the daily table
-			if updateCol != "" {
+			if len(updates) > 0 {
 				err := tx.Clauses(clause.OnConflict{
 					Columns:   []clause.Column{{Name: "event_id"}, {Name: "date"}},
-					DoUpdates: clause.Assignments(map[string]interface{}{
-						updateCol: gorm.Expr("event_engagement_daily." + updateCol + " + 1"),
-					}),
+					DoUpdates: clause.Assignments(updates),
 				}).Create(&upsertModel).Error
-			
+
 				if err != nil {
 					return err
 				}
@@ -168,7 +164,7 @@ func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.E
 
 func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string) error {
 	dateParsed, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
-	
+
 	upsertModel := EventEngagementDailyModel{
 		ID:                 uuid.NewString(),
 		EventID:            eventID,
@@ -187,20 +183,20 @@ func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Conte
 
 func (r *engagementGormRepository) GetDailyAggregates(ctx context.Context, eventID string, startDate, endDate time.Time) ([]domain.EventEngagementDaily, error) {
 	var models []EventEngagementDailyModel
-	
-	query := r.db.WithContext(ctx).Where("event_id = ?", eventID)
-	
+
+	query := r.db.WithContext(ctx).Where("event_id::uuid = ?", eventID)
+
 	if !startDate.IsZero() {
 		query = query.Where("date >= ?", startDate.Format("2006-01-02"))
 	}
 	if !endDate.IsZero() {
 		query = query.Where("date <= ?", endDate.Format("2006-01-02"))
 	}
-	
+
 	if err := query.Order("date ASC").Find(&models).Error; err != nil {
 		return nil, err
 	}
-	
+
 	results := make([]domain.EventEngagementDaily, 0, len(models))
 	for _, m := range models {
 		results = append(results, domain.EventEngagementDaily{
@@ -225,9 +221,8 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		return &stats, nil
 	}
 
-	// Fetch daily aggregates for all organizer events in the date range
 	var models []EventEngagementDailyModel
-	query := r.db.WithContext(ctx).Where("event_id IN ?", eventIDs)
+	query := r.db.WithContext(ctx).Where("event_id::uuid IN ?", eventIDs)
 	if !startDate.IsZero() {
 		query = query.Where("date >= ?", startDate.Format("2006-01-02"))
 	}
@@ -238,9 +233,7 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		return nil, err
 	}
 
-	// Total aggregates for the current period
 	var totalVisitors, totalEventViews, totalTicketsSelected, totalCheckout, totalBookings int
-	// Day-of-week buckets: 0=Sun,1=Mon,...,6=Sat
 	viewingByDow := make([]int, 7)
 	checkoutByDow := make([]int, 7)
 
@@ -251,42 +244,42 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		totalCheckout += m.CheckoutStarted
 		totalBookings += m.SuccessfulBookings
 
-		dow := int(m.Date.Weekday()) // 0=Sun
+		dow := int(m.Date.Weekday()) 
 		viewingByDow[dow] += m.EventViews
 		checkoutByDow[dow] += m.CheckoutStarted
 	}
 
-	// --- Previous period for percentage deltas ---
+	
 	duration := endDate.Sub(startDate)
 	prevEnd := startDate
 	prevStart := prevEnd.Add(-duration)
 
 	var prevModels []EventEngagementDailyModel
 	r.db.WithContext(ctx).
-		Where("event_id IN ? AND date >= ? AND date <= ?", eventIDs, prevStart.Format("2006-01-02"), prevEnd.Format("2006-01-02")).
+		Where("event_id::uuid IN ? AND date >= ? AND date <= ?", eventIDs, prevStart.Format("2006-01-02"), prevEnd.Format("2006-01-02")).
 		Find(&prevModels)
 
-	var prevVisitors, prevCheckout int
+	var prevVisitors, prevBookings int
 	for _, m := range prevModels {
 		prevVisitors += m.Visitors
-		prevCheckout += m.CheckoutStarted
+		prevBookings += m.SuccessfulBookings
 	}
 
-	// Page Views stat card
+	
 	pvPct := 0.0
 	if prevVisitors > 0 {
 		pvPct = float64(totalVisitors-prevVisitors) / float64(prevVisitors) * 100
 	}
 	stats.PageViews = domain.StatCard{Value: float64(totalVisitors), Percentage: pvPct}
 
-	// Conversion Rate = (Bookings / Visitors) * 100
+	
 	convRate := 0.0
 	if totalVisitors > 0 {
 		convRate = float64(totalBookings) / float64(totalVisitors) * 100
 	}
 	prevConvRate := 0.0
 	if prevVisitors > 0 {
-		prevConvRate = float64(prevCheckout) / float64(prevVisitors) * 100
+		prevConvRate = float64(prevBookings) / float64(prevVisitors) * 100
 	}
 	convPct := 0.0
 	if prevConvRate > 0 {
@@ -294,7 +287,7 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	}
 	stats.ConversionRate = domain.StatCard{Value: convRate, Percentage: convPct}
 
-	// Funnel steps
+	
 	pct := func(numerator, denominator int) float64 {
 		if denominator == 0 {
 			return 0
@@ -308,9 +301,9 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		{Label: "Checkout", Count: totalCheckout, Percentage: pct(totalCheckout, totalVisitors)},
 	}
 
-	// Day-of-week peak usage (Mon-Sun ordering for display)
+	
 	dowLabels := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
-	dowOrder := []int{1, 2, 3, 4, 5, 6, 0} // Go weekday: 0=Sun, 1=Mon...
+	dowOrder := []int{1, 2, 3, 4, 5, 6, 0} 
 	for i, dowIdx := range dowOrder {
 		stats.PeakUsage = append(stats.PeakUsage, domain.PeakUsagePoint{
 			Label:    dowLabels[i],

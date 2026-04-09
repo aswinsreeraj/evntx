@@ -68,7 +68,7 @@ func (s *CronScheduler) executeJobWithRetries(name string, job JobFunc, maxAttem
 		logger.Log.Warn().Err(err).Str("job", name).Int("attempt", attempt).Msg("Job failed")
 		
 		if attempt < maxAttempts {
-			// Linear wait of 60 seconds
+			
 			time.Sleep(60 * time.Second)
 		}
 	}

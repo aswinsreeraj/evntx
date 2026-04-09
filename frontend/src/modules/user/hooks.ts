@@ -45,3 +45,10 @@ export function useWalletTransactions(
     staleTime: 30 * 1000,
   });
 }
+
+export function usePaymentSettings() {
+  return useQuery({
+    queryKey: ["payment-settings"],
+    queryFn: () => userApi.getPaymentSettings(),
+  });
+}

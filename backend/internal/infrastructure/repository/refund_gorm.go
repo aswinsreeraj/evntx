@@ -79,7 +79,7 @@ func (r *refundGormRepository) AdminGetRefundRequests(ctx context.Context, statu
 
 	query := r.db.WithContext(ctx).Table("refund_requests rr").
 		Select("rr.*, u.name as user_name, u.email as user_email").
-		Joins("LEFT JOIN users u ON rr.user_id = u.id")
+		Joins("LEFT JOIN user_models u ON rr.user_id::uuid = u.id::uuid")
 
 	if status != "" {
 		query = query.Where("rr.status = ?", status)

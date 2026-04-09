@@ -179,3 +179,7 @@ func walletModelToDomain(model WalletModel) *domain.Wallet {
 		UpdatedAt:        model.UpdatedAt,
 	}
 }
+
+func (r *walletGormRepository) UpdateTransactionStatusByReference(refType string, refID string, status string) error {
+	return r.db.Model(&WalletTransactionModel{}).Where("reference_type = ? AND reference_id = ?", refType, refID).Update("status", status).Error
+}

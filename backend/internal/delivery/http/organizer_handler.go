@@ -106,7 +106,7 @@ func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
-	// Resolve which event IDs belong to this organizer (RBAC)
+	
 	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), userID, "")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve organizer events"})
@@ -115,7 +115,7 @@ func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
 
 	var eventIDs []string
 	for _, e := range events {
-		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID {
+		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID || eventIDParam == e.Slug {
 			eventIDs = append(eventIDs, e.ID)
 		}
 	}

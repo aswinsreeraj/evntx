@@ -214,4 +214,9 @@ export const userApi = {
   async payWithWallet(bookingId: string): Promise<void> {
     await api.post(`/bookings/${bookingId}/pay-with-wallet`);
   },
+
+  async getPaymentSettings(): Promise<{ provider: string; is_enabled: boolean; config: any }[]> {
+    const res = await api.get("/payment-settings");
+    return res.data.data;
+  },
 };

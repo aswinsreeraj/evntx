@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"time"
 
@@ -82,7 +81,7 @@ func main() {
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo, notificationUsecase)
 
 	auditRepo := repoImpl.NewAuditGormRepository(db)
 	auditUsecase := usecase.NewAuditUsecase(auditRepo, userRepo)
@@ -91,7 +90,7 @@ func main() {
 	eventRepo := repoImpl.NewEventGormRepository(db)
 	engagementRepo := repoImpl.NewEngagementGormRepository(db)
 
-	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase)
+	bookingUsecase := usecase.NewBookingUsecase(bookingRepo, eventRepo, roleRepo, notificationUsecase, settingsRepo)
 	paymentUsecase := usecase.NewPaymentUsecase(bookingRepo, eventRepo, paymentRepo, razorpayService, notificationUsecase, engagementRepo)
 	engagementUsecase := usecase.NewEngagementUsecase(engagementRepo)
 
@@ -115,8 +114,7 @@ func main() {
 
 	jobRepo := repoImpl.NewJobGormRepository(db)
 	scheduler := workers.NewCronScheduler(jobRepo)
-	
-	// Register the scheduled jobs
+
 	scheduler.RegisterJob("BookingExpirationJob", "*/5 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
 	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "0 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
 	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "30 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
@@ -270,32 +268,22 @@ func main() {
 	adminGroup.GET("/payment-settings", adminHandler.GetPaymentSettings)
 	adminGroup.PUT("/payment-settings/:provider", adminHandler.UpdatePaymentProvider)
 	adminGroup.GET("/admins", adminHandler.ListAdmins)
+	adminGroup.POST("/admins", adminHandler.AddAdmin)
 	adminGroup.GET("/audit-logs", adminHandler.GetAuditLogs)
-
-	adminGroup.GET("/dashboard", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "admin access granted"})
-	})
 
 	// Event endpoints
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
 	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
 
+	// Settings endpoints
+	router.GET("/settings", adminHandler.GetPlatformSettings)
+	router.GET("/payment-settings", adminHandler.GetPaymentSettings)
+
 	// Engagement endpoints
 	engagementGroup := router.Group("/engagement")
 	engagementGroup.POST("/session", engagementHandler.InitializeSession)
 	engagementGroup.POST("/track", engagementHandler.TrackEvent)
-
-	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			err := eventUsecase.AutoProcessCompletedEvents(context.Background())
-			if err != nil {
-				logger.Log.Error().Err(err).Msg("Background job AutoProcessCompletedEvents failed")
-			}
-		}
-	}()
 
 	logger.Log.Info().Msg("Server running on :8080")
 	router.Run(":8080")

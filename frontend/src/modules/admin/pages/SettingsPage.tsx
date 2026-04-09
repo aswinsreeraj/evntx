@@ -13,9 +13,9 @@ export default function SettingsPage() {
 
   const isLoading = isSettingsLoading || isPaymentsLoading || isAdminsLoading;
 
-  // Local state for platform settings
   const [localSettings, setLocalSettings] = useState<any>(null);
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
+  const [walletEnabled, setWalletEnabled] = useState(false);
   const [toastMessage, setToastMessage] = useState<{type: "success" | "error", text: string} | null>(null);
 
   useEffect(() => {
@@ -29,6 +29,10 @@ export default function SettingsPage() {
       const rp = paymentSettingsList.find((p) => p.provider === "razorpay");
       if (rp) {
         setRazorpayEnabled(rp.is_enabled);
+      }
+      const wt = paymentSettingsList.find((p) => p.provider === "wallet");
+      if (wt) {
+        setWalletEnabled(wt.is_enabled);
       }
     }
   }, [paymentSettingsList]);
@@ -60,12 +64,19 @@ export default function SettingsPage() {
   const handleSave = () => {
     updateSettings(localSettings, {
       onSuccess: () => {
-        // Also fire payment settings update if needed
+        
         const rp = paymentSettingsList?.find((p) => p.provider === "razorpay");
         if (rp && rp.is_enabled !== razorpayEnabled) {
           updatePayment({
             provider: "razorpay",
             data: { is_enabled: razorpayEnabled, config: rp.config },
+          });
+        }
+        const wt = paymentSettingsList?.find((p) => p.provider === "wallet");
+        if (wt && wt.is_enabled !== walletEnabled) {
+          updatePayment({
+            provider: "wallet",
+            data: { is_enabled: walletEnabled, config: wt.config },
           });
         }
         setToastMessage({ type: "success", text: "Settings saved successfully!" });
@@ -86,6 +97,10 @@ export default function SettingsPage() {
     if (rp) {
       setRazorpayEnabled(rp.is_enabled);
     }
+    const wt = paymentSettingsList?.find((p) => p.provider === "wallet");
+    if (wt) {
+      setWalletEnabled(wt.is_enabled);
+    }
   };
 
   return (
@@ -100,10 +115,10 @@ export default function SettingsPage() {
       
       <div className="flex flex-col gap-6 lg:flex-row items-start relative pb-24">
         
-        {/* Left Column */}
+        {}
         <div className="flex-1 flex flex-col gap-6 w-full lg:max-w-3xl">
 
-          {/* User Management */}
+          {}
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 h-full">
             <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center">
@@ -126,7 +141,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Organizer Control */}
+          {}
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-teal-50 text-teal-500 flex items-center justify-center">
@@ -140,7 +155,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Admin Management Table */}
+          {}
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 overflow-hidden">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2">
@@ -202,10 +217,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Right Column Layout */}
+        {}
         <div className="flex flex-col gap-6 w-full lg:w-[400px]">
 
-           {/* Event Policies */}
+           {}
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -247,7 +262,7 @@ export default function SettingsPage() {
             </div>
            </div>
 
-           {/* Payment Settings */}
+           {}
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
@@ -289,11 +304,15 @@ export default function SettingsPage() {
               <div>
                 <span className="text-sm font-medium text-gray-700 block mb-3">Payment Modes & Gateways</span>
                 <div className="border border-gray-100 rounded-xl bg-gray-50/50 p-2 space-y-1">
-                   <div className="flex items-center justify-between p-2">
+                   <div className="flex items-center justify-between p-2 pb-1">
                       <span className="text-sm text-gray-800 font-medium tracking-tight">Razorpay</span>
                       <Toggle isChecked={razorpayEnabled} onToggle={() => setRazorpayEnabled(!razorpayEnabled)} />
                    </div>
-                   {/* CC and UPI intentionally omitted per instructions */}
+                   <div className="flex items-center justify-between p-2 pt-1 border-t border-gray-100">
+                      <span className="text-sm text-gray-800 font-medium tracking-tight">Pay using Wallet</span>
+                      <Toggle isChecked={walletEnabled} onToggle={() => setWalletEnabled(!walletEnabled)} />
+                   </div>
+                   {}
                 </div>
               </div>
             </div>
@@ -303,7 +322,7 @@ export default function SettingsPage() {
 
       </div>
       
-      {/* Action floating bar */}
+      {}
       <div className="fixed bottom-0 right-0 left-[240px] bg-white/80 backdrop-blur-md border-t border-gray-200 p-4 flex justify-end gap-3 z-20 px-8 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
         <button 
           onClick={handleDiscard}
