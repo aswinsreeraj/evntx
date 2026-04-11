@@ -67,7 +67,20 @@ func (r *settingsGormRepository) EnsureExists() error {
 		UpdatedAt: time.Now(),
 	}
 
-	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&razorpayModel).Error
+	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&razorpayModel).Error; err != nil {
+		return err
+	}
+
+	walletModel := PaymentSettingsModel{
+		ID:        uuid.NewString(),
+		Provider:  "wallet",
+		IsEnabled: true,
+		Config:    json.RawMessage(`{}`),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&walletModel).Error
 }
 
 func (r *settingsGormRepository) GetPlatformSettings() (*domain.PlatformSettings, error) {

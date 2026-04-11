@@ -106,7 +106,7 @@ export function useUpdatePaymentProvider() {
 
 export function useAdmins() {
   return useQuery({
-    queryKey: ["admin-users-list"], // To not conflict with useUsers
+    queryKey: ["admin-users-list"], 
     queryFn: () => adminApi.getAdmins(),
   });
 }

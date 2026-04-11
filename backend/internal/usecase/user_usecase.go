@@ -142,3 +142,23 @@ func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) {
 	return u.repo.FindUsersByRole(domain.RoleAdmin)
 }
 
+func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) {
+	user := &domain.User{
+		ID:            uuid.NewString(),
+		Name:          name,
+		Email:         email,
+		IsActive:      true,
+		EmailVerified: true,
+	}
+
+	if err := u.repo.Create(user); err != nil {
+		return nil, err
+	}
+
+	if err := u.roleRepo.AddRole(user.ID, domain.RoleAdmin); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+

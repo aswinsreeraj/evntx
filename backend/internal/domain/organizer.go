@@ -7,7 +7,7 @@ type StatCard struct {
 }
 
 type RevenuePoint struct {
-	Date   string  `json:"date"` // Usually "Jan", "Feb" etc OR "2024-01-01"
+	Date   string  `json:"date"` 
 	Amount float64 `json:"amount"`
 }
 
@@ -38,16 +38,16 @@ type SalesReportStats struct {
 	TicketsPerEvent []TicketSalesProportion `json:"tickets_per_event"`
 }
 
-// -- Engagement Report --
+
 
 type FunnelStep struct {
 	Label      string  `json:"label"`
 	Count      int     `json:"count"`
-	Percentage float64 `json:"percentage"` // relative to the first step (visitors)
+	Percentage float64 `json:"percentage"` 
 }
 
 type PeakUsagePoint struct {
-	Label   string `json:"label"` // Day of week: "Mon", "Tue", etc.
+	Label   string `json:"label"` 
 	Viewing int    `json:"viewing"`
 	Checkout int   `json:"checkout"`
 }
@@ -59,7 +59,7 @@ type EngagementReportStats struct {
 	PeakUsage      []PeakUsagePoint `json:"peak_usage"`
 }
 
-// -- Admin Dashboard --
+
 
 type AdminStatCard struct {
 	Value      float64 `json:"value"`
@@ -79,7 +79,7 @@ type AdminDashboardStats struct {
 	RevenueOverview   []RevenuePoint `json:"revenue_overview"`
 }
 
-// -- Admin Revenue Report --
+
 
 type CategoryRevenue struct {
 	Category string  `json:"category"`

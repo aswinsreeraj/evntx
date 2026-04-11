@@ -73,12 +73,12 @@ button:focus-visible {
     margin: 0;
   }
 
-  /* Hide everything by default */
+  
   body * {
     visibility: hidden !important;
   }
 
-  /* Show only the print root and its children */
+  
   #tickets-print-root,
   #tickets-print-root * {
     visibility: visible !important;
@@ -98,7 +98,7 @@ button:focus-visible {
     page-break-after: always;
     width: 100%;
     margin: 0;
-    padding: 20mm; /* Add some padding for the content */
+    padding: 20mm; 
     box-sizing: border-box;
     display: flex !important;
     justify-content: center;

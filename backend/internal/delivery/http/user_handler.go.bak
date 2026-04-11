@@ -365,8 +365,8 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 			statusText = "changed to active"
 		}
 		
-		
-		
+		// Determine if user is organizer based on URL path or default to generically User
+		// Looking at the usecase, it's just a general user table update. So we'll tag it as USER.
 		actionText := "User #" + userID[:6] + " " + statusText
 		
 		h.auditUsecase.LogAction(adminID, actionText, domain.ActionTagUser, map[string]interface{}{

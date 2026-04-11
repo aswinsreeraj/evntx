@@ -14,5 +14,6 @@ type WalletRepository interface {
 		page int,
 		limit int,
 	) ([]domain.WalletTransaction, int64, error)
+	UpdateTransactionStatusByReference(refType string, refID string, status string) error
 	WithTransaction(fn func(repo WalletRepository) error) error
 }

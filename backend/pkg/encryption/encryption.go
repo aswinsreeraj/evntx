@@ -20,7 +20,7 @@ func getAESKey() []byte {
 	return hash[:]
 }
 
-// EncryptAES encrypts plain text string into hex string using AES-256 (GCM mode).
+
 func EncryptAES(plainText string) (string, error) {
 	if plainText == "" {
 		return "", errors.New("cannot encrypt empty string")
@@ -46,7 +46,7 @@ func EncryptAES(plainText string) (string, error) {
 	return hex.EncodeToString(dst), nil
 }
 
-// DecryptAES decrypts a hex string into plain text using AES-256 (GCM mode).
+
 func DecryptAES(cryptoHex string) (string, error) {
 	if cryptoHex == "" {
 		return "", errors.New("cannot decrypt empty string")

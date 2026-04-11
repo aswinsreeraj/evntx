@@ -17,12 +17,12 @@ func NewEngagementHandler(u *usecase.EngagementUsecase) *EngagementHandler {
 	return &EngagementHandler{usecase: u}
 }
 
-// @Summary Initialize Session
-// @Description Creates a new visitor session
-// @Tags Engagement
-// @Produce json
-// @Success 200 {object} domain.VisitorSession
-// @Router /api/v1/engagement/session [post]
+
+
+
+
+
+
 func (h *EngagementHandler) InitializeSession(c *gin.Context) {
 	var userID *string
 	authHeader := c.GetHeader("Authorization")
@@ -52,13 +52,13 @@ type trackEventRequest struct {
 	Metadata  string                     `json:"metadata,omitempty"`
 }
 
-// @Summary Track Event
-// @Description Logs an engagement action
-// @Tags Engagement
-// @Param request body trackEventRequest true "Event Details"
-// @Produce json
-// @Success 204
-// @Router /api/v1/engagement/track [post]
+
+
+
+
+
+
+
 func (h *EngagementHandler) TrackEvent(c *gin.Context) {
 	var req trackEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useWallet, useWalletTransactions, walletQueryKey, walletTransactionsQueryKey } from "../hooks";
+import { useWallet, useWalletTransactions, usePaymentSettings, walletQueryKey, walletTransactionsQueryKey } from "../hooks";
 import PayoutModal, { type PayoutFormData } from "../../../shared/components/PayoutModal";
 import PayoutCredentialsModal from "../../../shared/components/PayoutCredentialsModal";
 import AddFundModal, { type AddFundFormData } from "../../../shared/components/AddFundModal";
@@ -179,8 +179,16 @@ export default function WalletPage() {
   const [isPayoutCredentialsModalOpen, setPayoutCredentialsModalOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const { data: paymentSettings } = usePaymentSettings();
+  const razorpaySetting = paymentSettings?.find((p) => p.provider === "razorpay");
+  const isRazorpayEnabled = razorpaySetting ? razorpaySetting.is_enabled : false;
+
   const handleAddFundSubmit = async (data: AddFundFormData) => {
     setActionError(null);
+    if (!(window as any).Razorpay) {
+      setActionError("Payment gateway failed to load. Please refresh the page or disable adblockers.");
+      return;
+    }
     try {
       const order = await userApi.createAddFundOrder(data.amount);
       console.log("order", order);
@@ -414,6 +422,7 @@ export default function WalletPage() {
         isOpen={isAddFundModalOpen}
         onClose={() => setAddFundModalOpen(false)}
         onSubmit={handleAddFundSubmit}
+        isRazorpayEnabled={isRazorpayEnabled}
       />
     </div>
   );

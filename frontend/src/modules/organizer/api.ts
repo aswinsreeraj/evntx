@@ -64,7 +64,7 @@ export interface OrganizerWalletSummary {
   total_debited: number;
 }
 
-// -- Dashboard Stats Data Types --
+
 export interface StatCardData {
   value: number;
   percentage: number;
@@ -103,7 +103,7 @@ export interface SalesReportStats {
   tickets_per_event: TicketSalesProportionData[];
 }
 
-// -- Engagement Report --
+
 export interface FunnelStepData {
   label: string;
   count: number;
@@ -166,7 +166,7 @@ export const organizerApi = {
 
   async getOrganizerEvents(status?: string) {
     const res = await api.get(`/organizer/events`, { params: { status } });
-    return res.data;
+    return res.data.data;
   },
 
   async getWalletSummary(): Promise<OrganizerWalletSummary> {

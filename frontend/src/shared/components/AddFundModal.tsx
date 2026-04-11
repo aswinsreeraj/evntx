@@ -8,9 +8,10 @@ interface AddFundModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: AddFundFormData) => Promise<void>;
+  isRazorpayEnabled?: boolean;
 }
 
-export default function AddFundModal({ isOpen, onClose, onSubmit }: AddFundModalProps) {
+export default function AddFundModal({ isOpen, onClose, onSubmit, isRazorpayEnabled = true }: AddFundModalProps) {
   const [amount, setAmount] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,17 +83,27 @@ export default function AddFundModal({ isOpen, onClose, onSubmit }: AddFundModal
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-[#111827] px-4 py-2.5 text-sm font-semibold text-white hover:bg-black transition disabled:opacity-70 flex items-center justify-center"
-            >
-              {isSubmitting ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                "Proceed to Pay"
-              )}
-            </button>
+            {isRazorpayEnabled ? (
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 rounded-xl bg-[#111827] px-4 py-2.5 text-sm font-semibold text-white hover:bg-black transition disabled:opacity-70 flex items-center justify-center"
+              >
+                {isSubmitting ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  "Proceed to Pay"
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="flex-1 rounded-xl bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-400 cursor-not-allowed flex items-center justify-center"
+              >
+                Razorpay Disabled
+              </button>
+            )}
           </div>
         </form>
       </div>

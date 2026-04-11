@@ -144,7 +144,7 @@ export default function MyEvents() {
       setLoading(true);
       try {
          const data = await organizerApi.getOrganizerEvents(statusFilter === "All" ? "" : statusFilter);
-         setEvents(data.data?.events || []);
+         setEvents(data.events || []);
       } catch (err) {
          console.error(err);
       } finally {

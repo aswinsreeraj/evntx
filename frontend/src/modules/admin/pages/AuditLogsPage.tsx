@@ -12,7 +12,7 @@ export default function AuditLogsPage() {
 
   const { data, isLoading } = useAuditLogs(page, limit);
 
-  // We handle simple local search for demonstration, or we can just filter the current page logs:
+  
   const filteredLogs = data?.logs?.filter(log => 
       log.action.toLowerCase().includes(search.toLowerCase()) || 
       log.admin_name.toLowerCase().includes(search.toLowerCase())
@@ -66,7 +66,7 @@ export default function AuditLogsPage() {
   return (
     <AdminLayout title="Track Admin Changes">
       
-      {/* Header Controls */}
+      {}
       <div className="flex justify-between items-center mb-6">
         <div className="relative w-full max-w-sm">
            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -80,7 +80,7 @@ export default function AuditLogsPage() {
         </div>
       </div>
 
-      {/* Main Table Card */}
+      {}
       <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
         {isLoading ? (
           <div className="flex-1 flex justify-center items-center">
@@ -137,7 +137,7 @@ export default function AuditLogsPage() {
               </table>
             </div>
 
-            {/* Pagination & Footer */}
+            {}
             <div className="mt-auto border-t border-gray-100 px-6 py-4 flex items-center justify-between">
                
                <button 
@@ -183,7 +183,7 @@ export default function AuditLogsPage() {
         )}
       </div>
 
-      {/* Details Modal */}
+      {}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">

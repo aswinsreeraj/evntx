@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -22,6 +23,7 @@ type WalletUsecase struct {
 	bookingRepo        repository.BookingRepository
 	payoutRepo         repository.PayoutRepository
 	refundRepo         repository.RefundRepository
+	notificationUsecase *NotificationUsecase
 }
 
 func NewWalletUsecase(
@@ -32,8 +34,9 @@ func NewWalletUsecase(
 	bookingRepo repository.BookingRepository,
 	payoutRepo repository.PayoutRepository,
 	refundRepo repository.RefundRepository,
+	notificationUsecase *NotificationUsecase,
 ) *WalletUsecase {
-	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo, refundRepo: refundRepo}
+	return &WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo, refundRepo: refundRepo, notificationUsecase: notificationUsecase}
 }
 
 func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) {
@@ -397,7 +400,26 @@ func (u *WalletUsecase) AdminApprovePayout(ctx context.Context, adminID, payoutI
 		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Only pending payouts can be approved")
 	}
 
-	return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &adminID, nil)
+	wallet, err := u.repo.GetWalletByUserID(p.UserID)
+	if err != nil {
+		return err
+	}
+
+	return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error {
+		wallet.PendingBalance -= p.Amount
+		wallet.TotalDebited += p.Amount
+		wallet.UpdatedAt = time.Now()
+
+		if err := txRepo.UpdateWallet(wallet); err != nil {
+			return err
+		}
+
+		if err := txRepo.UpdateTransactionStatusByReference(string(domain.WalletReferenceTypePayout), payoutID, "completed"); err != nil {
+			return err
+		}
+
+		return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &adminID, nil)
+	})
 }
 
 func (u *WalletUsecase) AdminRejectPayout(ctx context.Context, adminID, payoutID, reason string) error {
@@ -479,7 +501,23 @@ func (u *WalletUsecase) AdminProcessRefundRequest(ctx context.Context, adminID, 
 		return err
 	}
 
-	return u.refundRepo.UpdateRefundRequestStatus(ctx, refundID, domain.RefundStatusProcessed, &adminID)
+	err = u.refundRepo.UpdateRefundRequestStatus(ctx, refundID, domain.RefundStatusProcessed, &adminID)
+	if err != nil {
+		return err
+	}
+
+	if u.notificationUsecase != nil {
+		amountStr := fmt.Sprintf("₹%.2f", req.Amount)
+		_ = u.notificationUsecase.SendNotification(
+			req.UserID,
+			"refund_processed",
+			"Refund Processed",
+			"Your refund of "+amountStr+" has been successfully processed and added to your wallet.",
+			nil,
+		)
+	}
+
+	return nil
 }
 
 func (u *WalletUsecase) AutoProcessApprovedPayouts(ctx context.Context) error {

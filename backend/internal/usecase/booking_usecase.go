@@ -17,6 +17,7 @@ type BookingUsecase struct {
 	eventRepo           repository.EventRepository
 	notificationUsecase *NotificationUsecase
 	roleRepo            repository.UserRoleRepository
+	settingsRepo        repository.SettingsRepository
 }
 
 func NewBookingUsecase(
@@ -24,12 +25,14 @@ func NewBookingUsecase(
 	eventRepo repository.EventRepository,
 	roleRepo repository.UserRoleRepository,
 	notificationUsecase *NotificationUsecase,
+	settingsRepo repository.SettingsRepository,
 ) *BookingUsecase {
 	return &BookingUsecase{
 		bookingRepo:         bookingRepo,
 		eventRepo:           eventRepo,
 		roleRepo:            roleRepo,
 		notificationUsecase: notificationUsecase,
+		settingsRepo:        settingsRepo,
 	}
 }
 
@@ -73,7 +76,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	}
 
 	now := time.Now()
-	expiresAt := now.Add(10 * time.Minute)
+	expiresAt := now.Add(1 * time.Minute)
 
 	var totalTickets int
 	for _, req := range requests {
@@ -261,6 +264,11 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
 
 	if booking.UserID != userID {
 		return apiErrors.ErrForbiddenAction
+	}
+
+	walletSetting, err := u.settingsRepo.GetPaymentProviderConfig("wallet")
+	if err == nil && !walletSetting.IsEnabled {
+		return apiErrors.New(400, "PAYMENT_DISABLED", "Wallet payment is disabled by admin")
 	}
 
 	if booking.Status != "reserved" {

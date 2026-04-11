@@ -1,7 +1,17 @@
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../auth/store/authStore";
 
 export default function OrganizerCTA() {
   const navigate = useNavigate();
+  const { roles, openAuthModal } = useAuthStore();
+  
+  const handleCreateEventClick = () => {
+    if (roles && roles.some(r => r.toLowerCase() === "organizer")) {
+      navigate("/organizer/events/create");
+    } else {
+      openAuthModal("organizer");
+    }
+  };
   return (
     <section className="bg-gray-100 mt-20">
       <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col md:flex-row justify-between items-center gap-8">
@@ -12,7 +22,7 @@ export default function OrganizerCTA() {
 
           <div className="flex flex-wrap items-center gap-4">
             <button
-              onClick={() => navigate("/organizer/events/create")}
+              onClick={handleCreateEventClick}
               className="bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-black transition-colors"
             >
               + Create Event

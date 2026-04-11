@@ -70,7 +70,7 @@ export interface AuditLog {
   timestamp: string;
 }
 
-// -- Admin Dashboard --
+
 export interface AdminStatCardData {
   value: number;
   percentage: number;
@@ -89,7 +89,7 @@ export interface AdminDashboardStats {
   revenue_overview: { date: string; amount: number }[];
 }
 
-// -- Admin Revenue Report --
+
 export interface CategoryRevenueData {
   category: string;
   revenue: number;
@@ -259,7 +259,7 @@ export const adminApi = {
   },
 
   async getPaymentSettings(): Promise<PaymentSettings[]> {
-    const response = await api.get("/admin/payment-settings"); // Wait, I didn't add /admin/payment-settings to router
+    const response = await api.get("/admin/payment-settings"); 
     return response.data.data;
   },
 

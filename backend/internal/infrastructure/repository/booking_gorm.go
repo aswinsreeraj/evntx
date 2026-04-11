@@ -434,8 +434,8 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		event_models.status AS event_status,
 		COALESCE(SUM(booking_ticket_models.quantity), 0) AS ticket_count
 	`).
-		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
-		Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id = booking_models.id").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id::uuid = booking_models.id::uuid").
 		Group("booking_models.id, event_models.id").
 		Order("booking_models.created_at DESC").
 		Limit(limit).
@@ -470,9 +470,9 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 
 func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
 	query := r.db.WithContext(ctx).Table("ticket_models").
-		Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
-		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
-		Joins("JOIN ticket_type_models ON ticket_type_models.id = ticket_models.ticket_type_id").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Joins("JOIN ticket_type_models ON ticket_type_models.id::uuid = ticket_models.ticket_type_id::uuid").
 		Where("booking_models.user_id = ?", userID)
 
 	if bookingID != "" {
@@ -565,7 +565,7 @@ func (r *bookingGormRepository) CheckInTicket(
 				ticket_models.status,
 				ticket_models.checked_in_at
 			`).
-			Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
+			Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
 			Where("ticket_models.ticket_code = ?", ticketCode).
 			Take(&result).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -659,7 +659,7 @@ func (r *bookingGormRepository) GetBookingContextsByIDs(ctx context.Context, boo
 			event_models.city AS event_city,
 			event_models.start_time AS event_start_time
 		`).
-		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
 		Where("booking_models.id IN ?", bookingIDs).
 		Find(&bookings).Error; err != nil {
 		return nil, err
@@ -679,7 +679,7 @@ func (r *bookingGormRepository) GetBookingContextsByIDs(ctx context.Context, boo
 			ticket_type_models.name,
 			SUM(booking_ticket_models.quantity) AS quantity
 		`).
-		Joins("JOIN ticket_type_models ON ticket_type_models.id = booking_ticket_models.ticket_type_id").
+		Joins("JOIN ticket_type_models ON ticket_type_models.id::uuid = booking_ticket_models.ticket_type_id::uuid").
 		Where("booking_ticket_models.booking_id IN ?", bookingIDs).
 		Group("booking_ticket_models.booking_id, booking_ticket_models.ticket_type_id, ticket_type_models.name").
 		Find(&tickets).Error; err != nil {

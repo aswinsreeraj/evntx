@@ -92,7 +92,7 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 	var globalMin, globalMax float64
 
 	r.db.Model(&TicketTypeModel{}).
-		Joins("JOIN event_models ON event_models.id = ticket_type_models.event_id").
+		Joins("JOIN event_models ON event_models.id::uuid = ticket_type_models.event_id::uuid").
 		Where("event_models.status IN ?", []string{"live", "approved"}).
 		Select("COALESCE(MIN(ticket_type_models.price), 0), COALESCE(MAX(ticket_type_models.price), 0)").
 		Row().Scan(&globalMin, &globalMax)
@@ -276,7 +276,7 @@ func (r *eventGormRepository) AdminSearchEvents(
 				WHERE event_id = event_models.id
 			), 0) AS available_capacity
 		`).
-		Joins("LEFT JOIN user_models ON user_models.id::text = event_models.organizer_id")
+		Joins("LEFT JOIN user_models ON user_models.id::uuid = event_models.organizer_id::uuid")
 
 	if search != "" {
 		query = query.Where(
@@ -648,7 +648,7 @@ func (r *eventGormRepository) SettleEventEarnings(
 
 		if err := tx.Table("booking_models").
 			Select("COALESCE(SUM(booking_models.total_amount), 0) as total_amount, COALESCE(SUM(booking_ticket_models.quantity), 0) as total_tickets").
-			Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id = booking_models.id").
+			Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id::uuid = booking_models.id::uuid").
 			Where("booking_models.event_id = ? AND booking_models.status IN ('paid', 'confirmed')", eventID).
 			Scan(&bookingStats).Error; err != nil {
 			return err
@@ -1045,13 +1045,13 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 	var bookings []struct {
 		EventID     string
 		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"` // Because BookingModel handles unix timestamp
+		CreatedAt   int64 `gorm:"column:created_at"` 
 		Tickets     int
 	}
 
-	r.db.Table("bookings").
-	    Select("bookings.event_id, bookings.total_amount, bookings.created_at, (SELECT count(*) FROM booking_tickets WHERE booking_tickets.booking_id = bookings.id) as tickets").
-		Where("bookings.event_id IN ? AND bookings.status IN ?", eventIDs, []string{"paid", "completed"}).
+	r.db.Table("booking_models").
+	    Select("booking_models.event_id, booking_models.total_amount, booking_models.created_at, (SELECT COALESCE(SUM(quantity), 0) FROM booking_ticket_models WHERE booking_ticket_models.booking_id = booking_models.id) as tickets").
+		Where("booking_models.event_id IN ? AND booking_models.status IN ?", eventIDs, []string{"paid", "completed"}).
 		Find(&bookings)
 
 	var totalRev, totalRevPrev float64
@@ -1154,7 +1154,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 		}
 	}
 
-	if !validRange { // Default to last 30 days if invalid/missing
+	if !validRange { 
 		endTime = time.Now()
 		startTime = endTime.AddDate(0, 0, -30)
 	}
@@ -1169,20 +1169,20 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 		Tickets     int
 	}
 
-	// Fetch all paid/completed bookings for these events
-	r.db.Table("bookings").
-		Select("bookings.event_id, bookings.total_amount, bookings.created_at, (SELECT count(*) FROM booking_tickets WHERE booking_tickets.booking_id = bookings.id) as tickets").
-		Where("bookings.event_id IN ? AND bookings.status IN ?", eventIDs, []string{"paid", "completed"}).
+	
+	r.db.Table("booking_models").
+		Select("booking_models.event_id, booking_models.total_amount, booking_models.created_at, (SELECT COALESCE(SUM(quantity), 0) FROM booking_ticket_models WHERE booking_ticket_models.booking_id = booking_models.id) as tickets").
+		Where("booking_models.event_id IN ? AND booking_models.status IN ?", eventIDs, []string{"paid", "completed"}).
 		Find(&bookings)
 
 	var totalRev, totalRevPrev float64
 	var totalTkt, totalTktPrev int
 
-	// Dynamic bucketing (group by day if range <= 31 days, else month)
+	
 	useDays := duration.Hours() <= 31*24
 	var revenueMap = make(map[string]float64)
 	
-	// Pre-fill timeline to ensure 0s are graphed properly
+	
 	if useDays {
 		days := int(duration.Hours() / 24)
 		for i := 0; i <= days; i++ {
@@ -1202,7 +1202,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 	for _, b := range bookings {
 		bCreatedAt := time.Unix(b.CreatedAt, 0)
 
-		// Current Period
+		
 		if bCreatedAt.After(startTime) && bCreatedAt.Before(endTime) {
 			totalRev += b.TotalAmount
 			totalTkt += b.Tickets
@@ -1219,7 +1219,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 			}
 		}
 
-		// Previous Period
+		
 		if bCreatedAt.After(prevStartTime) && bCreatedAt.Before(startTime) {
 			totalRevPrev += b.TotalAmount
 			totalTktPrev += b.Tickets
@@ -1237,7 +1237,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 	stats.TotalRevenue = domain.StatCard{Value: totalRev, Percentage: revPercentage}
 	stats.TicketsSold = domain.StatCard{Value: float64(totalTkt), Percentage: tktPercentage}
 
-	// Extract formatted timeline sorting logically
+	
 	if useDays {
 		days := int(duration.Hours() / 24)
 		for i := 0; i <= days; i++ {
@@ -1258,7 +1258,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 		}
 	}
 
-	// Calculate Proportional Sales Segment
+	
 	for evtID, tkts := range ticketsByEvent {
 		if tkts > 0 && eventTitleMap[evtID] != "" {
 			percentage := 0.0
@@ -1280,24 +1280,21 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	now := time.Now()
 	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	firstDayPrevMonth := firstDayThisMonth.AddDate(0, -1, 0)
-	firstDayThisMonthUnix := firstDayThisMonth.Unix()
-	firstDayPrevMonthUnix := firstDayPrevMonth.Unix()
-
 	var stats domain.AdminDashboardStats
 
-	// --- Revenue ---
+	
 	var totalRevResult struct{ Total float64 }
-	r.db.Table("bookings").Where("status IN ?", []string{"paid", "completed"}).
+	r.db.Table("booking_models").Where("status IN ?", []string{"paid", "completed"}).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&totalRevResult)
 
 	var prevRevResult struct{ Total float64 }
-	r.db.Table("bookings").
-		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"}, firstDayPrevMonthUnix, firstDayThisMonthUnix).
+	r.db.Table("booking_models").
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"}, firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevRevResult)
 
 	var thisRevResult struct{ Total float64 }
-	r.db.Table("bookings").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonthUnix).
+	r.db.Table("booking_models").
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisRevResult)
 
 	revPct := 0.0
@@ -1306,11 +1303,11 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.Revenue = domain.AdminStatCard{Value: totalRevResult.Total, Percentage: revPct}
 
-	// --- Total Users ---
+	
 	var totalUsers, prevMonthUsers, thisMonthUsers int64
-	r.db.Table("users").Count(&totalUsers)
-	r.db.Table("users").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevMonthUsers)
-	r.db.Table("users").Where("created_at >= ?", firstDayThisMonthUnix).Count(&thisMonthUsers)
+	r.db.Table("user_models").Count(&totalUsers)
+	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevMonthUsers)
+	r.db.Table("user_models").Where("created_at >= ?", firstDayThisMonth.Unix()).Count(&thisMonthUsers)
 
 	usersPct := 0.0
 	if prevMonthUsers > 0 {
@@ -1318,11 +1315,17 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.TotalUsers = domain.AdminStatCard{Value: float64(totalUsers), Percentage: usersPct}
 
-	// --- Total Organizers (users with organizer role) ---
+	
 	var totalOrgs, prevOrgs, thisOrgs int64
-	r.db.Table("user_roles").Where("role = ?", "organizer").Count(&totalOrgs)
-	r.db.Table("user_roles").Where("role = ? AND created_at >= ? AND created_at < ?", "organizer", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevOrgs)
-	r.db.Table("user_roles").Where("role = ? AND created_at >= ?", "organizer", firstDayThisMonthUnix).Count(&thisOrgs)
+	r.db.Table("user_role_models").Where("role = ?", "organizer").Count(&totalOrgs)
+	r.db.Table("user_role_models").
+		Joins("JOIN user_models ON user_models.id::uuid = user_role_models.user_id::uuid").
+		Where("user_role_models.role = ? AND user_models.created_at >= ? AND user_models.created_at < ?", "organizer", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
+		Count(&prevOrgs)
+	r.db.Table("user_role_models").
+		Joins("JOIN user_models ON user_models.id::uuid = user_role_models.user_id::uuid").
+		Where("user_role_models.role = ? AND user_models.created_at >= ?", "organizer", firstDayThisMonth.Unix()).
+		Count(&thisOrgs)
 
 	orgsPct := 0.0
 	if prevOrgs > 0 {
@@ -1330,11 +1333,11 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.TotalOrganizers = domain.AdminStatCard{Value: float64(totalOrgs), Percentage: orgsPct}
 
-	// --- Total Events ---
+	
 	var totalEvents, prevEvents, thisMonthEvents int64
-	r.db.Table("events").Count(&totalEvents)
-	r.db.Table("events").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevEvents)
-	r.db.Table("events").Where("created_at >= ?", firstDayThisMonthUnix).Count(&thisMonthEvents)
+	r.db.Table("event_models").Count(&totalEvents)
+	r.db.Table("event_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevEvents)
+	r.db.Table("event_models").Where("created_at >= ?", firstDayThisMonth.Unix()).Count(&thisMonthEvents)
 
 	eventsPct := 0.0
 	if prevEvents > 0 {
@@ -1342,18 +1345,18 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.TotalEvents = domain.AdminStatCard{Value: float64(totalEvents), Percentage: eventsPct}
 
-	// --- Refund Rate = refunded bookings / total bookings ---
+	
 	var totalBookings, refundedBookings int64
-	r.db.Table("bookings").Count(&totalBookings)
-	r.db.Table("bookings").Where("status = ?", "refunded").Count(&refundedBookings)
+	r.db.Table("booking_models").Count(&totalBookings)
+	r.db.Table("booking_models").Where("status = ?", "refunded").Count(&refundedBookings)
 	refundRate := 0.0
 	if totalBookings > 0 {
 		refundRate = float64(refundedBookings) / float64(totalBookings) * 100
 	}
-	// prev month refund rate
+	
 	var prevTotal, prevRefunded int64
-	r.db.Table("bookings").Where("created_at >= ? AND created_at < ?", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevTotal)
-	r.db.Table("bookings").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevRefunded)
+	r.db.Table("booking_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevTotal)
+	r.db.Table("booking_models").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevRefunded)
 	prevRefundRate := 0.0
 	if prevTotal > 0 {
 		prevRefundRate = float64(prevRefunded) / float64(prevTotal) * 100
@@ -1364,36 +1367,36 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.RefundRate = domain.AdminStatCard{Value: refundRate, Percentage: refundRatePct}
 
-	// --- User Growth (new users this month) ---
+	
 	var prevGrowth int64
-	r.db.Table("users").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0).Unix(), firstDayPrevMonthUnix).Count(&prevGrowth)
+	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0).Unix(), firstDayPrevMonth.Unix()).Count(&prevGrowth)
 	growthPct := 0.0
 	if prevGrowth > 0 {
 		growthPct = float64(thisMonthUsers-prevGrowth) / float64(prevGrowth) * 100
 	}
 	stats.UserGrowth = domain.AdminStatCard{Value: float64(thisMonthUsers), Percentage: growthPct}
 
-	// --- Pending Approvals ---
+	
 	var pendingEvents int64
-	r.db.Table("events").Where("status = ?", "pending").Count(&pendingEvents)
+	r.db.Table("event_models").Where("status = ?", "pending").Count(&pendingEvents)
 	stats.PendingApprovals = domain.AdminStatCard{Value: float64(pendingEvents)}
 
-	// --- Active Events ---
+	
 	var activeEvents, prevActiveEvents int64
-	r.db.Table("events").Where("status = ?", "live").Count(&activeEvents)
-	r.db.Table("events").Where("status = ? AND created_at >= ? AND created_at < ?", "live", firstDayPrevMonthUnix, firstDayThisMonthUnix).Count(&prevActiveEvents)
+	r.db.Table("event_models").Where("status = ?", "live").Count(&activeEvents)
+	r.db.Table("event_models").Where("status = ? AND created_at >= ? AND created_at < ?", "live", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevActiveEvents)
 	activePct := 0.0
 	if prevActiveEvents > 0 {
 		activePct = float64(activeEvents-prevActiveEvents) / float64(prevActiveEvents) * 100
 	}
 	stats.ActiveEvents = domain.AdminStatCard{Value: float64(activeEvents), Percentage: activePct}
 
-	// --- Monthly Revenue Overview (last 12 months) ---
+	
 	var bookingRows []struct {
 		TotalAmount float64
 		CreatedAt   int64 `gorm:"column:created_at"`
 	}
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Select("total_amount, created_at").
 		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
 		Find(&bookingRows)
@@ -1435,14 +1438,14 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 
 	var report domain.AdminRevenueReport
 
-	// --- Revenue Today ---
+	
 	var todayRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, todayStart.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&todayRev)
 
 	var yesterdayRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
 			todayStart.AddDate(0, 0, -1).Unix(), todayStart.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&yesterdayRev)
@@ -1453,14 +1456,14 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	}
 	report.RevenueToday = domain.AdminStatCard{Value: todayRev.Total, Percentage: todayPct}
 
-	// --- Revenue This Month ---
+	
 	var thisMonthRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisMonthRev)
 
 	var prevMonthRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
 			firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevMonthRev)
@@ -1471,20 +1474,20 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	}
 	report.RevenueThisMonth = domain.AdminStatCard{Value: thisMonthRev.Total, Percentage: monthPct}
 
-	// --- Total Revenue ---
+	
 	var totalRev struct{ Total float64 }
-	r.db.Table("bookings").Where("status IN ?", []string{"paid", "completed"}).
+	r.db.Table("booking_models").Where("status IN ?", []string{"paid", "completed"}).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&totalRev)
 
-	// Total revenue prev year for growth rate
+	
 	var prevYearRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
 			now.AddDate(-2, 0, 0).Unix(), now.AddDate(-1, 0, 0).Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevYearRev)
 
 	var thisYearRev struct{ Total float64 }
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisYearRev)
 
@@ -1494,16 +1497,16 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	}
 	report.TotalRevenue = domain.AdminStatCard{Value: totalRev.Total, Percentage: totalPct}
 
-	// Growth Rate (MoM)
+	
 	growthRate := monthPct
 	report.GrowthRate = domain.AdminStatCard{Value: growthRate, Percentage: monthPct}
 
-	// --- Revenue Over Time (monthly, within selected date range) ---
+	
 	var bookingRows []struct {
 		TotalAmount float64
 		CreatedAt   int64 `gorm:"column:created_at"`
 	}
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Select("total_amount, created_at").
 		Where("status IN ? AND created_at >= ? AND created_at <= ?", []string{"paid", "completed"}, startDate.Unix(), endDate.Unix()).
 		Find(&bookingRows)
@@ -1521,7 +1524,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		key := startDate.AddDate(0, months-i, 0).Format("Jan")
 		revenueByMonth[key] = 0
 	}
-	// Simpler: pre-fill month by month from startDate to endDate
+	
 	revenueByMonth = make(map[string]float64)
 	cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
 	for !cur.After(endDate) {
@@ -1546,16 +1549,16 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		cur = cur.AddDate(0, 1, 0)
 	}
 
-	// --- Category Breakdown (revenue by event category) ---
+	
 	var catRows []struct {
 		Category string
 		Revenue  float64
 	}
-	r.db.Table("bookings").
-		Joins("JOIN events ON events.id = bookings.event_id").
-		Select("events.category as category, COALESCE(SUM(bookings.total_amount), 0) as revenue").
-		Where("bookings.status IN ?", []string{"paid", "completed"}).
-		Group("events.category").
+	r.db.Table("booking_models").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Select("event_models.category as category, COALESCE(SUM(booking_models.total_amount), 0) as revenue").
+		Where("booking_models.status IN ?", []string{"paid", "completed"}).
+		Group("event_models.category").
 		Order("revenue DESC").
 		Scan(&catRows)
 
@@ -1570,12 +1573,12 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		})
 	}
 
-	// --- Refund Analytics (last 6 months, monthly refund amounts) ---
+	
 	var refundRows []struct {
 		TotalAmount float64
 		CreatedAt   int64 `gorm:"column:created_at"`
 	}
-	r.db.Table("bookings").
+	r.db.Table("booking_models").
 		Select("total_amount, created_at").
 		Where("status = ? AND created_at >= ?", "refunded", now.AddDate(0, -6, 0).Unix()).
 		Find(&refundRows)
@@ -1592,7 +1595,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		}
 	}
 
-	// Prev month refund total for delta
+	
 	var prevRefundTotal float64
 	for k, v := range refundByMonth {
 		if k == firstDayPrevMonth.Format("Jan") {
@@ -1619,7 +1622,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		})
 	}
 
-	// --- Top Organizers By Revenue (top 5) ---
+	
 	var orgRows []struct {
 		OrganizerID   string
 		Name          string
@@ -1627,26 +1630,26 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		ActiveEvents  int
 		PendingEvents int
 	}
-	r.db.Table("bookings").
-		Joins("JOIN events ON events.id = bookings.event_id").
-		Joins("JOIN users ON users.id = events.organizer_id").
-		Select(`events.organizer_id,
-			users.name,
-			COALESCE(SUM(bookings.total_amount), 0) as total_revenue,
-			COUNT(DISTINCT CASE WHEN events.status = 'live' THEN events.id END) as active_events,
-			COUNT(DISTINCT CASE WHEN events.status = 'pending' THEN events.id END) as pending_events`).
-		Where("bookings.status IN ?", []string{"paid", "completed"}).
-		Group("events.organizer_id, users.name").
+	r.db.Table("booking_models").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Joins("JOIN user_models ON user_models.id::uuid = event_models.organizer_id::uuid").
+		Select(`event_models.organizer_id,
+			user_models.name,
+			COALESCE(SUM(booking_models.total_amount), 0) as total_revenue,
+			COUNT(DISTINCT CASE WHEN event_models.status = 'live' THEN event_models.id END) as active_events,
+			COUNT(DISTINCT CASE WHEN event_models.status = 'pending' THEN event_models.id END) as pending_events`).
+		Where("booking_models.status IN ?", []string{"paid", "completed"}).
+		Group("event_models.organizer_id, user_models.name").
 		Order("total_revenue DESC").
 		Limit(5).
 		Scan(&orgRows)
 
 	for _, o := range orgRows {
 		var avgRating struct{ Avg float64 }
-		r.db.Table("event_details").
-			Joins("JOIN events ON events.id = event_details.event_id").
-			Where("events.organizer_id = ?", o.OrganizerID).
-			Select("COALESCE(AVG(event_details.rating), 0) as avg").
+		r.db.Table("event_details_models").
+			Joins("JOIN event_models ON event_models.id::uuid = event_details_models.event_id::uuid").
+			Where("event_models.organizer_id = ?", o.OrganizerID).
+			Select("COALESCE(AVG(event_details_models.rating), 0) as avg").
 			Scan(&avgRating)
 
 		report.TopOrganizers = append(report.TopOrganizers, domain.TopOrganizerEntry{
@@ -1658,21 +1661,21 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		})
 	}
 
-	// --- Top Spending Users (top 5) ---
+	
 	var userRows []struct {
 		UserID        string
 		Name          string
 		TotalSpent    float64
 		BookingsCount int
 	}
-	r.db.Table("bookings").
-		Joins("JOIN users ON users.id = bookings.user_id").
-		Select(`bookings.user_id,
-			users.name,
-			COALESCE(SUM(bookings.total_amount), 0) as total_spent,
+	r.db.Table("booking_models").
+		Joins("JOIN user_models ON user_models.id::uuid = booking_models.user_id::uuid").
+		Select(`booking_models.user_id,
+			user_models.name,
+			COALESCE(SUM(booking_models.total_amount), 0) as total_spent,
 			COUNT(*) as bookings_count`).
-		Where("bookings.status IN ?", []string{"paid", "completed"}).
-		Group("bookings.user_id, users.name").
+		Where("booking_models.status IN ?", []string{"paid", "completed"}).
+		Group("booking_models.user_id, user_models.name").
 		Order("total_spent DESC").
 		Limit(5).
 		Scan(&userRows)

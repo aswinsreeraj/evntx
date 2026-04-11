@@ -1,9 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
 import { CalendarDays, MapPin, Clock, Hourglass } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData";
 import { useAuthStore } from "../../auth/store/authStore";
+import { useEngagement } from "../../../shared/hooks/useEngagement";
 
 export default function EventDetailPage() {
   const { eventId } = useParams();
@@ -12,6 +13,13 @@ export default function EventDetailPage() {
   const isAdmin = roles.includes("admin");
   const { data, isLoading, isError } = useEvent(eventId!, isOrganizer, isAdmin);
   const navigate = useNavigate();
+  const { trackEvent } = useEngagement();
+
+  useEffect(() => {
+    if (data?.id && !isLoading && !isError) {
+      trackEvent('event_view', data.id);
+    }
+  }, [data?.id, isLoading, isError, trackEvent]);
 
   const [activeTab, setActiveTab] = useState("About");
 
@@ -116,7 +124,7 @@ export default function EventDetailPage() {
 
         <div className="lg:col-span-1 flex flex-col gap-6">
 
-          {!(useAuthStore.getState().roles || []).some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin") && (
+          {!(useAuthStore.getState().roles || []).some(r => r.toLowerCase() === "organizer" || r.toLowerCase() === "admin") ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-6">Book Tickets</h3>
 
@@ -143,14 +151,14 @@ export default function EventDetailPage() {
                 <span className="text-sm font-medium text-gray-700">Price From</span>
                 <span className="text-sm font-bold text-[#e53e5d]">
                   {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0
-                    ? formatCurrency(Math.min(...displayEvent.ticketTypes.map(t => t.price)))
+                    ? formatCurrency(Math.min(...displayEvent.ticketTypes.map((t: any) => t.price)))
                     : `₹ ${displayEvent.priceLabel || "N/A"}`}
                 </span>
               </div>
 
               {(() => {
                 const isSoldOut = displayEvent.ticketTypes?.length > 0 &&
-                                 displayEvent.ticketTypes.every(t => (t.availableQuantity ?? 0) <= 0);
+                                 displayEvent.ticketTypes.every((t: any) => (t.availableQuantity ?? 0) <= 0);
 
                 const isSellingFast = displayEvent.availableCapacity !== undefined &&
                                       displayEvent.totalCapacity !== undefined &&
@@ -188,6 +196,34 @@ export default function EventDetailPage() {
                   </div>
                 );
               })()}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-bold text-[#e53e5d] mb-6">Organizer Ticket Details</h3>
+              <div className="flex flex-col gap-4">
+                {displayEvent.ticketTypes && displayEvent.ticketTypes.length > 0 ? (
+                  displayEvent.ticketTypes.map((t: any) => (
+                    <div key={t.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                        <p className="text-xs text-gray-500">Price: {formatCurrency(t.price)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">{t.availableQuantity} / {t.totalQuantity}</p>
+                        <p className="text-[10px] uppercase tracking-wide text-gray-500">Available</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No ticket types defined.</p>
+                )}
+                {displayEvent.totalCapacity !== undefined && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between font-bold text-gray-900">
+                    <span>Total Capacity</span>
+                    <span>{displayEvent.availableCapacity} / {displayEvent.totalCapacity} Available</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

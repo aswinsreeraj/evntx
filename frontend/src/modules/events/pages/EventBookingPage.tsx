@@ -1,20 +1,24 @@
 import { Minus, Plus, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
 import Modal from "../../../shared/ui/Modal"
 import { useEvent } from "../hooks"
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData"
 import { eventsApi } from "../api"
 import { useAuthStore } from "../../auth/store/authStore"
 import RazorpayButton from "../../payments/components/RazorpayButton"
-import { useWallet } from "../../user/hooks"
+import { useWallet, usePaymentSettings, walletQueryKey, walletTransactionsQueryKey } from "../../user/hooks"
 import { userApi } from "../../user/api"
+import { useEngagement } from "../../../shared/hooks/useEngagement";
 
 export default function EventBookingPage() {
+  const queryClient = useQueryClient()
   const { eventId } = useParams()
   const navigate = useNavigate()
   const { data, isLoading } = useEvent(eventId!)
   const { user, roles } = useAuthStore()
+  const { trackEvent } = useEngagement();
 
   const displayEvent = buildDisplayEvent(eventId ?? "", data)
 
@@ -31,9 +35,16 @@ export default function EventBookingPage() {
   const [error, setError] = useState<string | null>(null)
   const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
   const { data: wallet } = useWallet()
+  const { data: paymentSettings } = usePaymentSettings()
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [isLatePaymentMessage, setIsLatePaymentMessage] = useState(false)
+
+  const razorpaySetting = paymentSettings?.find((p) => p.provider === "razorpay")
+  const isRazorpayEnabled = razorpaySetting ? razorpaySetting.is_enabled : false
+
+  const walletSetting = paymentSettings?.find((p) => p.provider === "wallet")
+  const isWalletEnabled = walletSetting ? walletSetting.is_enabled : false
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -61,6 +72,11 @@ export default function EventBookingPage() {
     if (selectedTickets.length === 0) return
     setError(null)
     setCheckoutOpen(true)
+    
+    if (data?.id) {
+      trackEvent('ticket_selected', data.id);
+      trackEvent('checkout_started', data.id);
+    }
   }
 
   const handleReservation = async () => {
@@ -101,7 +117,12 @@ export default function EventBookingPage() {
     setError(null)
     try {
       await userApi.payWithWallet(reservedBookingId)
-      navigate("/profile/bookings")
+      await queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      await queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+      setPaymentSuccess(true);
+      setTimeout(() => {
+        navigate("/profile/bookings", { replace: true })
+      }, 2000)
     } catch (err: any) {
       setError(err?.response?.data?.message || "Wallet payment failed.")
     } finally {
@@ -281,30 +302,51 @@ export default function EventBookingPage() {
 
           {reservedBookingId ? (
             <div className="flex w-full flex-col gap-2">
-              <RazorpayButton
-                bookingId={reservedBookingId}
-                eventTitle={displayEvent.title}
-                onSuccess={(isLatePayment) => {
-                  if (isLatePayment) {
-                    setIsLatePaymentMessage(true);
-                  } else {
-                    setPaymentSuccess(true);
-                    setTimeout(() => {
-                      navigate("/user/tickets", { replace: true })
-                    }, 2000)
-                  }
-                }}
-                onError={(msg) => setError(msg)}
-              />
-              {wallet && wallet.available_balance >= finalAmount && (
+              {isRazorpayEnabled ? (
+                <RazorpayButton
+                  bookingId={reservedBookingId}
+                  eventTitle={displayEvent.title}
+                  onSuccess={(isLatePayment) => {
+                    queryClient.invalidateQueries({ queryKey: walletQueryKey });
+                    queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+                    if (isLatePayment) {
+                      setIsLatePaymentMessage(true);
+                    } else {
+                      setPaymentSuccess(true);
+                      setTimeout(() => {
+                        navigate("/profile/bookings", { replace: true })
+                      }, 2000)
+                    }
+                  }}
+                  onError={(msg) => setError(msg)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex w-full items-center justify-center rounded-xl bg-gray-200 px-6 py-2.5 text-[15px] font-semibold text-gray-400 cursor-not-allowed"
+                >
+                  Pay with Razorpay
+                </button>
+              )}
+              {isWalletEnabled && wallet && wallet.available_balance >= finalAmount && (
                 <button
                   type="button"
                   disabled={isPayingWithWallet}
                   onClick={handlePayWithWallet}
-                  className="flex w-full items-center justify-center rounded-xl border border-[#111827] bg-white px-6 py-2.5 text-sm font-medium text-[#111827] transition hover:bg-[#f7f7f7] disabled:opacity-50"
+                  className="flex w-full items-center justify-center rounded-xl border border-[#111827] bg-white px-6 py-2.5 text-[15px] font-semibold text-[#111827] transition hover:bg-[#f7f7f7] disabled:opacity-50"
                 >
                   {isPayingWithWallet ? "Processing Wallet Payment..." : "Pay with Wallet"}
                 </button>
+              )}
+              {(!isWalletEnabled) && wallet && wallet.available_balance >= finalAmount && (
+                 <button
+                  type="button"
+                  disabled
+                  className="flex w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-6 py-2.5 text-[15px] font-semibold text-gray-400 cursor-not-allowed"
+                 >
+                   Pay with Wallet Disabled
+                 </button>
               )}
               {wallet && wallet.available_balance < finalAmount && wallet.available_balance > 0 && (
                 <p className="text-center text-[10px] text-gray-400">
@@ -326,7 +368,7 @@ export default function EventBookingPage() {
           {paymentSuccess && (
             <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/95 text-center backdrop-blur-sm z-50">
               <div className="mb-4 text-[#34c759]">
-                 {/* Success Tick */}
+                 {}
                 <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -340,7 +382,7 @@ export default function EventBookingPage() {
           {isLatePaymentMessage && (
             <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-[#fff5f6] text-center p-6 z-50">
               <div className="mb-4 text-[#e53e5d]">
-                 {/* Warning/Alert */}
+                 {}
                 <svg className="h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
