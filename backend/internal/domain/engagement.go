@@ -39,6 +39,7 @@ type EventEngagementDaily struct {
 	EventID            string    `json:"event_id"`
 	Date               time.Time `json:"date"` 
 	Visitors           int       `json:"visitors"`
+	PageViews          int       `json:"page_views"`
 	EventViews         int       `json:"event_views"`
 	TicketsSelected    int       `json:"tickets_selected"`
 	CheckoutStarted    int       `json:"checkout_started"`

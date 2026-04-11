@@ -76,7 +76,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	}
 
 	now := time.Now()
-	expiresAt := now.Add(10 * time.Minute)
+	expiresAt := now.Add(1 * time.Minute)
 
 	var totalTickets int
 	for _, req := range requests {

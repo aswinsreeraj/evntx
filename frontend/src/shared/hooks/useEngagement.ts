@@ -4,18 +4,27 @@ import { engagementApi } from '../api/engagement';
 
 const SESSION_KEY = 'evntx_session_id';
 
+let initializationPromise: Promise<string | null> | null = null;
+
 const ensureSession = async (): Promise<string | null> => {
   let sessionId = sessionStorage.getItem(SESSION_KEY);
-  if (!sessionId) {
+  if (sessionId) return sessionId;
+
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = (async () => {
     try {
       const session = await engagementApi.initializeSession();
       sessionStorage.setItem(SESSION_KEY, session.id);
-      sessionId = session.id;
+      return session.id;
     } catch {
       return null;
+    } finally {
+      initializationPromise = null;
     }
-  }
-  return sessionId;
+  })();
+
+  return initializationPromise;
 };
 
 export const useEngagement = () => {

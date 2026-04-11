@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -14,14 +15,14 @@ import (
 )
 
 type AdminHandler struct {
-	eventUsecase        *usecase.EventUsecase
-	userUsecase         *usecase.UserUsecase
-	walletUsecase       *usecase.WalletUsecase
-	platformWalletRepo  repository.PlatformWalletRepository
-	engagementUsecase   *usecase.EngagementUsecase
-	settingsRepo        repository.SettingsRepository
-	roleRepo            repository.UserRoleRepository
-	auditUsecase        *usecase.AuditUsecase
+	eventUsecase       *usecase.EventUsecase
+	userUsecase        *usecase.UserUsecase
+	walletUsecase      *usecase.WalletUsecase
+	platformWalletRepo repository.PlatformWalletRepository
+	engagementUsecase  *usecase.EngagementUsecase
+	settingsRepo       repository.SettingsRepository
+	roleRepo           repository.UserRoleRepository
+	auditUsecase       *usecase.AuditUsecase
 }
 
 func NewAdminHandler(
@@ -78,7 +79,6 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
-	
 	if organizerID != "" {
 		events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), organizerID, "")
 		if err != nil {
@@ -103,6 +103,7 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 			startDate = endDate.AddDate(0, 0, -30)
 		}
 		report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+		fmt.Println(report)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 			return
@@ -111,8 +112,8 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 		return
 	}
 
-	
 	adminEvents, _, err := h.eventUsecase.AdminSearchEvents("", "", 1, 10000)
+	fmt.Println(adminEvents)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve events"})
 		return
@@ -137,6 +138,7 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	}
 
 	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+	fmt.Println(report)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 		return
@@ -493,13 +495,13 @@ func (h *AdminHandler) GetEventEngagement(c *gin.Context) {
 	}
 
 	dateStr := c.Query("date")
-	
+
 	reports, err := h.engagementUsecase.GetDailyReport(c.Request.Context(), eventID, time.Time{}, time.Time{})
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to load engagement records"})
 		return
 	}
-	
+
 	if dateStr != "" {
 		filtered := make([]domain.EventEngagementDaily, 0)
 		for _, v := range reports {
@@ -631,7 +633,7 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 		for _, r := range roles {
 			if r == domain.RoleAdmin {
 				role = "Admin"
-				perms = "Root" 
+				perms = "Root"
 			}
 		}
 		status := "Active"
@@ -722,4 +724,3 @@ func (h *AdminHandler) GetAuditLogs(c *gin.Context) {
 		},
 	})
 }
-

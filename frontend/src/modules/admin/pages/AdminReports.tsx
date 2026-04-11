@@ -79,6 +79,8 @@ export default function AdminReports() {
     enabled: activeTab === "engagement",
   });
 
+  console.log("Engagement Stats:", engagementStats);
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",

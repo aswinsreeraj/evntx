@@ -1289,12 +1289,12 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 
 	var prevRevResult struct{ Total float64 }
 	r.db.Table("booking_models").
-		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"}, firstDayPrevMonth, firstDayThisMonth).
+		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"}, firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevRevResult)
 
 	var thisRevResult struct{ Total float64 }
 	r.db.Table("booking_models").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisRevResult)
 
 	revPct := 0.0
@@ -1306,8 +1306,8 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	
 	var totalUsers, prevMonthUsers, thisMonthUsers int64
 	r.db.Table("user_models").Count(&totalUsers)
-	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth, firstDayThisMonth).Count(&prevMonthUsers)
-	r.db.Table("user_models").Where("created_at >= ?", firstDayThisMonth).Count(&thisMonthUsers)
+	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevMonthUsers)
+	r.db.Table("user_models").Where("created_at >= ?", firstDayThisMonth.Unix()).Count(&thisMonthUsers)
 
 	usersPct := 0.0
 	if prevMonthUsers > 0 {
@@ -1320,11 +1320,11 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	r.db.Table("user_role_models").Where("role = ?", "organizer").Count(&totalOrgs)
 	r.db.Table("user_role_models").
 		Joins("JOIN user_models ON user_models.id::uuid = user_role_models.user_id::uuid").
-		Where("user_role_models.role = ? AND user_models.created_at >= ? AND user_models.created_at < ?", "organizer", firstDayPrevMonth, firstDayThisMonth).
+		Where("user_role_models.role = ? AND user_models.created_at >= ? AND user_models.created_at < ?", "organizer", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
 		Count(&prevOrgs)
 	r.db.Table("user_role_models").
 		Joins("JOIN user_models ON user_models.id::uuid = user_role_models.user_id::uuid").
-		Where("user_role_models.role = ? AND user_models.created_at >= ?", "organizer", firstDayThisMonth).
+		Where("user_role_models.role = ? AND user_models.created_at >= ?", "organizer", firstDayThisMonth.Unix()).
 		Count(&thisOrgs)
 
 	orgsPct := 0.0
@@ -1336,8 +1336,8 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	
 	var totalEvents, prevEvents, thisMonthEvents int64
 	r.db.Table("event_models").Count(&totalEvents)
-	r.db.Table("event_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth, firstDayThisMonth).Count(&prevEvents)
-	r.db.Table("event_models").Where("created_at >= ?", firstDayThisMonth).Count(&thisMonthEvents)
+	r.db.Table("event_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevEvents)
+	r.db.Table("event_models").Where("created_at >= ?", firstDayThisMonth.Unix()).Count(&thisMonthEvents)
 
 	eventsPct := 0.0
 	if prevEvents > 0 {
@@ -1355,8 +1355,8 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	
 	var prevTotal, prevRefunded int64
-	r.db.Table("booking_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth, firstDayThisMonth).Count(&prevTotal)
-	r.db.Table("booking_models").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonth, firstDayThisMonth).Count(&prevRefunded)
+	r.db.Table("booking_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevTotal)
+	r.db.Table("booking_models").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevRefunded)
 	prevRefundRate := 0.0
 	if prevTotal > 0 {
 		prevRefundRate = float64(prevRefunded) / float64(prevTotal) * 100
@@ -1369,7 +1369,7 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 
 	
 	var prevGrowth int64
-	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0), firstDayPrevMonth).Count(&prevGrowth)
+	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0).Unix(), firstDayPrevMonth.Unix()).Count(&prevGrowth)
 	growthPct := 0.0
 	if prevGrowth > 0 {
 		growthPct = float64(thisMonthUsers-prevGrowth) / float64(prevGrowth) * 100
@@ -1384,7 +1384,7 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	
 	var activeEvents, prevActiveEvents int64
 	r.db.Table("event_models").Where("status = ?", "live").Count(&activeEvents)
-	r.db.Table("event_models").Where("status = ? AND created_at >= ? AND created_at < ?", "live", firstDayPrevMonth, firstDayThisMonth).Count(&prevActiveEvents)
+	r.db.Table("event_models").Where("status = ? AND created_at >= ? AND created_at < ?", "live", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevActiveEvents)
 	activePct := 0.0
 	if prevActiveEvents > 0 {
 		activePct = float64(activeEvents-prevActiveEvents) / float64(prevActiveEvents) * 100
@@ -1394,11 +1394,11 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	
 	var bookingRows []struct {
 		TotalAmount float64
-		CreatedAt   time.Time `gorm:"column:created_at"`
+		CreatedAt   int64 `gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0)).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
 		Find(&bookingRows)
 
 	revenueByMonth := make(map[string]float64)
@@ -1407,7 +1407,7 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 		revenueByMonth[m] = 0
 	}
 	for _, b := range bookingRows {
-		key := b.CreatedAt.Format("Jan")
+		key := time.Unix(b.CreatedAt, 0).Format("Jan")
 		if _, ok := revenueByMonth[key]; ok {
 			revenueByMonth[key] += b.TotalAmount
 		}
@@ -1441,13 +1441,13 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	
 	var todayRev struct{ Total float64 }
 	r.db.Table("booking_models").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, todayStart).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, todayStart.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&todayRev)
 
 	var yesterdayRev struct{ Total float64 }
 	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
-			todayStart.AddDate(0, 0, -1), todayStart).
+			todayStart.AddDate(0, 0, -1).Unix(), todayStart.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&yesterdayRev)
 
 	todayPct := 0.0
@@ -1459,13 +1459,13 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	
 	var thisMonthRev struct{ Total float64 }
 	r.db.Table("booking_models").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisMonthRev)
 
 	var prevMonthRev struct{ Total float64 }
 	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
-			firstDayPrevMonth, firstDayThisMonth).
+			firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevMonthRev)
 
 	monthPct := 0.0
@@ -1483,12 +1483,12 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	var prevYearRev struct{ Total float64 }
 	r.db.Table("booking_models").
 		Where("status IN ? AND created_at >= ? AND created_at < ?", []string{"paid", "completed"},
-			now.AddDate(-2, 0, 0), now.AddDate(-1, 0, 0)).
+			now.AddDate(-2, 0, 0).Unix(), now.AddDate(-1, 0, 0).Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&prevYearRev)
 
 	var thisYearRev struct{ Total float64 }
 	r.db.Table("booking_models").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0)).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
 		Select("COALESCE(SUM(total_amount), 0) as total").Scan(&thisYearRev)
 
 	totalPct := 0.0
@@ -1504,11 +1504,11 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	
 	var bookingRows []struct {
 		TotalAmount float64
-		CreatedAt   time.Time `gorm:"column:created_at"`
+		CreatedAt   int64 `gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
-		Where("status IN ? AND created_at >= ? AND created_at <= ?", []string{"paid", "completed"}, startDate, endDate).
+		Where("status IN ? AND created_at >= ? AND created_at <= ?", []string{"paid", "completed"}, startDate.Unix(), endDate.Unix()).
 		Find(&bookingRows)
 
 	revenueByMonth := make(map[string]float64)
@@ -1533,7 +1533,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	}
 
 	for _, b := range bookingRows {
-		key := b.CreatedAt.Format("Jan")
+		key := time.Unix(b.CreatedAt, 0).Format("Jan")
 		if _, ok := revenueByMonth[key]; ok {
 			revenueByMonth[key] += b.TotalAmount
 		}
@@ -1576,11 +1576,11 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	
 	var refundRows []struct {
 		TotalAmount float64
-		CreatedAt   time.Time `gorm:"column:created_at"`
+		CreatedAt   int64 `gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
-		Where("status = ? AND created_at >= ?", "refunded", now.AddDate(0, -6, 0)).
+		Where("status = ? AND created_at >= ?", "refunded", now.AddDate(0, -6, 0).Unix()).
 		Find(&refundRows)
 
 	refundByMonth := make(map[string]float64)
@@ -1589,7 +1589,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		refundByMonth[m] = 0
 	}
 	for _, r2 := range refundRows {
-		key := r2.CreatedAt.Format("Jan")
+		key := time.Unix(r2.CreatedAt, 0).Format("Jan")
 		if _, ok := refundByMonth[key]; ok {
 			refundByMonth[key] += r2.TotalAmount
 		}
