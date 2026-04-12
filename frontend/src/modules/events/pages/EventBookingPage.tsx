@@ -73,9 +73,9 @@ export default function EventBookingPage() {
     setError(null)
     setCheckoutOpen(true)
     
-    if (data?.id) {
-      trackEvent('ticket_selected', data.id);
-      trackEvent('checkout_started', data.id);
+    if (displayEvent.id) {
+      trackEvent('ticket_selected', displayEvent.id);
+      trackEvent('checkout_started', displayEvent.id);
     }
   }
 

@@ -572,6 +572,8 @@ export default function AdminReports() {
                           : i === 1
                           ? "bg-[#f9c0cb] text-[#8b1a2e]"
                           : i === 2
+                          ? "bg-[#fca5a5] text-[#7f1d1d]"
+                          : i === 3
                           ? "bg-[#f87171] text-white"
                           : "bg-[#e53e5d] text-white";
 
@@ -659,8 +661,8 @@ export default function AdminReports() {
                             }}
                           />
                           {}
-                          <Bar dataKey="checkout" name="Checkout" fill="#6b7280" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="viewing" name="Viewing" fill="#e53e5d" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="viewing" name="Views" fill="#e53e5d" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="bookings" name="Bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     )}

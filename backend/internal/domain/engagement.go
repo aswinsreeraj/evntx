@@ -11,6 +11,8 @@ const (
 	EngagementEventEventView       EngagementEventType = "event_view"
 	EngagementEventTicketSelected  EngagementEventType = "ticket_selected"
 	EngagementEventCheckoutStarted EngagementEventType = "checkout_started"
+
+	PlatformEventID = "00000000-0000-0000-0000-000000000000"
 )
 
 type VisitorSession struct {

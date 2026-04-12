@@ -16,10 +16,10 @@ export default function EventDetailPage() {
   const { trackEvent } = useEngagement();
 
   useEffect(() => {
-    if (data?.id && !isLoading && !isError) {
-      trackEvent('event_view', data.id);
+    if (data?.event?.id && !isLoading && !isError) {
+      trackEvent('event_view', data.event.id);
     }
-  }, [data?.id, isLoading, isError, trackEvent]);
+  }, [data?.event?.id, isLoading, isError, trackEvent]);
 
   const [activeTab, setActiveTab] = useState("About");
 

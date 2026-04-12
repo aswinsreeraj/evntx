@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -98,12 +97,12 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 		if endDateStr != "" {
 			endDate, _ = time.Parse(time.RFC3339, endDateStr)
 		}
+		loc, _ := time.LoadLocation("Asia/Calcutta")
 		if startDate.IsZero() {
-			endDate = time.Now()
+			endDate = time.Now().In(loc)
 			startDate = endDate.AddDate(0, 0, -30)
 		}
 		report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
-		fmt.Println(report)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 			return
@@ -113,16 +112,16 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	}
 
 	adminEvents, _, err := h.eventUsecase.AdminSearchEvents("", "", 1, 10000)
-	fmt.Println(adminEvents)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to retrieve events"})
-		return
-	}
 	var eventIDs []string
 	for _, e := range adminEvents {
 		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID || eventIDParam == e.Slug {
 			eventIDs = append(eventIDs, e.ID)
 		}
+	}
+
+	
+	if eventIDParam == "" || eventIDParam == "all" {
+		eventIDs = append(eventIDs, domain.PlatformEventID)
 	}
 
 	var startDate, endDate time.Time
@@ -132,13 +131,13 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	if endDateStr != "" {
 		endDate, _ = time.Parse(time.RFC3339, endDateStr)
 	}
+	loc, _ := time.LoadLocation("Asia/Calcutta")
 	if startDate.IsZero() {
-		endDate = time.Now()
+		endDate = time.Now().In(loc)
 		startDate = endDate.AddDate(0, 0, -30)
 	}
 
 	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
-	fmt.Println(report)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 		return

@@ -127,8 +127,9 @@ func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
 	if endDateStr != "" {
 		endDate, _ = time.Parse(time.RFC3339, endDateStr)
 	}
+	loc, _ := time.LoadLocation("Asia/Calcutta")
 	if startDate.IsZero() {
-		endDate = time.Now()
+		endDate = time.Now().In(loc)
 		startDate = endDate.AddDate(0, 0, -30)
 	}
 

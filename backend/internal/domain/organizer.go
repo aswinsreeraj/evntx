@@ -49,7 +49,7 @@ type FunnelStep struct {
 type PeakUsagePoint struct {
 	Label   string `json:"label"` 
 	Viewing int    `json:"viewing"`
-	Checkout int   `json:"checkout"`
+	Bookings int   `json:"bookings"`
 }
 
 type EngagementReportStats struct {
