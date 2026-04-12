@@ -30,6 +30,7 @@ export type DisplayEvent = {
   }
   host?: {
     name: string
+    organization?: string
     role: string
     avatar: string
   }
@@ -208,6 +209,7 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
     host: hostSource
       ? {
           name: hostSource.name ?? hostSource.Name ?? fallbackEvent.host.name,
+          organization: hostSource.organization ?? hostSource.Organization,
           role: hostSource.role ?? hostSource.Role ?? fallbackEvent.host.role,
           avatar:
             resolveAssetUrl(hostSource.avatar ?? hostSource.image ?? hostSource.Image ?? fallbackEvent.host.avatar) ??

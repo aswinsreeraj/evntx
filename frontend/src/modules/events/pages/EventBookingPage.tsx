@@ -32,7 +32,18 @@ export default function EventBookingPage() {
   )
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [rawError, setRawError] = useState<string | null>(null)
+  
+  const setError = (msg: string | null) => {
+    const lowerMsg = msg?.toLowerCase() || "";
+    if (lowerMsg.includes("expir") || lowerMsg.includes("invalid state")) {
+      setRawError("Booking expired. try again from the start");
+    } else {
+      setRawError(msg);
+    }
+  }
+
+  const error = rawError;
   const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
   const { data: wallet } = useWallet()
   const { data: paymentSettings } = usePaymentSettings()
@@ -124,7 +135,7 @@ export default function EventBookingPage() {
         navigate("/profile/bookings", { replace: true })
       }, 2000)
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Wallet payment failed.")
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || "Wallet payment failed.")
     } finally {
       setIsPayingWithWallet(false)
     }
@@ -133,6 +144,13 @@ export default function EventBookingPage() {
   return (
     <div className="bg-white">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
+        <button
+          onClick={() => navigate(`/events/${eventId}`)}
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit"
+        >
+          <span aria-hidden="true">&larr;</span> Back to Event Details
+        </button>
+
         <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
           <div className="grid md:grid-cols-[1.1fr_1fr]">
             <div className="min-h-[180px] bg-[#111827]">

@@ -104,6 +104,29 @@ func (r *engagementGormRepository) UpdateSessionLastSeen(ctx context.Context, se
 
 func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.EngagementEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		
+		if event.UserID != nil && *event.UserID != "" {
+			var roleCount int64
+			err := tx.Table("user_role_models").
+				Where("user_id = ? AND role IN (?, ?)", *event.UserID, domain.RoleAdmin, domain.RoleOrganizer).
+				Count(&roleCount).Error
+			if err == nil && roleCount > 0 {
+				
+				evtModel := EngagementEventModel{
+					ID:        event.ID,
+					UserID:    event.UserID,
+					SessionID: event.SessionID,
+					EventID:   event.EventID,
+					EventType: string(event.EventType),
+					Metadata:  event.Metadata,
+					IPAddress: event.IPAddress,
+					UserAgent: event.UserAgent,
+					CreatedAt: event.CreatedAt,
+				}
+				return tx.Create(&evtModel).Error
+			}
+		}
+
 		evtModel := EngagementEventModel{
 			ID:        event.ID,
 			UserID:    event.UserID,
@@ -182,6 +205,9 @@ func (r *engagementGormRepository) upsertDaily(tx *gorm.DB, eventID string, date
 	case domain.EngagementEventPageView:
 		upsertModel.PageViews = 1
 		incExpr("page_views")
+	case domain.EngagementEventSuccessfulBooking:
+		upsertModel.SuccessfulBookings = 1
+		incExpr("successful_bookings")
 	}
 
 	if isUnique {
@@ -198,23 +224,39 @@ func (r *engagementGormRepository) upsertDaily(tx *gorm.DB, eventID string, date
 	return nil
 }
 
-func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string) error {
-	dateParsed, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
-
-	upsertModel := EventEngagementDailyModel{
-		ID:                 uuid.NewString(),
-		EventID:            eventID,
-		Date:               dateParsed,
-		SuccessfulBookings: 1,
-		CreatedAt:          time.Now(),
+func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string, userID string) error {
+	
+	if userID != "" {
+		var roleCount int64
+		err := r.db.Table("user_role_models").
+			Where("user_id = ? AND role IN (?, ?)", userID, domain.RoleAdmin, domain.RoleOrganizer).
+			Count(&roleCount).Error
+		if err == nil && roleCount > 0 {
+			
+			return nil
+		}
 	}
 
-	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "event_id"}, {Name: "date"}},
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"successful_bookings": gorm.Expr("event_engagement_daily.successful_bookings + ?", 1),
-		}),
-	}).Create(&upsertModel).Error
+	loc, _ := time.LoadLocation("Asia/Calcutta")
+	now := time.Now().In(loc)
+	dateStr := now.Format("2006-01-02")
+	dateParsed, _ := time.Parse("2006-01-02", dateStr)
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		
+		if err := r.upsertDaily(tx, domain.PlatformEventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
+			return err
+		}
+
+		
+		if eventID != "" && eventID != domain.PlatformEventID {
+			if err := r.upsertDaily(tx, eventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *engagementGormRepository) GetDailyAggregates(ctx context.Context, eventID string, startDate, endDate time.Time) ([]domain.EventEngagementDaily, error) {

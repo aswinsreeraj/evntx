@@ -338,14 +338,15 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 	if evt, ok := event.(*domain.Event); ok && h.userUsecase != nil {
 		user, organizerDetail, _, userErr := h.userUsecase.GetProfile(evt.OrganizerID)
 		if userErr == nil && user != nil {
-			hostName := user.Name
+			orgName := ""
 			if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-				hostName = organizerDetail.OrganizationName
+				orgName = organizerDetail.OrganizationName
 			}
 			host = gin.H{
-				"name":   hostName,
-				"role":   "Event Organizer",
-				"avatar": user.ProfileImage,
+				"name":         user.Name,
+				"organization": orgName,
+				"role":         "Event Organizer",
+				"avatar":       user.ProfileImage,
 			}
 		}
 	}

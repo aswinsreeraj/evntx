@@ -574,14 +574,15 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 	host := gin.H(nil)
 	user, organizerDetail, _, userErr := h.userUsecase.GetProfile(organizerID)
 	if userErr == nil && user != nil {
-		hostName := user.Name
+		orgName := ""
 		if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-			hostName = organizerDetail.OrganizationName
+			orgName = organizerDetail.OrganizationName
 		}
 		host = gin.H{
-			"name":   hostName,
-			"role":   "Event Organizer",
-			"avatar": user.ProfileImage,
+			"name":         user.Name,
+			"organization": orgName,
+			"role":         "Event Organizer",
+			"avatar":       user.ProfileImage,
 		}
 	}
 

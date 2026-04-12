@@ -18,6 +18,7 @@ import {
   Bar,
 } from "recharts";
 import { ChevronDown, Loader2, Download } from "lucide-react";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 const DATE_RANGES = [
   { label: "Last 30 Days", value: "30D" },
@@ -551,7 +552,14 @@ export default function AdminReports() {
                       </div>
                     </div>
 
-                    <button className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm">
+                    <button
+                      onClick={() => {
+                        if (engagementStats?.user_journey) {
+                          exportToCSV(engagementStats.user_journey, `admin_engagement_journey_${dateRange}`);
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"
+                    >
                       Export As <Download className="w-4 h-4 ml-1" />
                     </button>
                   </div>

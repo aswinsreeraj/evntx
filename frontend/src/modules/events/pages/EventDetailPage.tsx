@@ -1,9 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
-import { CalendarDays, MapPin, Clock, Hourglass } from "lucide-react";
+import { CalendarDays, MapPin, Clock, Hourglass, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData";
 import { useAuthStore } from "../../auth/store/authStore";
+import Modal from "../../../shared/ui/Modal";
 import { useEngagement } from "../../../shared/hooks/useEngagement";
 
 export default function EventDetailPage() {
@@ -22,6 +23,7 @@ export default function EventDetailPage() {
   }, [data?.event?.id, isLoading, isError, trackEvent]);
 
   const [activeTab, setActiveTab] = useState("About");
+  const [isHostModalOpen, setIsHostModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -50,8 +52,12 @@ export default function EventDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
-
         <div className="lg:col-span-2 flex flex-col gap-6">
+          {isAdmin && (
+            <button onClick={() => navigate('/admin/events')} className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit mb-2">
+              <span aria-hidden="true">&larr;</span> Back to Admin Events
+            </button>
+          )}
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
             <img
               src={displayEvent.coverImageUrl}
@@ -237,7 +243,7 @@ export default function EventDetailPage() {
                   <p className="text-xs text-gray-500">{displayEvent.host.role}</p>
                 </div>
               </div>
-              <button className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              <button onClick={() => setIsHostModalOpen(true)} className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition-colors">
                 View Profile
               </button>
             </div>
@@ -262,6 +268,36 @@ export default function EventDetailPage() {
 
         </div>
       </div>
+
+      <Modal open={isHostModalOpen} onClose={() => setIsHostModalOpen(false)} className="relative w-[min(92vw,400px)] rounded-2xl bg-white p-6 shadow-[0_28px_90px_rgba(15,23,42,0.22)]">
+        <button
+          type="button"
+          aria-label="Close modal"
+          className="absolute right-4 top-4 rounded-full p-1 text-[#111111] transition hover:bg-[#f5f5f5]"
+          onClick={() => setIsHostModalOpen(false)}
+        >
+          <X className="h-5 w-5" />
+        </button>
+        {displayEvent.host && (
+          <div className="flex flex-col items-center text-center">
+             <img src={displayEvent.host.avatar} alt={displayEvent.host.name} className="w-24 h-24 rounded-full object-cover shadow-sm mb-4" />
+             <h2 className="text-xl font-bold text-gray-900">{displayEvent.host.name}</h2>
+             {displayEvent.host.organization && (
+               <p className="text-[13px] font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-md mt-2 mb-1">{displayEvent.host.organization}</p>
+             )}
+             <p className={`text-sm font-medium text-[#e53e5d] uppercase tracking-wider mb-4 ${!displayEvent.host.organization && 'mt-2'}`}>{displayEvent.host.role}</p>
+             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+               This organizer manages events on EVNTX. Stay tuned for their upcoming events and more information about their organization profile.
+             </p>
+             <button
+                onClick={() => setIsHostModalOpen(false)}
+                className="bg-[#0b101e] text-white py-3 px-6 rounded-xl hover:bg-black transition-colors font-medium text-sm w-full"
+             >
+                Close
+             </button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

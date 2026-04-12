@@ -81,7 +81,7 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 		}
 
 		if u.engagementRepo != nil {
-			_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID)
+			_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID, booking.UserID)
 		}
 
 		logger.Log.Info().
@@ -235,7 +235,7 @@ func (u *PaymentUsecase) VerifyPayment(
 	}
 
 	if u.engagementRepo != nil {
-		_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID)
+		_ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID, booking.UserID)
 	}
 
 	if u.notificationUsecase != nil {

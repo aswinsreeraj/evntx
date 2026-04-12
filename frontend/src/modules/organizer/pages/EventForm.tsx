@@ -220,7 +220,7 @@ export default function EventForm() {
         },
         ticket_types: entryType === "Free"
           ? [{ name: "Free Entry", price: 0, total_quantity: Number(freeQuantity) }]
-          : tickets.map(t => ({
+          : tickets.filter(t => t.name.trim() !== "").map(t => ({
               ...t,
               price: Number(t.price),
               total_quantity: Number(t.total_quantity)
@@ -462,7 +462,7 @@ export default function EventForm() {
                               <div className="grid grid-cols-1 gap-4 mb-4">
                                   <div>
                                       <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Ticket Name</label>
-                                      <input type="text" required placeholder="Premium" value={ticket.name} onChange={e => updateTicket(idx, "name", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
+                                      <input type="text" required placeholder="Premium" value={ticket.name} onChange={e => updateTicket(idx, "name", e.target.value)} disabled={isEditMode && status !== "draft" && !!(ticket as any).id} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
                                   </div>
                               </div>
                                <div className="grid grid-cols-2 gap-4">
@@ -470,7 +470,7 @@ export default function EventForm() {
                                        <div className="flex justify-between items-center mb-1.5">
                                            <label className="block text-[11px] font-bold text-gray-500 tracking-wider uppercase">Price (₹)</label>
                                        </div>
-                                       <input type="number" required min="1" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
+                                       <input type="number" required min="1" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode && status !== "draft" && !!(ticket as any).id} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
                                    </div>
                                    <div>
                                        <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Quantity</label>
