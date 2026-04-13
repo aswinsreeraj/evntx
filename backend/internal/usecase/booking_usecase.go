@@ -198,8 +198,19 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 		return err
 	}
 
+	settings, settingsErr := u.settingsRepo.GetPlatformSettings()
+	if settingsErr == nil && !settings.AllowEventCancellation {
+		return apiErrors.New(403, apiErrors.ForbiddenAction, "Event cancellation is currently disabled by admin")
+	}
+
+	refundWindowDays := 1
+	if settingsErr == nil && settings.RefundWindowDays >= 0 {
+		refundWindowDays = settings.RefundWindowDays
+	}
+
+	refundWindowDuration := time.Duration(refundWindowDays) * 24 * time.Hour
 	timeUntilEvent := time.Until(event.StartTime)
-	isRefundable := timeUntilEvent >= 24*time.Hour
+	isRefundable := timeUntilEvent >= refundWindowDuration
 
 	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
 	if err != nil {

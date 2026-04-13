@@ -27,6 +27,8 @@ type OrganizerDetailModel struct {
 	UserID           string `gorm:"type:uuid;primaryKey"`
 	OrganizationName string
 	Address          string
+	ApprovalStatus   string `gorm:"size:20;default:'approved';not null"`
+	ReviewedAt       *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -148,14 +150,22 @@ func (r *userGormRepository) GetOrganizerDetails(userID string) (*domain.Organiz
 		UserID:           model.UserID,
 		OrganizationName: model.OrganizationName,
 		Address:          model.Address,
+		ApprovalStatus:   model.ApprovalStatus,
+		ReviewedAt:       model.ReviewedAt,
 	}, nil
 }
 
 func (r *userGormRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail) error {
+	approvalStatus := detail.ApprovalStatus
+	if approvalStatus == "" {
+		approvalStatus = "approved"
+	}
 	model := OrganizerDetailModel{
 		UserID:           detail.UserID,
 		OrganizationName: detail.OrganizationName,
 		Address:          detail.Address,
+		ApprovalStatus:   approvalStatus,
+		ReviewedAt:       detail.ReviewedAt,
 		UpdatedAt:        time.Now(),
 	}
 
@@ -257,6 +267,8 @@ func (r *userGormRepository) SearchOrganizers(
 		UserModel
 		OrganizationName string
 		Address          string
+		ApprovalStatus   string
+		ReviewedAt       *time.Time
 		TotalEvents      int64
 		TotalBookings    int64
 		TotalRevenue     float64
@@ -269,6 +281,8 @@ func (r *userGormRepository) SearchOrganizers(
 			user_models.*,
 			organizer_detail_models.organization_name,
 			organizer_detail_models.address,
+			organizer_detail_models.approval_status,
+			organizer_detail_models.reviewed_at,
 			COALESCE((
 				SELECT COUNT(e.id) FROM event_models e WHERE e.organizer_id = user_models.id::text
 			), 0) AS total_events,
@@ -287,8 +301,14 @@ func (r *userGormRepository) SearchOrganizers(
 				WHERE w.user_id = user_models.id
 			), 0) AS wallet_balance
 		`).
-		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
+		Joins("LEFT JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
 		Joins("LEFT JOIN organizer_detail_models ON organizer_detail_models.user_id::uuid = user_models.id")
+
+	query = query.Where(
+		"user_role_models.role = ? OR organizer_detail_models.approval_status IN ?",
+		domain.RoleOrganizer,
+		[]string{"pending", "rejected"},
+	)
 
 	if search != "" {
 		query = query.Where(
@@ -302,6 +322,8 @@ func (r *userGormRepository) SearchOrganizers(
 		query = query.Where("user_models.is_active = ?", true)
 	} else if status == "suspended" || status == "inactive" {
 		query = query.Where("user_models.is_active = ?", false)
+	} else if status == "pending" || status == "approved" || status == "rejected" {
+		query = query.Where("organizer_detail_models.approval_status = ?", status)
 	}
 
 	query.Count(&total)
@@ -330,6 +352,8 @@ func (r *userGormRepository) SearchOrganizers(
 			OrganizerDetail: domain.OrganizerDetail{
 				OrganizationName: m.OrganizationName,
 				Address:          m.Address,
+				ApprovalStatus:   m.ApprovalStatus,
+				ReviewedAt:       m.ReviewedAt,
 			},
 			TotalBookings: m.TotalBookings,
 			TotalEvents:   m.TotalEvents,
@@ -339,6 +363,17 @@ func (r *userGormRepository) SearchOrganizers(
 	}
 
 	return orgs, total, nil
+}
+
+func (r *userGormRepository) UpdateOrganizerApprovalStatus(userID string, approvalStatus string) error {
+	now := time.Now()
+	return r.db.Model(&OrganizerDetailModel{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]interface{}{
+			"approval_status": approvalStatus,
+			"reviewed_at":     &now,
+			"updated_at":      now,
+		}).Error
 }
 
 func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {

@@ -17,10 +17,16 @@ type EventUsecase struct {
 	repo                repository.EventRepository
 	bookingRepo         repository.BookingRepository
 	notificationUsecase *NotificationUsecase
+	settingsRepo        repository.SettingsRepository
 }
 
-func NewEventUsecase(repo repository.EventRepository, bookingRepo repository.BookingRepository, notificationUsecase *NotificationUsecase) *EventUsecase {
-	return &EventUsecase{repo: repo, bookingRepo: bookingRepo, notificationUsecase: notificationUsecase}
+func NewEventUsecase(
+	repo repository.EventRepository,
+	bookingRepo repository.BookingRepository,
+	notificationUsecase *NotificationUsecase,
+	settingsRepo repository.SettingsRepository,
+) *EventUsecase {
+	return &EventUsecase{repo: repo, bookingRepo: bookingRepo, notificationUsecase: notificationUsecase, settingsRepo: settingsRepo}
 }
 
 func (u *EventUsecase) ListEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) (interface{}, int64, float64, float64, error) {
@@ -319,7 +325,14 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 		return apiErrors.ErrInvalidStateTransition
 	}
 
-	err = u.repo.UpdateEventStatus(ctx, eventID, "pending")
+	nextStatus := "pending"
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.RequireAdminApprovalForEvents {
+			nextStatus = "approved"
+		}
+	}
+
+	err = u.repo.UpdateEventStatus(ctx, eventID, nextStatus)
 	if err != nil {
 		return err
 	}
@@ -329,7 +342,7 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 		Str("entity", "event").
 		Str("entity_id", eventID).
 		Str("from", event.Status).
-		Str("to", "pending").
+		Str("to", nextStatus).
 		Str("actor_id", organizerID).
 		Msg("")
 
@@ -527,6 +540,12 @@ func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, even
 }
 
 func (u *EventUsecase) CancelLiveEvent(ctx context.Context, organizerID string, eventID string) error {
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.AllowEventCancellation {
+			return apiErrors.New(403, apiErrors.ForbiddenAction, "Event cancellation is currently disabled by admin")
+		}
+	}
+
 	event, err := u.repo.GetEventByID(eventID)
 	if err != nil {
 		return apiErrors.ErrResourceNotFound

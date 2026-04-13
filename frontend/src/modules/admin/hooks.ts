@@ -29,6 +29,26 @@ export function useOrganizers(params: any) {
   });
 }
 
+export function useApproveOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.approveOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
+export function useRejectOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.rejectOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
 export function useEvents(params: any) {
   return useQuery({
     queryKey: ["admin-events", params],

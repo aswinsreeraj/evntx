@@ -169,6 +169,16 @@ export const adminApi = {
     return response.data.data;
   },
 
+  async approveOrganizer(organizerId: string) {
+    const response = await api.patch(`/admin/organizers/${organizerId}/approve`);
+    return response.data;
+  },
+
+  async rejectOrganizer(organizerId: string) {
+    const response = await api.patch(`/admin/organizers/${organizerId}/reject`);
+    return response.data;
+  },
+
   async getEvents(params?: {
     page?: number;
     limit?: number;

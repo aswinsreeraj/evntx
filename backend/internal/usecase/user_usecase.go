@@ -3,6 +3,8 @@ package usecase
 import (
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -11,14 +13,16 @@ type UserUsecase struct {
 	repo       repository.UserRepository
 	roleRepo   repository.UserRoleRepository
 	walletRepo repository.WalletRepository
+	emailSender repository.EmailSender
 }
 
 func NewUserUsecase(
 	r repository.UserRepository,
 	roleRepo repository.UserRoleRepository,
 	walletRepo repository.WalletRepository,
+	emailSender repository.EmailSender,
 ) *UserUsecase {
-	return &UserUsecase{repo: r, roleRepo: roleRepo, walletRepo: walletRepo}
+	return &UserUsecase{repo: r, roleRepo: roleRepo, walletRepo: walletRepo, emailSender: emailSender}
 }
 
 func (u *UserUsecase) Register(email string) (*domain.User, error) {
@@ -136,6 +140,45 @@ func (u *UserUsecase) UploadProfileImage(userID string, imageURL string) error {
 
 	user.ProfileImage = imageURL
 	return u.repo.Update(user)
+}
+
+func (u *UserUsecase) AdminApproveOrganizer(userID string) error {
+	detail, err := u.repo.GetOrganizerDetails(userID)
+	if err != nil {
+		return err
+	}
+	if detail.ApprovalStatus == "approved" {
+		return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already approved")
+	}
+
+	if err := u.repo.UpdateOrganizerApprovalStatus(userID, "approved"); err != nil {
+		return err
+	}
+	if err := u.roleRepo.AddRole(userID, domain.RoleOrganizer); err != nil {
+		return err
+	}
+
+	if u.emailSender != nil {
+		user, err := u.repo.FindByID(userID)
+		if err == nil {
+			if mailErr := u.emailSender.SendOrganizerApproval(user.Email, user.Name); mailErr != nil {
+				logger.Log.Warn().Err(mailErr).Str("user_id", userID).Msg("failed to send organizer approval email")
+			}
+		}
+	}
+	return nil
+}
+
+func (u *UserUsecase) AdminRejectOrganizer(userID string) error {
+	detail, err := u.repo.GetOrganizerDetails(userID)
+	if err != nil {
+		return err
+	}
+	if detail.ApprovalStatus == "rejected" {
+		return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already rejected")
+	}
+
+	return u.repo.UpdateOrganizerApprovalStatus(userID, "rejected")
 }
 
 func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) {

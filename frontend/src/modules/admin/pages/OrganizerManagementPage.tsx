@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { useOrganizers, useToggleUserStatus } from "../hooks";
+import { useApproveOrganizer, useOrganizers, useRejectOrganizer, useToggleUserStatus } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter } from "lucide-react";
 import { useDebounce } from "../../../shared/hooks/useDebounce";
@@ -51,6 +51,8 @@ export default function OrganizerManagementPage() {
     ...(statusFilter !== "all" && { status: statusFilter })
   });
   const toggleUser = useToggleUserStatus();
+  const approveOrganizer = useApproveOrganizer();
+  const rejectOrganizer = useRejectOrganizer();
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
@@ -144,8 +146,11 @@ export default function OrganizerManagementPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-all"
             >
               <option value="all">All Status</option>
-              <option value="true">Active</option>
-              <option value="false">Suspended</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="pending">Pending Approval</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
             </select>
             <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -178,6 +183,15 @@ export default function OrganizerManagementPage() {
                   <td className="px-6 py-4 text-center">{org.wallet_balance ?? 0}</td>
                   <td className="px-6 py-4 text-center">{org.total_revenue_generated ?? 0}</td>
                   <td className="px-6 py-4 text-center">
+                    {org.approval_status === "pending" ? (
+                      <span className="inline-block px-4 py-1.5 rounded-full text-xs text-white bg-amber-500">
+                        Pending
+                      </span>
+                    ) : org.approval_status === "rejected" ? (
+                      <span className="inline-block px-4 py-1.5 rounded-full text-xs text-white bg-gray-500">
+                        Rejected
+                      </span>
+                    ) : (
                     <span
                       className={`inline-block px-4 py-1.5 rounded-full text-xs text-white ${
                         org.is_active ? "bg-[#0ec3c5]" : "bg-[#e53e5d]"
@@ -185,6 +199,7 @@ export default function OrganizerManagementPage() {
                     >
                       {org.is_active ? "Active" : "Suspended"}
                     </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button
@@ -241,20 +256,41 @@ export default function OrganizerManagementPage() {
             {organizersList
               .filter((org: any) => org.id === openDropdownId)
               .map((org: any) => (
-                <button
-                  key={org.id}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
-                  onClick={() => {
-                    toggleUser.mutate({
-                      userId: org.id,
-                      isActive: !org.is_active,
-                    });
-                    setOpenDropdownId(null);
-                    setDropdownPosition(null);
-                  }}
-                >
-                  {org.is_active ? "Suspend User" : "Activate User"}
-                </button>
+                <div key={org.id}>
+                  <button
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-gray-700"
+                    onClick={() => {
+                      if (org.approval_status === "pending" || org.approval_status === "rejected") {
+                        approveOrganizer.mutate(org.id);
+                      } else {
+                        toggleUser.mutate({
+                          userId: org.id,
+                          isActive: !org.is_active,
+                        });
+                      }
+                      setOpenDropdownId(null);
+                      setDropdownPosition(null);
+                    }}
+                  >
+                    {org.approval_status === "pending" || org.approval_status === "rejected"
+                      ? "Approve Organizer"
+                      : org.is_active
+                        ? "Suspend User"
+                        : "Activate User"}
+                  </button>
+                  {org.approval_status === "pending" && (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-red-600"
+                      onClick={() => {
+                        rejectOrganizer.mutate(org.id);
+                        setOpenDropdownId(null);
+                        setDropdownPosition(null);
+                      }}
+                    >
+                      Reject Request
+                    </button>
+                  )}
+                </div>
               ))}
           </div>,
           document.body

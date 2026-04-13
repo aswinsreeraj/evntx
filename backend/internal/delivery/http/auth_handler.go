@@ -41,8 +41,7 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 
 	isNewUser, err := h.authUsecase.RequestEmailOTP(req.Email)
 	if err != nil {
-		msg := getAuthErrorMsg(err, "Failed to generate OTP")
-		response.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, msg))
+		response.AppError(c, err)
 		return
 	}
 
@@ -79,8 +78,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	)
 
 	if err != nil {
-		msg := getAuthErrorMsg(err, "Invalid or expired OTP")
-		response.AppError(c, apiErrors.New(401, apiErrors.InvalidOTP, msg))
+		response.AppError(c, err)
 		return
 	}
 
@@ -159,8 +157,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 
 	if err != nil {
 		logger.Log.Error().Msgf("AuthUsecase.GoogleLogin failed: %v", err)
-		msg := getAuthErrorMsg(err, "Invalid Google token")
-		response.AppError(c, apiErrors.New(401, apiErrors.UnauthorizedAccess, msg))
+		response.AppError(c, err)
 		return
 	}
 
@@ -207,8 +204,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	)
 
 	if err != nil {
-		msg := getAuthErrorMsg(err, "Invalid OTP or registration failed")
-		response.AppError(c, apiErrors.New(401, apiErrors.InvalidOTP, msg))
+		response.AppError(c, err)
 		return
 	}
 

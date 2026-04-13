@@ -20,9 +20,11 @@ type User struct {
 }
 
 type OrganizerDetail struct {
-	UserID           string `json:"user_id"`
-	OrganizationName string `json:"organization_name"`
-	Address          string `json:"address"`
+	UserID           string     `json:"user_id"`
+	OrganizationName string     `json:"organization_name"`
+	Address          string     `json:"address"`
+	ApprovalStatus   string     `json:"approval_status"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
 }
 
 type OrganizerDetails struct {

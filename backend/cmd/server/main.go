@@ -75,9 +75,10 @@ func main() {
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	payoutRepo := repoImpl.NewPayoutGormRepository(db)
+	emailSender := emailImpl.NewSMTPSender()
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo, emailSender)
 	razorpayService := paymentImpl.NewRazorpayService()
 	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, notificationUsecase)
 
@@ -95,14 +96,12 @@ func main() {
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase, auditUsecase)
 
-	emailSender := emailImpl.NewSMTPSender()
-
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo, settingsRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase, settingsRepo)
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase, settingsRepo, roleRepo, auditUsecase)
 
@@ -242,6 +241,8 @@ func main() {
 	adminGroup.GET("/reports/engagement", adminHandler.GetAdminEngagementReport)
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
+	adminGroup.PATCH("/organizers/:id/approve", userHandler.AdminApproveOrganizer)
+	adminGroup.PATCH("/organizers/:id/reject", userHandler.AdminRejectOrganizer)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
 	//=== Event
 	adminGroup.GET("/events", adminHandler.AdminListEvents)
