@@ -42,6 +42,11 @@ export interface AdminUser {
   status: string;
 }
 
+export interface CreateAdminPayload {
+  name: string;
+  email: string;
+}
+
 export interface AuditLog {
   id: string;
   admin_id: string;
@@ -206,6 +211,16 @@ export const adminApi = {
     return response.data;
   },
 
+  async approveEventCancellation(eventId: string) {
+    const response = await api.patch(`/admin/events/${eventId}/cancellation/approve`);
+    return response.data;
+  },
+
+  async rejectEventCancellation(eventId: string, reason: string) {
+    const response = await api.patch(`/admin/events/${eventId}/cancellation/reject`, { reason });
+    return response.data;
+  },
+
   async getPlatformWallet() {
     const response = await api.get("/admin/platform-wallet");
     return response.data.data;
@@ -253,6 +268,11 @@ export const adminApi = {
   
   async getAdmins(): Promise<{ admins: AdminUser[] }> {
     const response = await api.get("/admin/admins");
+    return response.data.data;
+  },
+
+  async addAdmin(payload: CreateAdminPayload) {
+    const response = await api.post("/admin/admins", payload);
     return response.data.data;
   },
 

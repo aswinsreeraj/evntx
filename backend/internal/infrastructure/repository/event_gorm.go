@@ -29,6 +29,7 @@ type EventModel struct {
 	AvailableCapacity int     `gorm:"->"`
 	Settled           bool
 	RejectionReason   string `gorm:"->"`
+	CancellationRequestReason string `gorm:"->"`
 	CreatedAt         int64
 	UpdatedAt         int64
 }
@@ -274,7 +275,14 @@ func (r *eventGormRepository) AdminSearchEvents(
 				SELECT SUM(available_quantity)
 				FROM ticket_type_models
 				WHERE event_id = event_models.id
-			), 0) AS available_capacity
+			), 0) AS available_capacity,
+			(
+				SELECT reason
+				FROM event_moderation_log_models
+				WHERE event_id = event_models.id AND action = 'cancellation_requested'
+				ORDER BY created_at DESC
+				LIMIT 1
+			) AS cancellation_request_reason
 		`).
 		Joins("LEFT JOIN user_models ON user_models.id::uuid = event_models.organizer_id::uuid")
 
@@ -313,6 +321,7 @@ func (r *eventGormRepository) AdminSearchEvents(
 				StartTime: time.Unix(m.StartTime, 0),
 				Status:    m.Status,
 				Settled:   m.Settled,
+				CancellationRequestReason: m.CancellationRequestReason,
 				CreatedAt: time.Unix(m.CreatedAt, 0),
 				UpdatedAt: time.Unix(m.UpdatedAt, 0),
 			},
@@ -353,6 +362,7 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 		CoverImageURL:     model.CoverImageURL,
 		AvailableCapacity: model.AvailableCapacity,
 		Settled:           model.Settled,
+		CancellationRequestReason: model.CancellationRequestReason,
 		CreatedAt:         time.Unix(model.CreatedAt, 0),
 		UpdatedAt:         time.Unix(model.UpdatedAt, 0),
 	}, nil
@@ -386,6 +396,7 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 		CoverImageURL:     model.CoverImageURL,
 		AvailableCapacity: model.AvailableCapacity,
 		Settled:           model.Settled,
+		CancellationRequestReason: model.CancellationRequestReason,
 		CreatedAt:         time.Unix(model.CreatedAt, 0),
 		UpdatedAt:         time.Unix(model.UpdatedAt, 0),
 	}, nil
@@ -803,7 +814,8 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 	var models []EventModel
 	query := r.db.Model(&EventModel{}).
 		Select("event_models.*, "+
-			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action IN ('rejected', 'suspended') ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
+			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action IN ('rejected', 'suspended', 'cancellation_rejected') ORDER BY created_at DESC LIMIT 1) as rejection_reason, "+
+			"(SELECT reason FROM event_moderation_log_models WHERE event_id = event_models.id AND action = 'cancellation_requested' ORDER BY created_at DESC LIMIT 1) as cancellation_request_reason, "+
 			"COALESCE((SELECT SUM(available_quantity) FROM ticket_type_models WHERE event_id = event_models.id), 0) as available_capacity").
 		Where("organizer_id = ?", organizerID)
 
@@ -834,6 +846,7 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 			AvailableCapacity: m.AvailableCapacity,
 			Settled:           m.Settled,
 			RejectionReason:   m.RejectionReason,
+			CancellationRequestReason: m.CancellationRequestReason,
 			CreatedAt:         time.Unix(m.CreatedAt, 0),
 			UpdatedAt:         time.Unix(m.UpdatedAt, 0),
 		})
@@ -862,7 +875,7 @@ func (r *eventGormRepository) DeleteEvent(ctx context.Context, eventID string) e
 func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID string, organizerID string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		eventResult := tx.Model(&EventModel{}).
-			Where("id = ? AND organizer_id = ? AND status IN ('live', 'approved')", eventID, organizerID).
+			Where("id = ? AND organizer_id = ? AND status IN ('live', 'approved', 'cancellation_pending')", eventID, organizerID).
 			Updates(map[string]interface{}{
 				"status":     "cancelled",
 				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
@@ -971,6 +984,60 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 		}
 
 		return nil
+	})
+}
+
+func (r *eventGormRepository) RequestEventCancellation(ctx context.Context, eventID string, organizerID string, reason string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		eventResult := tx.Model(&EventModel{}).
+			Where("id = ? AND organizer_id = ? AND status = 'live'", eventID, organizerID).
+			Updates(map[string]interface{}{
+				"status":     "cancellation_pending",
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			})
+		if eventResult.Error != nil {
+			return eventResult.Error
+		}
+		if eventResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		logModel := EventModerationLogModel{
+			ID:        uuid.New().String(),
+			EventID:   eventID,
+			AdminID:   organizerID,
+			Action:    "cancellation_requested",
+			Reason:    reason,
+			CreatedAt: time.Now().Unix(),
+		}
+		return tx.Create(&logModel).Error
+	})
+}
+
+func (r *eventGormRepository) RejectEventCancellation(ctx context.Context, eventID string, adminID string, reason string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		eventResult := tx.Model(&EventModel{}).
+			Where("id = ? AND status = 'cancellation_pending'", eventID).
+			Updates(map[string]interface{}{
+				"status":     "live",
+				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			})
+		if eventResult.Error != nil {
+			return eventResult.Error
+		}
+		if eventResult.RowsAffected == 0 {
+			return apiErrors.ErrInvalidStateTransition
+		}
+
+		logModel := EventModerationLogModel{
+			ID:        uuid.New().String(),
+			EventID:   eventID,
+			AdminID:   adminID,
+			Action:    "cancellation_rejected",
+			Reason:    reason,
+			CreatedAt: time.Now().Unix(),
+		}
+		return tx.Create(&logModel).Error
 	})
 }
 

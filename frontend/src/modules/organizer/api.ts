@@ -199,6 +199,11 @@ export const organizerApi = {
     return res.data;
   },
 
+  async requestEventCancellation(eventId: string, reason: string) {
+    const res = await api.post(`/organizer/events/${eventId}/cancel-request`, { reason });
+    return res.data;
+  },
+
   async submitEvent(eventId: string) {
     const res = await api.post(`/organizer/events/${eventId}/submit`);
     return res.data;

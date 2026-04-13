@@ -7,6 +7,7 @@ import (
 
 const (
 	NotificationTypeBookingReserved = "booking_reserved"
+	NotificationTypeBookingCancelled = "booking_cancelled"
 	NotificationTypePaymentSuccess  = "payment_success"
 	NotificationTypePaymentFailed   = "payment_failed"
 	NotificationTypeTicketGenerated = "ticket_generated"

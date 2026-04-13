@@ -129,7 +129,10 @@ export default function MyEvents() {
    const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
    const [selectedReason, setSelectedReason] = useState("");
    const [expandedTickets, setExpandedTickets] = useState<Set<string>>(new Set());
-   const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Completed"];
+   const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
+   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+   const [cancellationReason, setCancellationReason] = useState("");
+   const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Cancellation Pending", "Completed"];
 
    useEffect(() => {
       if (location.state?.toastMessage) {
@@ -143,7 +146,8 @@ export default function MyEvents() {
    const loadEvents = useCallback(async () => {
       setLoading(true);
       try {
-         const data = await organizerApi.getOrganizerEvents(statusFilter === "All" ? "" : statusFilter);
+         const normalizedStatus = statusFilter === "Cancellation Pending" ? "cancellation_pending" : statusFilter;
+         const data = await organizerApi.getOrganizerEvents(normalizedStatus === "All" ? "" : normalizedStatus);
          setEvents(data.events || []);
       } catch (err) {
          console.error(err);
@@ -202,6 +206,8 @@ export default function MyEvents() {
             return <div className="bg-white border text-red-500 border-red-500 px-4 py-1.5 rounded-full text-[11px] font-bold tracking-wide uppercase flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full md:bg-red-500 bg-red-500" /> LIVE</div>;
          case "completed":
             return <div className="bg-gray-300 text-gray-700 px-4 py-1.5 rounded-full text-[11px] font-bold tracking-wide uppercase flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-500" /> COMPLETED</div>;
+         case "cancellation_pending":
+            return <div className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-[11px] font-bold tracking-wide uppercase flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-600" /> CANCELLATION PENDING</div>;
          default:
             return <div className="bg-gray-100 text-gray-700 px-4 py-1.5 rounded-full text-[11px] font-bold tracking-wide uppercase">{status}</div>;
       }
@@ -325,6 +331,29 @@ export default function MyEvents() {
                                     Check In Tickets
                                  </button>
                               )}
+                              {(event.status || "").toLowerCase() === "live" && (
+                                 <button
+                                    onClick={() => {
+                                       setSelectedEventId(event.id);
+                                       setCancellationReason("");
+                                       setCancellationModalOpen(true);
+                                    }}
+                                    className="w-full border border-amber-500 text-amber-700 hover:bg-amber-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                                 >
+                                    Request Cancellation
+                                 </button>
+                              )}
+                              {(event.status || "").toLowerCase() === "cancellation_pending" && event.cancellation_request_reason && (
+                                 <button
+                                    onClick={() => {
+                                       setSelectedReason(event.cancellation_request_reason);
+                                       setRejectionModalOpen(true);
+                                    }}
+                                    className="w-full border border-amber-500 text-amber-700 hover:bg-amber-50 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors mt-1"
+                                 >
+                                    View Cancellation Request
+                                 </button>
+                              )}
                               {(event.status || "").toLowerCase() === "rejected" && event.rejection_reason && (
                                  <button
                                     onClick={() => {
@@ -336,12 +365,14 @@ export default function MyEvents() {
                                     Show Reason
                                  </button>
                               )}
-                              <button
-                                 onClick={() => handleDelete(event.id)}
-                                 className="w-full text-[#e53e5d] hover:text-[#d03550] text-sm font-semibold mt-3 p-1"
-                              >
-                                 Delete Event
-                              </button>
+                              {(event.status || "").toLowerCase() !== "live" && (
+                                 <button
+                                    onClick={() => handleDelete(event.id)}
+                                    className="w-full text-[#e53e5d] hover:text-[#d03550] text-sm font-semibold mt-3 p-1"
+                                 >
+                                    Delete Event
+                                 </button>
+                              )}
                            </div>
                         </div>
 
@@ -378,6 +409,47 @@ export default function MyEvents() {
                            Close
                        </button>
                    </div>
+               </div>
+            </div>
+         )}
+
+         {cancellationModalOpen && (
+            <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+               <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden">
+                  <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                     <h3 className="text-lg font-bold text-gray-900">Request Event Cancellation</h3>
+                     <button onClick={() => setCancellationModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-5 h-5" />
+                     </button>
+                  </div>
+                  <div className="p-6">
+                     <label className="block text-sm font-semibold text-gray-900 mb-2">Reason <span className="text-red-500">*</span></label>
+                     <textarea
+                        value={cancellationReason}
+                        onChange={(e) => setCancellationReason(e.target.value)}
+                        className="w-full min-h-[120px] border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        placeholder="Explain why this live event should be cancelled..."
+                     />
+                  </div>
+                  <div className="p-6 border-t border-gray-100 flex justify-end gap-2">
+                     <button onClick={() => setCancellationModalOpen(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm">Close</button>
+                     <button
+                        onClick={async () => {
+                           if (!selectedEventId || !cancellationReason.trim()) return;
+                           try {
+                              await organizerApi.requestEventCancellation(selectedEventId, cancellationReason.trim());
+                              setCancellationModalOpen(false);
+                              setToast("Cancellation request sent to admin.");
+                              loadEvents();
+                           } catch {
+                              alert("Failed to submit cancellation request.");
+                           }
+                        }}
+                        className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
+                     >
+                        Submit Request
+                     </button>
+                  </div>
                </div>
             </div>
          )}

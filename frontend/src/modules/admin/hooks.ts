@@ -79,6 +79,27 @@ export function useRejectEvent() {
   });
 }
 
+export function useApproveEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => adminApi.approveEventCancellation(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
+export function useRejectEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, reason }: { eventId: string; reason: string }) =>
+      adminApi.rejectEventCancellation(eventId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
 export function usePlatformWallet() {
   return useQuery({
     queryKey: ["admin-platform-wallet"],
@@ -128,6 +149,16 @@ export function useAdmins() {
   return useQuery({
     queryKey: ["admin-users-list"], 
     queryFn: () => adminApi.getAdmins(),
+  });
+}
+
+export function useAddAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; email: string }) => adminApi.addAdmin(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
   });
 }
 

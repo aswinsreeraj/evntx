@@ -180,6 +180,7 @@ func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 			"revenue":        evt.Revenue,
 			"city":           evt.City,
 			"status":         evt.Status,
+			"cancellation_request_reason": evt.CancellationRequestReason,
 		})
 	}
 
@@ -190,6 +191,39 @@ func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 			"page":  page,
 			"limit": limit,
 		},
+	})
+}
+
+func (h *AdminHandler) ApproveEventCancellationHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+	if err := h.eventUsecase.ApproveEventCancellation(c.Request.Context(), adminID, eventID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+	response.Success(c, "Event cancellation approved", gin.H{
+		"event_id": eventID,
+		"status":   "cancelled",
+	})
+}
+
+func (h *AdminHandler) RejectEventCancellationHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, pkgErrors.ErrInvalidRequestBody)
+		return
+	}
+	if err := h.eventUsecase.RejectEventCancellation(c.Request.Context(), adminID, eventID, req.Reason); err != nil {
+		response.AppError(c, err)
+		return
+	}
+	response.Success(c, "Event cancellation rejected", gin.H{
+		"event_id": eventID,
+		"status":   "live",
 	})
 }
 

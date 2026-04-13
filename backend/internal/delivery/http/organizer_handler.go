@@ -613,15 +613,22 @@ func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
 	response.Success(c, "Event deleted successfully", nil)
 }
 
-func (h *OrganizerHandler) CancelLiveEvent(c *gin.Context) {
+func (h *OrganizerHandler) RequestEventCancellation(c *gin.Context) {
 	organizerID := c.GetString("user_id")
 	eventID := c.Param("event_id")
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
 
-	err := h.eventUsecase.CancelLiveEvent(c.Request.Context(), organizerID, eventID)
+	err := h.eventUsecase.RequestEventCancellation(c.Request.Context(), organizerID, eventID, req.Reason)
 	if err != nil {
 		response.AppError(c, err)
 		return
 	}
 
-	response.Success(c, "Live event cancelled successfully. All users refunded.", nil)
+	response.Success(c, "Event cancellation request submitted for admin approval", nil)
 }

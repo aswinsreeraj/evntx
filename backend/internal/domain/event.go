@@ -19,6 +19,7 @@ type Event struct {
 	AvailableCapacity int       `json:"available_capacity"`
 	Settled           bool      `json:"settled"`
 	RejectionReason   string    `json:"rejection_reason,omitempty"`
+	CancellationRequestReason string    `json:"cancellation_request_reason,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

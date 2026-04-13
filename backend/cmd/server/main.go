@@ -227,7 +227,7 @@ func main() {
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
 	organizerGroup.DELETE("/events/:event_id", organizerHandler.DeleteEvent)
-	organizerGroup.POST("/events/:event_id/cancel", organizerHandler.CancelLiveEvent)
+	organizerGroup.POST("/events/:event_id/cancel-request", organizerHandler.RequestEventCancellation)
 	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 	organizerGroup.POST("/upload", organizerHandler.UploadImage)
 
@@ -250,6 +250,8 @@ func main() {
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
 	adminGroup.PATCH("/events/:event_id/suspend", adminHandler.SuspendEventHandler)
+	adminGroup.PATCH("/events/:event_id/cancellation/approve", adminHandler.ApproveEventCancellationHandler)
+	adminGroup.PATCH("/events/:event_id/cancellation/reject", adminHandler.RejectEventCancellationHandler)
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)

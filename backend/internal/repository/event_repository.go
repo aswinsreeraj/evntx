@@ -26,6 +26,8 @@ type EventRepository interface {
 	SettleEventEarnings(ctx context.Context, eventID string, organizerID string, totalAmount float64) error
 	ApproveEvent(ctx context.Context, eventID string) error
 	RejectEvent(ctx context.Context, eventID string, adminID string, reason string) error
+	RequestEventCancellation(ctx context.Context, eventID string, organizerID string, reason string) error
+	RejectEventCancellation(ctx context.Context, eventID string, adminID string, reason string) error
 	SuspendLiveEvent(ctx context.Context, eventID string, adminID string, reason string) error
 	DeleteEvent(ctx context.Context, eventID string) error
 	CancelLiveEvent(ctx context.Context, eventID string, organizerID string) error

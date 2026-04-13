@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
-import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins } from "../hooks";
+import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins, useAddAdmin } from "../hooks";
 import { Loader2, ShieldCheck } from "lucide-react";
 
 export default function SettingsPage() {
@@ -10,6 +10,7 @@ export default function SettingsPage() {
 
   const { mutate: updateSettings, isPending: isSaving } = useUpdateSettings();
   const { mutate: updatePayment } = useUpdatePaymentProvider();
+  const { mutate: addAdmin, isPending: isAddingAdmin } = useAddAdmin();
 
   const isLoading = isSettingsLoading || isPaymentsLoading || isAdminsLoading;
 
@@ -17,6 +18,9 @@ export default function SettingsPage() {
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [walletEnabled, setWalletEnabled] = useState(false);
   const [toastMessage, setToastMessage] = useState<{type: "success" | "error", text: string} | null>(null);
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
 
   useEffect(() => {
     if (settings) {
@@ -103,6 +107,30 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAddAdmin = () => {
+    if (!adminName.trim() || !adminEmail.trim()) {
+      setToastMessage({ type: "error", text: "Name and email are required." });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    addAdmin(
+      { name: adminName.trim(), email: adminEmail.trim() },
+      {
+        onSuccess: () => {
+          setShowAddAdminModal(false);
+          setAdminName("");
+          setAdminEmail("");
+          setToastMessage({ type: "success", text: "Admin added successfully!" });
+          setTimeout(() => setToastMessage(null), 3000);
+        },
+        onError: (err: any) => {
+          setToastMessage({ type: "error", text: err?.response?.data?.error?.message || "Failed to add admin" });
+          setTimeout(() => setToastMessage(null), 3000);
+        },
+      },
+    );
+  };
+
   return (
     <AdminLayout title="Manage Platform">
       {toastMessage && (
@@ -164,7 +192,10 @@ export default function SettingsPage() {
                   </span>
                   Admin Management
                 </h3>
-                <button className="text-blue-600 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition">
+                <button
+                  onClick={() => setShowAddAdminModal(true)}
+                  className="text-blue-600 text-sm font-semibold border border-blue-200 rounded-lg px-4 py-2 hover:bg-blue-50 transition"
+                >
                   + Add Admin
                 </button>
              </div>
@@ -255,7 +286,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px]">✓</span>
-                  Allow event cancellation
+                  Allow event cancellation (After admin approval)
                 </span>
                 <Toggle isChecked={localSettings.allow_event_cancellation} onToggle={() => handleToggle("allow_event_cancellation")} />
               </div>
@@ -338,6 +369,44 @@ export default function SettingsPage() {
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
         </button>
       </div>
+
+      {showAddAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-[#111827]">Add Admin</h3>
+            <div className="mt-4 space-y-3">
+              <input
+                value={adminName}
+                onChange={(e) => setAdminName(e.target.value)}
+                placeholder="Admin name"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                placeholder="Admin email"
+                type="email"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowAddAdminModal(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddAdmin}
+                disabled={isAddingAdmin}
+                className="rounded-lg bg-[#5d779f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a6184] disabled:opacity-70"
+              >
+                {isAddingAdmin ? "Adding..." : "Add Admin"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </AdminLayout>
   );
