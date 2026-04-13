@@ -456,37 +456,6 @@ func (h *AdminHandler) AdminBulkApprovePayouts(c *gin.Context) {
 	response.Success(c, "Payouts approved successfully", nil)
 }
 
-func (h *AdminHandler) AdminGetRefunds(c *gin.Context) {
-	status := c.Query("status")
-
-	refunds, total, err := h.walletUsecase.AdminGetRefundRequests(c.Request.Context(), status, 1, 50)
-	if err != nil {
-		response.AppError(c, pkgErrors.ErrInternalServerError)
-		return
-	}
-
-	response.Success(c, "Refunds retrieved successfully", gin.H{
-		"refunds": refunds,
-		"total":   total,
-	})
-}
-
-func (h *AdminHandler) AdminProcessRefund(c *gin.Context) {
-	adminID := c.GetString("user_id")
-	refundID := c.Param("id")
-
-	if err := h.walletUsecase.AdminProcessRefundRequest(c.Request.Context(), adminID, refundID); err != nil {
-		response.AppError(c, err)
-		return
-	}
-
-	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Refund #"+refundID[:6]+" processed", domain.ActionTagRefund, map[string]interface{}{"refund_id": refundID}, c.ClientIP())
-	}
-
-	response.Success(c, "Refund processed successfully", nil)
-}
-
 func (h *AdminHandler) GetEventEngagement(c *gin.Context) {
 	eventID := c.Param("event_id")
 	if eventID == "" {

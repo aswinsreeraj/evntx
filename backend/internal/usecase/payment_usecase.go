@@ -209,26 +209,38 @@ func (u *PaymentUsecase) VerifyPayment(
 
 	if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID, event.OrganizerID, payment.Amount); err != nil {
 		if errors.Is(err, apiErrors.ErrBookingExpiredPaymentSuccess) {
-			if lateErr := u.paymentRepo.HandleLatePayment(payment.ID, payment.BookingID, booking.UserID, payment.Amount); lateErr != nil {
-				return lateErr
+			amountInPaise := int64(math.Round(payment.Amount * 100))
+			if refundErr := u.razorpayService.RefundPayment(razorpayPaymentID, amountInPaise); refundErr != nil {
+				logger.Log.Error().
+					Err(refundErr).
+					Str("payment_id", payment.ID).
+					Str("booking_id", payment.BookingID).
+					Str("razorpay_payment_id", razorpayPaymentID).
+					Msg("late_payment_auto_refund_failed")
+				return apiErrors.Wrap(refundErr, 500, apiErrors.PaymentFailed, "Payment captured but automatic refund failed. Please contact support.")
+			}
+			if updateErr := u.paymentRepo.UpdateStatus(payment.ID, domain.PaymentStatusRefunded); updateErr != nil {
+				return updateErr
 			}
 			if u.notificationUsecase != nil {
 				u.notificationUsecase.SendNotification(
 					booking.UserID,
 					domain.NotificationTypePaymentSuccess,
-					"Payment received but booking expired",
-					"Your payment was successful but the booking expired. The amount will be refunded to your given payment details in 3-5 working days. Please update your payment details in your profile if you haven't.",
+					"Booking expired, refund initiated",
+					"Your payment was captured after booking expiry. We have initiated an automatic refund to your original payment source via Razorpay.",
 					map[string]interface{}{
 						"booking_id": payment.BookingID,
 						"payment_id": payment.ID,
 						"is_late_payment": true,
+						"is_source_refund": true,
 					},
 				)
 			}
 			logger.Log.Info().
 				Str("payment_id", payment.ID).
 				Str("booking_id", payment.BookingID).
-				Msg("payment_success_but_booking_expired_handled")
+				Str("razorpay_payment_id", razorpayPaymentID).
+				Msg("payment_success_but_booking_expired_auto_refunded")
 			return apiErrors.ErrBookingExpiredPaymentSuccess
 		}
 		return err

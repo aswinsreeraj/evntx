@@ -9,7 +9,6 @@ const (
 	ActionTagUser      AuditActionTag = "USER"
 	ActionTagOrganizer AuditActionTag = "ORGANIZER"
 	ActionTagPayout    AuditActionTag = "PAYOUT"
-	ActionTagRefund    AuditActionTag = "REFUND"
 	ActionTagSettings  AuditActionTag = "SETTINGS"
 )
 

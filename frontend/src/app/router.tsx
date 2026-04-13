@@ -24,7 +24,6 @@ import OrganizerWalletPage from "../modules/organizer/pages/WalletPage";
 import OrganizerCheckInPage from "../modules/organizer/pages/CheckInPage";
 import PlatformWalletPage from "../modules/admin/pages/PlatformWalletPage";
 import PayoutsPage from "../modules/admin/pages/PayoutsPage";
-import RefundsPage from "../modules/admin/pages/RefundsPage";
 import SettingsPage from "../modules/admin/pages/SettingsPage";
 import AuditLogsPage from "../modules/admin/pages/AuditLogsPage";
 import EngagementHydrator from "./EngagementHydrator";
@@ -206,14 +205,6 @@ export const router = createBrowserRouter([
                 element: (
                     <ProtectedRoute roles={["admin"]}>
                         <PayoutsPage />
-                    </ProtectedRoute>
-                ),
-            },
-            {
-                path: "/admin/refunds",
-                element: (
-                    <ProtectedRoute roles={["admin"]}>
-                        <RefundsPage />
                     </ProtectedRoute>
                 ),
             },

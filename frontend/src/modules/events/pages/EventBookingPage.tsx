@@ -407,16 +407,16 @@ export default function EventBookingPage() {
               </div>
               <h2 className="text-lg font-bold text-[#111111] mb-2">Payment Received</h2>
               <p className="text-sm text-gray-700 leading-relaxed">
-                Your payment was successful, but the booking expiration time had already passed. 
+                Your payment was successful, but the booking expiration time had already passed.
               </p>
               <p className="text-sm text-gray-700 leading-relaxed mt-2 font-medium">
-                The amount will be refunded to you within 3-5 working days. Please ensure your payout details are updated in your Profile.
+                Your refund has been initiated automatically to the original payment source via Razorpay.
               </p>
               <button 
-                 onClick={() => navigate("/user/profile")}
+                 onClick={() => navigate("/profile/bookings", { replace: true })}
                  className="mt-6 bg-[#0b101e] text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors"
               >
-                Go to Profile
+                Go to My Bookings
               </button>
             </div>
           )}

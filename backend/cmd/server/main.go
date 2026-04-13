@@ -51,7 +51,6 @@ func main() {
 	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
 	db.AutoMigrate(&repoImpl.PayoutRequestModel{})
 	db.AutoMigrate(&repoImpl.PayoutCredentialModel{})
-	db.AutoMigrate(&repoImpl.RefundRequestModel{})
 	db.AutoMigrate(&repoImpl.VisitorSessionModel{})
 	db.AutoMigrate(&repoImpl.EngagementEventModel{})
 	db.AutoMigrate(&repoImpl.EventEngagementDailyModel{})
@@ -76,12 +75,11 @@ func main() {
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	payoutRepo := repoImpl.NewPayoutGormRepository(db)
-	refundRepo := repoImpl.NewRefundGormRepository(db)
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
 	razorpayService := paymentImpl.NewRazorpayService()
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo, notificationUsecase)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, notificationUsecase)
 
 	auditRepo := repoImpl.NewAuditGormRepository(db)
 	auditUsecase := usecase.NewAuditUsecase(auditRepo, userRepo)
@@ -117,7 +115,7 @@ func main() {
 
 	scheduler.RegisterJob("BookingExpirationJob", "*/1 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
 	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "0 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
-	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "30 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
+	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "*/1 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
 
 	scheduler.Start()
 	defer scheduler.Stop()
@@ -259,9 +257,6 @@ func main() {
 	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)
 	adminGroup.PATCH("/payouts/:id/reject", adminHandler.AdminRejectPayout)
 	adminGroup.POST("/payouts/bulk-approve", adminHandler.AdminBulkApprovePayouts)
-
-	adminGroup.GET("/refunds", adminHandler.AdminGetRefunds)
-	adminGroup.PATCH("/refunds/:id/process", adminHandler.AdminProcessRefund)
 
 	adminGroup.GET("/settings", adminHandler.GetPlatformSettings)
 	adminGroup.PUT("/settings", adminHandler.UpdatePlatformSettings)

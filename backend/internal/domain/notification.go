@@ -11,7 +11,6 @@ const (
 	NotificationTypePaymentFailed   = "payment_failed"
 	NotificationTypeTicketGenerated = "ticket_generated"
 	NotificationTypeCheckInSuccess  = "check_in_success"
-	NotificationTypeRefundProcessed = "refund_processed"
 	NotificationTypeSettlement      = "settlement"
 	NotificationTypePayoutRequest   = "payout_request"
 )

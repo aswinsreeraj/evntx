@@ -59,9 +59,10 @@ func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
 		if err == apiErrors.ErrBookingExpiredPaymentSuccess {
 			c.JSON(http.StatusOK, response.APIResponse{
 				Success: true,
-				Message: "Payment received but booking had expired",
+				Message: "Payment captured after booking expiry; refund initiated to source",
 				Data: map[string]interface{}{
-					"is_late_payment": true,
+					"is_late_payment":  true,
+					"is_source_refund": true,
 				},
 			})
 			return

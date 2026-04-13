@@ -5,6 +5,7 @@ import { useEvents, useApproveEvent, useRejectEvent } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter, X } from "lucide-react";
 import { useDebounce } from "../../../shared/hooks/useDebounce";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 function getStatusColor(status: string) {
   switch (status.toLowerCase()) {
@@ -293,7 +294,10 @@ export default function EventManagementPage() {
       </div>
 
       <div className="flex justify-end mt-4">
-        <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => exportToCSV(eventsList, "events_list")}
+          className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
+        >
           Download as CSV
           <Download className="w-4 h-4" />
         </button>

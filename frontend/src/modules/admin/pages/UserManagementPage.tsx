@@ -5,6 +5,7 @@ import { useUsers, useToggleUserStatus } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter } from "lucide-react";
 import { useDebounce } from "../../../shared/hooks/useDebounce";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 export default function UserManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -222,7 +223,10 @@ export default function UserManagementPage() {
       </div>
 
       <div className="flex justify-end mt-4">
-        <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => exportToCSV(usersList, "users_list")}
+          className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
+        >
           Download as CSV
           <Download className="w-4 h-4" />
         </button>
