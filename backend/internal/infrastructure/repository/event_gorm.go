@@ -898,6 +898,11 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 
 		now := time.Now()
 
+		var platformWallet PlatformWalletModel
+		if err := tx.Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
+			return err
+		}
+
 		for _, bm := range bookings {
 			var bookingTickets []BookingTicketModel
 			if err := tx.Where("booking_id = ?", bm.ID).Find(&bookingTickets).Error; err != nil {
@@ -909,7 +914,18 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 				totalTicketsCancelled += bt.Quantity
 			}
 
-			baseRefund := bm.TotalAmount - float64(totalTicketsCancelled*30)
+			var platformFee float64
+			if bm.PlatformFeeType == "percentage" {
+				platformFee = math.Round((bm.TotalAmount * (bm.PlatformFeeValue / 100)) * 100) / 100
+			} else {
+				feesPerTicket := bm.PlatformFeeValue
+				if feesPerTicket == 0 {
+					feesPerTicket = 30 // fallback
+				}
+				platformFee = math.Round(float64(totalTicketsCancelled) * feesPerTicket * 100) / 100
+			}
+
+			baseRevenue := math.Round((bm.TotalAmount-platformFee)*100) / 100
 			totalRefundToUser := bm.TotalAmount
 
 			if totalRefundToUser <= 0 {
@@ -954,8 +970,6 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 				return err
 			}
 
-			platformFee := float64(totalTicketsCancelled * 30)
-
 			if err := tx.Create(&WalletTransactionModel{
 				ID:            uuid.NewString(),
 				WalletID:      orgWallet.ID,
@@ -969,23 +983,46 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 				return err
 			}
 
-			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-baseRefund)*100) / 100
+			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-baseRevenue)*100) / 100
 			orgWallet.AvailableBalance = math.Round((orgWallet.AvailableBalance-platformFee)*100) / 100
-			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+platformFee)*100) / 100
 
 			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
 				"pending_balance":   orgWallet.PendingBalance,
 				"available_balance": orgWallet.AvailableBalance,
-				"reserve_balance":   orgWallet.ReserveBalance,
 				"updated_at":        now,
 			}).Error; err != nil {
 				return err
 			}
+
+			if err := tx.Create(&PlatformWalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      domain.PlatformWalletID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        platformFee,
+				ReferenceType: domain.PlatformRefTypeCancellationPenalty,
+				ReferenceID:   bm.ID,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			platformWallet.AvailableBalance = math.Round((platformWallet.AvailableBalance+platformFee)*100) / 100
+			platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+platformFee)*100) / 100
+			platformWallet.UpdatedAt = now
+		}
+
+		if err := tx.Model(&PlatformWalletModel{}).Where("id = ?", domain.PlatformWalletID).Updates(map[string]interface{}{
+			"available_balance": platformWallet.AvailableBalance,
+			"total_credited":    platformWallet.TotalCredited,
+			"updated_at":        platformWallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
 		}
 
 		return nil
 	})
 }
+
 
 func (r *eventGormRepository) RequestEventCancellation(ctx context.Context, eventID string, organizerID string, reason string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

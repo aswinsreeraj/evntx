@@ -53,6 +53,10 @@ func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time) (*dom
 	return u.repo.GetAdminRevenueReport(startDate, endDate)
 }
 
+func (u *EventUsecase) GetEventByID(id string) (*domain.Event, error) {
+	return u.repo.GetEventByID(id)
+}
+
 func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)

@@ -7,9 +7,11 @@ type Booking struct {
 	UserID      string
 	EventID     string
 	Status      string
-	TotalAmount float64
-	ExpiresAt   time.Time
-	CreatedAt   time.Time
+	TotalAmount      float64
+	PlatformFeeValue float64
+	PlatformFeeType  string
+	ExpiresAt        time.Time
+	CreatedAt        time.Time
 }
 
 type BookingTicket struct {

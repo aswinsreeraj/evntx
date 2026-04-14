@@ -40,6 +40,10 @@ func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error)
 	return u.repo.GetWalletByUserID(userID)
 }
 
+func (u *WalletUsecase) GetPayoutByID(ctx context.Context, id string) (*domain.PayoutRequest, error) {
+	return u.payoutRepo.GetPayoutRequestByID(ctx, id)
+}
+
 func (u *WalletUsecase) ApplyTransaction(
 	walletID string,
 	txnType string,
