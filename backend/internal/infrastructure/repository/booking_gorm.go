@@ -15,10 +15,10 @@ import (
 )
 
 type BookingModel struct {
-	ID          string
-	UserID      string
-	EventID     string
-	Status      string
+	ID               string
+	UserID           string `gorm:"index"`
+	EventID          string `gorm:"index"`
+	Status           string `gorm:"index"`
 	TotalAmount      float64
 	PlatformFeeValue float64
 	PlatformFeeType  string
@@ -34,11 +34,11 @@ type BookingTicketModel struct {
 
 type TicketModel struct {
 	ID           string
-	BookingID    string
+	BookingID    string `gorm:"index"`
 	TicketTypeID string
-	TicketCode   string
+	TicketCode   string `gorm:"uniqueIndex"`
 	QRPayload    string
-	Status       string
+	Status       string `gorm:"index"`
 	CheckedInAt  *int64
 }
 
@@ -283,13 +283,13 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 
 			var returningFee float64
 			if bm.PlatformFeeType == "percentage" {
-				returningFee = math.Round((totalRefund * (bm.PlatformFeeValue / 100)) * 100) / 100
+				returningFee = math.Round((totalRefund*(bm.PlatformFeeValue/100))*100) / 100
 			} else {
 				feesPerTicket := bm.PlatformFeeValue
 				if feesPerTicket == 0 {
 					feesPerTicket = 30 // fallback
 				}
-				returningFee = math.Round(float64(totalTicketsCancelled) * feesPerTicket * 100) / 100
+				returningFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
 			}
 
 			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-totalRefund)*100) / 100
@@ -799,9 +799,9 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 
 		var userPlatformFee float64
 		if settings.PlatformFeeType == "percentage" {
-			userPlatformFee = math.Round((normalizedAmount * (settings.PlatformFeeValue / 100)) * 100) / 100
+			userPlatformFee = math.Round((normalizedAmount*(settings.PlatformFeeValue/100))*100) / 100
 		} else {
-			userPlatformFee = math.Round(float64(totalTickets) * settings.PlatformFeeValue * 100) / 100
+			userPlatformFee = math.Round(float64(totalTickets)*settings.PlatformFeeValue*100) / 100
 		}
 
 		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Updates(map[string]interface{}{

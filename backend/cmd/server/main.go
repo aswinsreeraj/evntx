@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
@@ -102,7 +103,8 @@ func main() {
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase, settingsRepo)
-	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
+	apiCache := cache.NewCache()
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase, apiCache)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase, settingsRepo, roleRepo, auditUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
@@ -119,7 +121,7 @@ func main() {
 	scheduler.Start()
 	defer scheduler.Stop()
 
-	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase)
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase, apiCache)
 
 	router := gin.New()
 

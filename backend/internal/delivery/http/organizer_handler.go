@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 
@@ -23,10 +24,11 @@ type OrganizerHandler struct {
 	userUsecase       *usecase.UserUsecase
 	walletUsecase     *usecase.WalletUsecase
 	engagementUsecase *usecase.EngagementUsecase
+	cache             *cache.Cache
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase, c *cache.Cache) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase, cache: c}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -482,6 +484,12 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 		}
 		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, errMsg))
 		return
+	}
+
+	if h.cache != nil {
+		if cachedEvent, slugErr := h.eventUsecase.GetEventByID(eventID); slugErr == nil && cachedEvent != nil {
+			h.cache.Delete("event:" + cachedEvent.Slug)
+		}
 	}
 
 	response.Success(c, "Event updated successfully", gin.H{

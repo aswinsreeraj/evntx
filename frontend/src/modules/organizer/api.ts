@@ -1,6 +1,17 @@
 import api from "../../services/axios";
 import type { PayoutCredentialPayload, PayoutsResponse } from "../user/api";
 
+export interface PlatformSettings {
+  allow_event_cancellation: boolean;
+  enable_user_registration: boolean;
+  allow_google_login: boolean;
+  require_admin_approval_for_organizers: boolean;
+  require_admin_approval_for_events: boolean;
+  refund_window_days: number;
+  platform_fee_value: number;
+  platform_fee_type: "fixed" | "percentage";
+}
+
 export const organizerWalletSummaryQueryKey = ["organizer-wallet-summary"] as const;
 
 export interface TicketInput {
@@ -213,6 +224,11 @@ export const organizerApi = {
     const res = await api.post(`/events/${eventId}/check-in`, {
       ticket_code: ticketCode,
     });
+    return res.data.data;
+  },
+
+  async getPlatformSettings(): Promise<PlatformSettings> {
+    const res = await api.get("/settings");
     return res.data.data;
   },
 

@@ -132,7 +132,14 @@ export default function MyEvents() {
    const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
    const [cancellationReason, setCancellationReason] = useState("");
+   const [allowEventCancellation, setAllowEventCancellation] = useState<boolean>(true);
    const statuses = ["All", "Draft", "Pending", "Approved", "Rejected", "Live", "Cancellation Pending", "Completed"];
+
+   useEffect(() => {
+      organizerApi.getPlatformSettings()
+         .then((s) => setAllowEventCancellation(s.allow_event_cancellation))
+         .catch(() => setAllowEventCancellation(true));
+   }, []);
 
    useEffect(() => {
       if (location.state?.toastMessage) {
@@ -331,7 +338,7 @@ export default function MyEvents() {
                                     Check In Tickets
                                  </button>
                               )}
-                              {(event.status || "").toLowerCase() === "live" && (
+                              {(event.status || "").toLowerCase() === "live" && allowEventCancellation && (
                                  <button
                                     onClick={() => {
                                        setSelectedEventId(event.id);
@@ -365,7 +372,7 @@ export default function MyEvents() {
                                     Show Reason
                                  </button>
                               )}
-                              {(event.status || "").toLowerCase() !== "live" && (
+                               {!["live", "cancellation_pending"].includes((event.status || "").toLowerCase()) && (
                                  <button
                                     onClick={() => handleDelete(event.id)}
                                     className="w-full text-[#e53e5d] hover:text-[#d03550] text-sm font-semibold mt-3 p-1"
@@ -441,8 +448,11 @@ export default function MyEvents() {
                               setCancellationModalOpen(false);
                               setToast("Cancellation request sent to admin.");
                               loadEvents();
-                           } catch {
-                              alert("Failed to submit cancellation request.");
+                           } catch (err) {
+                               const msg = (err as any)?.response?.data?.error?.message
+                                  || (err as any)?.response?.data?.message
+                                  || "Failed to submit cancellation request.";
+                               alert(msg);
                            }
                         }}
                         className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700"
