@@ -18,5 +18,5 @@ type EngagementRepository interface {
 	GetEngagementReport(ctx context.Context, eventIDs []string, startDate, endDate time.Time) (*domain.EngagementReportStats, error)
 	
 	
-	IncrementSuccessfulBookings(ctx context.Context, eventID string) error
+	IncrementSuccessfulBookings(ctx context.Context, eventID string, userID string) error
 }

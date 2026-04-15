@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { EngagementEventType } from '../api/engagement';
 import { engagementApi } from '../api/engagement';
+import { useAuthStore } from '../../modules/auth/store/authStore';
 
 const SESSION_KEY = 'evntx_session_id';
 
@@ -28,11 +29,18 @@ const ensureSession = async (): Promise<string | null> => {
 };
 
 export const useEngagement = () => {
+  const { roles, isAuthenticated } = useAuthStore();
+
   const initialize = useCallback(async () => {
     await ensureSession();
   }, []);
 
   const trackEvent = useCallback(async (type: EngagementEventType, eventId?: string, metadata?: string) => {
+    
+    if (isAuthenticated && (roles.includes('admin') || roles.includes('organizer'))) {
+      return;
+    }
+
     try {
       const sessionId = await ensureSession();
       if (!sessionId) return;

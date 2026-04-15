@@ -76,7 +76,7 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
             });
             onSuccess(result?.data?.is_late_payment || false);
           } catch (err: any) {
-            onError(err?.response?.data?.message || "Payment verification failed.");
+            onError(err?.response?.data?.error?.message || err?.response?.data?.message || "Payment verification failed.");
           } finally {
             setIsProcessing(false);
           }
@@ -97,7 +97,7 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
-      onError(err?.response?.data?.message || err.message || "Something went wrong.");
+      onError(err?.response?.data?.error?.message || err?.response?.data?.message || err.message || "Something went wrong.");
       setIsProcessing(false);
     }
   };

@@ -18,6 +18,7 @@ import {
   Bar,
 } from "recharts";
 import { ChevronDown, Loader2, Download } from "lucide-react";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 const DATE_RANGES = [
   { label: "Last 30 Days", value: "30D" },
@@ -551,7 +552,14 @@ export default function AdminReports() {
                       </div>
                     </div>
 
-                    <button className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm">
+                    <button
+                      onClick={() => {
+                        if (engagementStats?.user_journey) {
+                          exportToCSV(engagementStats.user_journey, `admin_engagement_journey_${dateRange}`);
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"
+                    >
                       Export As <Download className="w-4 h-4 ml-1" />
                     </button>
                   </div>
@@ -572,6 +580,8 @@ export default function AdminReports() {
                           : i === 1
                           ? "bg-[#f9c0cb] text-[#8b1a2e]"
                           : i === 2
+                          ? "bg-[#fca5a5] text-[#7f1d1d]"
+                          : i === 3
                           ? "bg-[#f87171] text-white"
                           : "bg-[#e53e5d] text-white";
 
@@ -659,8 +669,8 @@ export default function AdminReports() {
                             }}
                           />
                           {}
-                          <Bar dataKey="checkout" name="Checkout" fill="#6b7280" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="viewing" name="Viewing" fill="#e53e5d" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="viewing" name="Views" fill="#e53e5d" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="bookings" name="Bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     )}

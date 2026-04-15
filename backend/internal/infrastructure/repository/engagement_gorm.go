@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -103,6 +104,29 @@ func (r *engagementGormRepository) UpdateSessionLastSeen(ctx context.Context, se
 
 func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.EngagementEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		
+		if event.UserID != nil && *event.UserID != "" {
+			var roleCount int64
+			err := tx.Table("user_role_models").
+				Where("user_id = ? AND role IN (?, ?)", *event.UserID, domain.RoleAdmin, domain.RoleOrganizer).
+				Count(&roleCount).Error
+			if err == nil && roleCount > 0 {
+				
+				evtModel := EngagementEventModel{
+					ID:        event.ID,
+					UserID:    event.UserID,
+					SessionID: event.SessionID,
+					EventID:   event.EventID,
+					EventType: string(event.EventType),
+					Metadata:  event.Metadata,
+					IPAddress: event.IPAddress,
+					UserAgent: event.UserAgent,
+					CreatedAt: event.CreatedAt,
+				}
+				return tx.Create(&evtModel).Error
+			}
+		}
+
 		evtModel := EngagementEventModel{
 			ID:        event.ID,
 			UserID:    event.UserID,
@@ -118,50 +142,18 @@ func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.E
 			return err
 		}
 
-		if event.EventID != nil {
-			dateStr := event.CreatedAt.Format("2006-01-02")
-			dateParsed, _ := time.Parse("2006-01-02", dateStr)
+		dateStr := event.CreatedAt.Format("2006-01-02")
+		dateParsed, _ := time.Parse("2006-01-02", dateStr)
 
-			upsertModel := EventEngagementDailyModel{
-				ID:        uuid.NewString(),
-				EventID:   *event.EventID,
-				Date:      dateParsed,
-				CreatedAt: time.Now(),
-			}
+		isUniquePlatform := r.isFirstInteractionToday(tx, event.SessionID, domain.PlatformEventID, dateParsed)
+		if err := r.upsertDaily(tx, domain.PlatformEventID, dateParsed, event.EventType, isUniquePlatform); err != nil {
+			return err
+		}
 
-			updates := make(map[string]interface{})
-			switch event.EventType {
-			case domain.EngagementEventEventView:
-				upsertModel.EventViews = 1
-				upsertModel.Visitors = 1
-				updates["event_views"] = gorm.Expr("event_views + 1")
-				updates["visitors"] = gorm.Expr("visitors + 1")
-			case domain.EngagementEventTicketSelected:
-				upsertModel.TicketsSelected = 1
-				upsertModel.Visitors = 1
-				updates["tickets_selected"] = gorm.Expr("tickets_selected + 1")
-				updates["visitors"] = gorm.Expr("visitors + 1")
-			case domain.EngagementEventCheckoutStarted:
-				upsertModel.CheckoutStarted = 1
-				upsertModel.Visitors = 1
-				updates["checkout_started"] = gorm.Expr("checkout_started + 1")
-				updates["visitors"] = gorm.Expr("visitors + 1")
-			case domain.EngagementEventPageView:
-				upsertModel.PageViews = 1
-				upsertModel.Visitors = 1
-				updates["page_views"] = gorm.Expr("page_views + 1")
-				updates["visitors"] = gorm.Expr("visitors + 1")
-			}
-
-			if len(updates) > 0 {
-				err := tx.Clauses(clause.OnConflict{
-					Columns:   []clause.Column{{Name: "event_id"}, {Name: "date"}},
-					DoUpdates: clause.Assignments(updates),
-				}).Create(&upsertModel).Error
-
-				if err != nil {
-					return err
-				}
+		if event.EventID != nil && *event.EventID != "" {
+			isUniqueEvent := r.isFirstInteractionToday(tx, event.SessionID, *event.EventID, dateParsed)
+			if err := r.upsertDaily(tx, *event.EventID, dateParsed, event.EventType, isUniqueEvent); err != nil {
+				return err
 			}
 		}
 
@@ -169,29 +161,107 @@ func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.E
 	})
 }
 
-func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string) error {
-	dateParsed, _ := time.Parse("2006-01-02", time.Now().Format("2006-01-02"))
+func (r *engagementGormRepository) isFirstInteractionToday(tx *gorm.DB, sessionID, eventID string, date time.Time) bool {
+	var count int64
+	startOfDay := date
+	endOfDay := date.Add(24 * time.Hour)
 
-	upsertModel := EventEngagementDailyModel{
-		ID:                 uuid.NewString(),
-		EventID:            eventID,
-		Date:               dateParsed,
-		SuccessfulBookings: 1,
-		CreatedAt:          time.Now(),
+	query := tx.Model(&EngagementEventModel{}).
+		Where("session_id = ? AND created_at >= ? AND created_at < ?", sessionID, startOfDay, endOfDay)
+
+	if eventID != domain.PlatformEventID {
+		query = query.Where("event_id = ?", eventID)
 	}
 
-	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "event_id"}, {Name: "date"}},
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"successful_bookings": gorm.Expr("successful_bookings + ?", 1),
-		}),
-	}).Create(&upsertModel).Error
+	query.Count(&count)
+	return count <= 1
+}
+
+func (r *engagementGormRepository) upsertDaily(tx *gorm.DB, eventID string, date time.Time, eventType domain.EngagementEventType, isUnique bool) error {
+	upsertModel := EventEngagementDailyModel{
+		ID:        uuid.NewString(),
+		EventID:   eventID,
+		Date:      date,
+		CreatedAt: time.Now(),
+	}
+
+	updates := make(map[string]interface{})
+	incExpr := func(col string) {
+		updates[col] = gorm.Expr(fmt.Sprintf("event_engagement_daily.%s + 1", col))
+	}
+
+	switch eventType {
+	case domain.EngagementEventEventView:
+		upsertModel.EventViews = 1
+		upsertModel.PageViews = 1
+		incExpr("event_views")
+		incExpr("page_views")
+	case domain.EngagementEventTicketSelected:
+		upsertModel.TicketsSelected = 1
+		incExpr("tickets_selected")
+	case domain.EngagementEventCheckoutStarted:
+		upsertModel.CheckoutStarted = 1
+		incExpr("checkout_started")
+	case domain.EngagementEventPageView:
+		upsertModel.PageViews = 1
+		incExpr("page_views")
+	case domain.EngagementEventSuccessfulBooking:
+		upsertModel.SuccessfulBookings = 1
+		incExpr("successful_bookings")
+	}
+
+	if isUnique {
+		upsertModel.Visitors = 1
+		incExpr("visitors")
+	}
+
+	if len(updates) > 0 {
+		return tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "event_id"}, {Name: "date"}},
+			DoUpdates: clause.Assignments(updates),
+		}).Create(&upsertModel).Error
+	}
+	return nil
+}
+
+func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string, userID string) error {
+	
+	if userID != "" {
+		var roleCount int64
+		err := r.db.Table("user_role_models").
+			Where("user_id = ? AND role IN (?, ?)", userID, domain.RoleAdmin, domain.RoleOrganizer).
+			Count(&roleCount).Error
+		if err == nil && roleCount > 0 {
+			
+			return nil
+		}
+	}
+
+	loc, _ := time.LoadLocation("Asia/Calcutta")
+	now := time.Now().In(loc)
+	dateStr := now.Format("2006-01-02")
+	dateParsed, _ := time.Parse("2006-01-02", dateStr)
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		
+		if err := r.upsertDaily(tx, domain.PlatformEventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
+			return err
+		}
+
+		
+		if eventID != "" && eventID != domain.PlatformEventID {
+			if err := r.upsertDaily(tx, eventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *engagementGormRepository) GetDailyAggregates(ctx context.Context, eventID string, startDate, endDate time.Time) ([]domain.EventEngagementDaily, error) {
 	var models []EventEngagementDailyModel
-
-	query := r.db.WithContext(ctx).Where("event_id::uuid = ?", eventID)
+	query := r.db.WithContext(ctx).Model(&EventEngagementDailyModel{}).Where("event_id = ?", eventID)
 
 	if !startDate.IsZero() {
 		query = query.Where("date >= ?", startDate.Format("2006-01-02"))
@@ -229,14 +299,16 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		return &stats, nil
 	}
 
+	loc, _ := time.LoadLocation("Asia/Calcutta")
 	var models []EventEngagementDailyModel
-	query := r.db.WithContext(ctx).Where("event_id::uuid IN ?", eventIDs)
+	query := r.db.WithContext(ctx).Model(&EventEngagementDailyModel{}).Where("event_id IN (?)", eventIDs)
 	if !startDate.IsZero() {
-		query = query.Where("date >= ?", startDate.Format("2006-01-02"))
+		query = query.Where("date >= ?", startDate.In(loc).Format("2006-01-02"))
 	}
 	if !endDate.IsZero() {
-		query = query.Where("date <= ?", endDate.Format("2006-01-02"))
+		query = query.Where("date <= ?", endDate.In(loc).Format("2006-01-02"))
 	}
+	
 	if err := query.Find(&models).Error; err != nil {
 		return nil, err
 	}
@@ -244,18 +316,41 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	var totalVisitors, totalPageViews, totalEventViews, totalTicketsSelected, totalCheckout, totalBookings int
 	viewingByDow := make([]int, 7)
 	checkoutByDow := make([]int, 7)
+	bookingsByDow := make([]int, 7)
+
+	
+	hasPlatformID := false
+	for _, id := range eventIDs {
+		if id == domain.PlatformEventID {
+			hasPlatformID = true
+			break
+		}
+	}
 
 	for _, m := range models {
-		totalVisitors += m.Visitors
-		totalPageViews += m.PageViews
-		totalEventViews += m.EventViews
-		totalTicketsSelected += m.TicketsSelected
-		totalCheckout += m.CheckoutStarted
-		totalBookings += m.SuccessfulBookings
+		if hasPlatformID && m.EventID == domain.PlatformEventID {
+			
+			totalVisitors = m.Visitors
+			totalPageViews = m.PageViews
+			totalBookings = m.SuccessfulBookings
+		} else if !hasPlatformID {
+			
+			totalVisitors += m.Visitors
+			totalPageViews += m.PageViews
+			totalBookings += m.SuccessfulBookings
+		}
 
-		dow := int(m.Date.Weekday())
-		viewingByDow[dow] += m.EventViews
-		checkoutByDow[dow] += m.CheckoutStarted
+		
+		if m.EventID != domain.PlatformEventID {
+			totalEventViews += m.EventViews
+			totalTicketsSelected += m.TicketsSelected
+			totalCheckout += m.CheckoutStarted
+
+			dow := int(m.Date.Weekday())
+			viewingByDow[dow] += m.EventViews
+			checkoutByDow[dow] += m.CheckoutStarted
+			bookingsByDow[dow] += m.SuccessfulBookings
+		}
 	}
 
 	
@@ -264,20 +359,29 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	prevStart := prevEnd.Add(-duration)
 
 	var prevModels []EventEngagementDailyModel
-	r.db.WithContext(ctx).
-		Where("event_id::uuid IN ? AND date >= ? AND date <= ?", eventIDs, prevStart.Format("2006-01-02"), prevEnd.Format("2006-01-02")).
+	r.db.WithContext(ctx).Model(&EventEngagementDailyModel{}).
+		Where("event_id IN ? AND date >= ? AND date <= ?", eventIDs, prevStart.In(loc).Format("2006-01-02"), prevEnd.In(loc).Format("2006-01-02")).
 		Find(&prevModels)
 
-	var prevVisitors, prevBookings int
+	var prevVisitors, prevBookings, prevPageViews int
 	for _, m := range prevModels {
-		prevVisitors += m.Visitors
-		prevBookings += m.SuccessfulBookings
+		if hasPlatformID && m.EventID == domain.PlatformEventID {
+			prevVisitors = m.Visitors
+			prevBookings = m.SuccessfulBookings
+			prevPageViews = m.PageViews
+		} else if !hasPlatformID {
+			prevVisitors += m.Visitors
+			prevBookings += m.SuccessfulBookings
+			prevPageViews += m.PageViews
+		}
 	}
 
 	
-	pvPct := 0.1 // placeholder
-	if prevVisitors > 0 {
-		pvPct = float64(totalPageViews-prevVisitors) / float64(prevVisitors) * 100 // this calculation is still slightly flawed but matches original intent
+	pvPct := 0.0
+	if prevPageViews > 0 {
+		pvPct = float64(totalPageViews-prevPageViews) / float64(prevPageViews) * 100 
+	} else if totalPageViews > 0 {
+		pvPct = 100.0
 	}
 	stats.PageViews = domain.StatCard{Value: float64(totalPageViews), Percentage: pvPct}
 
@@ -307,7 +411,8 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		{Label: "Visitors", Count: totalVisitors, Percentage: 100},
 		{Label: "Event Page Views", Count: totalEventViews, Percentage: pct(totalEventViews, totalVisitors)},
 		{Label: "Selected Tickets", Count: totalTicketsSelected, Percentage: pct(totalTicketsSelected, totalVisitors)},
-		{Label: "Checkout", Count: totalCheckout, Percentage: pct(totalCheckout, totalVisitors)},
+		{Label: "Checkout Started", Count: totalCheckout, Percentage: pct(totalCheckout, totalVisitors)},
+		{Label: "Successful Bookings", Count: totalBookings, Percentage: pct(totalBookings, totalVisitors)},
 	}
 
 	
@@ -317,7 +422,7 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		stats.PeakUsage = append(stats.PeakUsage, domain.PeakUsagePoint{
 			Label:    dowLabels[i],
 			Viewing:  viewingByDow[dowIdx],
-			Checkout: checkoutByDow[dowIdx],
+			Bookings: bookingsByDow[dowIdx],
 		})
 	}
 

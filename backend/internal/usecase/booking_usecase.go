@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -86,6 +87,15 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	userFee := 0.0
 	if baseTotal > 0 {
 		userFee = float64(30 * totalTickets)
+		if u.settingsRepo != nil {
+			if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil {
+				if settings.PlatformFeeType == domain.PlatformFeeTypePercentage {
+					userFee = math.Round((baseTotal*(settings.PlatformFeeValue/100))*100) / 100
+				} else {
+					userFee = math.Round((float64(totalTickets)*settings.PlatformFeeValue)*100) / 100
+				}
+			}
+		}
 	}
 	totalAmount := baseTotal + userFee
 
@@ -198,8 +208,15 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 		return err
 	}
 
+	refundWindowDays := 1
+	settings, settingsErr := u.settingsRepo.GetPlatformSettings()
+	if settingsErr == nil && settings.RefundWindowDays >= 0 {
+		refundWindowDays = settings.RefundWindowDays
+	}
+
+	refundWindowDuration := time.Duration(refundWindowDays) * 24 * time.Hour
 	timeUntilEvent := time.Until(event.StartTime)
-	isRefundable := timeUntilEvent >= 24*time.Hour
+	isRefundable := timeUntilEvent >= refundWindowDuration
 
 	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
 	if err != nil {
@@ -212,6 +229,29 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 		Int("items_count", len(items)).
 		Time("timestamp", time.Now()).
 		Msg("booking_cancelled_partially")
+
+	if u.notificationUsecase != nil && event.OrganizerID != "" {
+		if notifyErr := u.notificationUsecase.SendNotification(
+			event.OrganizerID,
+			domain.NotificationTypeBookingCancelled,
+			"Booking cancelled",
+			"A user cancelled ticket(s) for your event.",
+			map[string]interface{}{
+				"booking_id":            bookingID,
+				"event_id":              booking.EventID,
+				"event_title":           event.Title,
+				"cancelled_by_user_id":  userID,
+				"cancelled_items_count": len(items),
+				"is_refundable":         isRefundable,
+			},
+		); notifyErr != nil {
+			logger.Log.Warn().
+				Err(notifyErr).
+				Str("organizer_id", event.OrganizerID).
+				Str("booking_id", bookingID).
+				Msg("booking_cancellation_notification_failed")
+		}
+	}
 
 	return nil
 }

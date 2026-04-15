@@ -29,6 +29,26 @@ export function useOrganizers(params: any) {
   });
 }
 
+export function useApproveOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.approveOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
+export function useRejectOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.rejectOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
 export function useEvents(params: any) {
   return useQuery({
     queryKey: ["admin-events", params],
@@ -53,6 +73,27 @@ export function useRejectEvent() {
   return useMutation({
     mutationFn: ({ eventId, reason }: { eventId: string; reason: string }) =>
       adminApi.rejectEvent(eventId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
+export function useApproveEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => adminApi.approveEventCancellation(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
+export function useRejectEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, reason }: { eventId: string; reason: string }) =>
+      adminApi.rejectEventCancellation(eventId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
     },
@@ -108,6 +149,16 @@ export function useAdmins() {
   return useQuery({
     queryKey: ["admin-users-list"], 
     queryFn: () => adminApi.getAdmins(),
+  });
+}
+
+export function useAddAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; email: string }) => adminApi.addAdmin(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
   });
 }
 

@@ -11,23 +11,6 @@ export interface AdminPayoutsResponse {
   total: number;
 }
 
-export interface AdminRefundDetail {
-  id: string;
-  user_id: string;
-  user_name: string;
-  user_email: string;
-  booking_id: string;
-  amount: number;
-  status: "pending" | "processed";
-  requested_at: string;
-  processed_at?: string;
-}
-
-export interface AdminRefundsResponse {
-  refunds: AdminRefundDetail[];
-  total: number;
-}
-
 export interface PlatformSettings {
   id: string;
   enable_user_registration: boolean;
@@ -57,6 +40,11 @@ export interface AdminUser {
   role: string;
   permissions: string;
   status: string;
+}
+
+export interface CreateAdminPayload {
+  name: string;
+  email: string;
 }
 
 export interface AuditLog {
@@ -186,6 +174,16 @@ export const adminApi = {
     return response.data.data;
   },
 
+  async approveOrganizer(organizerId: string) {
+    const response = await api.patch(`/admin/organizers/${organizerId}/approve`);
+    return response.data;
+  },
+
+  async rejectOrganizer(organizerId: string) {
+    const response = await api.patch(`/admin/organizers/${organizerId}/reject`);
+    return response.data;
+  },
+
   async getEvents(params?: {
     page?: number;
     limit?: number;
@@ -210,6 +208,16 @@ export const adminApi = {
     const response = await api.patch(`/admin/events/${eventId}/reject`, {
       reason,
     });
+    return response.data;
+  },
+
+  async approveEventCancellation(eventId: string) {
+    const response = await api.patch(`/admin/events/${eventId}/cancellation/approve`);
+    return response.data;
+  },
+
+  async rejectEventCancellation(eventId: string, reason: string) {
+    const response = await api.patch(`/admin/events/${eventId}/cancellation/reject`, { reason });
     return response.data;
   },
 
@@ -238,16 +246,6 @@ export const adminApi = {
     return response.data;
   },
 
-  async getRefunds(params?: { status?: string }): Promise<AdminRefundsResponse> {
-    const response = await api.get("/admin/refunds", { params });
-    return response.data.data;
-  },
-
-  async processRefund(refundId: string) {
-    const response = await api.patch(`/admin/refunds/${refundId}/process`);
-    return response.data;
-  },
-
   async getPlatformSettings(): Promise<PlatformSettings> {
     const response = await api.get("/admin/settings");
     return response.data.data;
@@ -270,6 +268,11 @@ export const adminApi = {
   
   async getAdmins(): Promise<{ admins: AdminUser[] }> {
     const response = await api.get("/admin/admins");
+    return response.data.data;
+  },
+
+  async addAdmin(payload: CreateAdminPayload) {
+    const response = await api.post("/admin/admins", payload);
     return response.data.data;
   },
 

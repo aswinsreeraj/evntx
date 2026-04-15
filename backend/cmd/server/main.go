@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	httpDelivery "github.com/aswinsreeraj/evntx/internal/delivery/http"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/infrastructure/database"
@@ -14,6 +15,7 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -51,7 +53,6 @@ func main() {
 	db.AutoMigrate(&repoImpl.PlatformWalletTransactionModel{})
 	db.AutoMigrate(&repoImpl.PayoutRequestModel{})
 	db.AutoMigrate(&repoImpl.PayoutCredentialModel{})
-	db.AutoMigrate(&repoImpl.RefundRequestModel{})
 	db.AutoMigrate(&repoImpl.VisitorSessionModel{})
 	db.AutoMigrate(&repoImpl.EngagementEventModel{})
 	db.AutoMigrate(&repoImpl.EventEngagementDailyModel{})
@@ -76,12 +77,12 @@ func main() {
 
 	bookingRepo := repoImpl.NewBookingGormRepository(db)
 	payoutRepo := repoImpl.NewPayoutGormRepository(db)
-	refundRepo := repoImpl.NewRefundGormRepository(db)
+	emailSender := emailImpl.NewSMTPSender()
 
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
-	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo, emailSender)
 	razorpayService := paymentImpl.NewRazorpayService()
-	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, refundRepo, notificationUsecase)
+	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, razorpayService, bookingRepo, payoutRepo, notificationUsecase)
 
 	auditRepo := repoImpl.NewAuditGormRepository(db)
 	auditUsecase := usecase.NewAuditUsecase(auditRepo, userRepo)
@@ -97,15 +98,14 @@ func main() {
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase, auditUsecase)
 
-	emailSender := emailImpl.NewSMTPSender()
-
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
-	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo)
+	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo, settingsRepo)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
 
-	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase)
-	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase)
+	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase, settingsRepo)
+	apiCache := cache.NewCache()
+	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase, apiCache)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase, settingsRepo, roleRepo, auditUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
@@ -117,14 +117,15 @@ func main() {
 
 	scheduler.RegisterJob("BookingExpirationJob", "*/1 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
 	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "0 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
-	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "30 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
+	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "*/1 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
 
 	scheduler.Start()
 	defer scheduler.Stop()
 
-	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase)
+	organizerHandler := httpDelivery.NewOrganizerHandler(eventUsecase, userUsecase, walletUsecase, engagementUsecase, apiCache)
 
 	router := gin.New()
+	pprof.Register(router)
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
@@ -230,7 +231,7 @@ func main() {
 	organizerGroup.GET("/events/slug/:slug", organizerHandler.GetEvent)
 	organizerGroup.PUT("/events/:event_id", organizerHandler.UpdateEvent)
 	organizerGroup.DELETE("/events/:event_id", organizerHandler.DeleteEvent)
-	organizerGroup.POST("/events/:event_id/cancel", organizerHandler.CancelLiveEvent)
+	organizerGroup.POST("/events/:event_id/cancel-request", organizerHandler.RequestEventCancellation)
 	organizerGroup.POST("/events/:event_id/submit", organizerHandler.SubmitEventHandler)
 	organizerGroup.POST("/upload", organizerHandler.UploadImage)
 
@@ -244,6 +245,8 @@ func main() {
 	adminGroup.GET("/reports/engagement", adminHandler.GetAdminEngagementReport)
 	adminGroup.GET("/users", userHandler.AdminListUsers)
 	adminGroup.GET("/organizers", userHandler.AdminListOrganizers)
+	adminGroup.PATCH("/organizers/:id/approve", userHandler.AdminApproveOrganizer)
+	adminGroup.PATCH("/organizers/:id/reject", userHandler.AdminRejectOrganizer)
 	adminGroup.PATCH("/users/:id/status", userHandler.AdminUpdateUserStatus)
 	//=== Event
 	adminGroup.GET("/events", adminHandler.AdminListEvents)
@@ -251,6 +254,8 @@ func main() {
 	adminGroup.PATCH("/events/:event_id/approve", adminHandler.ApproveEventHandler)
 	adminGroup.PATCH("/events/:event_id/reject", adminHandler.RejectEventHandler)
 	adminGroup.PATCH("/events/:event_id/suspend", adminHandler.SuspendEventHandler)
+	adminGroup.PATCH("/events/:event_id/cancellation/approve", adminHandler.ApproveEventCancellationHandler)
+	adminGroup.PATCH("/events/:event_id/cancellation/reject", adminHandler.RejectEventCancellationHandler)
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)
@@ -259,9 +264,6 @@ func main() {
 	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)
 	adminGroup.PATCH("/payouts/:id/reject", adminHandler.AdminRejectPayout)
 	adminGroup.POST("/payouts/bulk-approve", adminHandler.AdminBulkApprovePayouts)
-
-	adminGroup.GET("/refunds", adminHandler.AdminGetRefunds)
-	adminGroup.PATCH("/refunds/:id/process", adminHandler.AdminProcessRefund)
 
 	adminGroup.GET("/settings", adminHandler.GetPlatformSettings)
 	adminGroup.PUT("/settings", adminHandler.UpdatePlatformSettings)

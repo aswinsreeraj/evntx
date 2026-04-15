@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import OTPInput from "./OTPInput";
 import { authApi } from "../api";
+import { useAuthStore } from "../store/authStore";
 
 export default function RegisterForm({ email, onClose, isOrganizer }: any) {
   const [firstName, setFirstName] = useState("");
@@ -60,12 +61,15 @@ export default function RegisterForm({ email, onClose, isOrganizer }: any) {
     try {
       const name = `${firstName} ${lastName}`.trim();
       const role = isOrganizer ? "organizer" : undefined;
-      await authApi.register(email, otp, name, dob, gender, role, isOrganizer ? organizationName : undefined);
+      const response = await authApi.register(email, otp, name, dob, gender, role, isOrganizer ? organizationName : undefined);
+      const assignedRoles: string[] = response?.data?.data?.user?.roles ?? useAuthStore.getState().roles ?? [];
       if (onClose) onClose();
-      window.location.href = isOrganizer ? "/organizer/profile" : "/";
+      window.location.href = assignedRoles.some((r) => r.toLowerCase() === "organizer")
+        ? "/organizer/profile"
+        : "/";
     } catch (e: any) {
       console.error(e);
-      setErrors({ api: e.response?.data?.message || "Failed to register. Invalid OTP or request." });
+      setErrors({ api: e.response?.data?.error?.message || e.response?.data?.message || "Failed to register. Invalid OTP or request." });
     } finally {
       setSubmitting(false);
     }

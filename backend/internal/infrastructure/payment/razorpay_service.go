@@ -105,3 +105,25 @@ func (s *RazorpayService) FetchOrder(orderID string) (*domain.RazorpayOrder, err
 
 	return &order, nil
 }
+
+func (s *RazorpayService) RefundPayment(paymentID string, amount int64) error {
+	if s.keyID == "" || s.keySecret == "" {
+		return fmt.Errorf("razorpay credentials are not configured")
+	}
+
+	refundData := map[string]interface{}{
+		"speed": "normal",
+	}
+
+	_, err := s.client.Payment.Refund(paymentID, int(amount), refundData, nil)
+	if err != nil {
+		logger.Log.Error().
+			Err(err).
+			Str("payment_id", paymentID).
+			Int64("amount", amount).
+			Msg("razorpay refund request failed")
+		return fmt.Errorf("razorpay refund request failed: %w", err)
+	}
+
+	return nil
+}

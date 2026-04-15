@@ -3,7 +3,9 @@ package http
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
@@ -15,14 +17,16 @@ type EventHandler struct {
 	usecase        *usecase.EventUsecase
 	userUsecase    *usecase.UserUsecase
 	bookingUsecase *usecase.BookingUsecase
+	cache          *cache.Cache
 }
 
 func NewEventHandler(
 	u *usecase.EventUsecase,
 	uu *usecase.UserUsecase,
 	bu *usecase.BookingUsecase,
+	c *cache.Cache,
 ) *EventHandler {
-	return &EventHandler{usecase: u, userUsecase: uu, bookingUsecase: bu}
+	return &EventHandler{usecase: u, userUsecase: uu, bookingUsecase: bu, cache: c}
 }
 
 func (h *EventHandler) ListEvents(c *gin.Context) {
@@ -72,6 +76,14 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	slug := c.Param("slug")
+	cacheKey := "event:" + slug
+
+	if h.cache != nil {
+		if cachedData, ok := h.cache.Get(cacheKey); ok {
+			response.Success(c, "Event fetched successfully", cachedData)
+			return
+		}
+	}
 
 	event, details, personnels, tickets, err := h.usecase.GetEvent(slug)
 
@@ -84,25 +96,32 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	if evt, ok := event.(*domain.Event); ok && h.userUsecase != nil {
 		user, organizerDetail, _, userErr := h.userUsecase.GetProfile(evt.OrganizerID)
 		if userErr == nil && user != nil {
-			hostName := user.Name
+			orgName := ""
 			if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-				hostName = organizerDetail.OrganizationName
+				orgName = organizerDetail.OrganizationName
 			}
 			host = gin.H{
-				"name":   hostName,
-				"role":   "Event Organizer",
-				"avatar": user.ProfileImage,
+				"name":         user.Name,
+				"organization": orgName,
+				"role":         "Event Organizer",
+				"avatar":       user.ProfileImage,
 			}
 		}
 	}
 
-	response.Success(c, "Event fetched successfully", gin.H{
+	responseData := gin.H{
 		"event":        event,
 		"details":      details,
 		"personnels":   personnels,
 		"ticket_types": tickets,
 		"host":         host,
-	})
+	}
+
+	if h.cache != nil {
+		h.cache.Set(cacheKey, responseData, 60*time.Second)
+	}
+
+	response.Success(c, "Event fetched successfully", responseData)
 }
 
 func (h *EventHandler) CheckInTicket(c *gin.Context) {

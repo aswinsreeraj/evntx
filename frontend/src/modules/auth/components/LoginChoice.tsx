@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { GoogleLogin } from "@react-oauth/google"
 import { authApi } from "../api"
 
@@ -6,6 +6,19 @@ export default function LoginChoice({ setView, setEmail, isOrganizer, onClose }:
   const [localEmail, setLocalEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+  const [allowGoogleLogin, setAllowGoogleLogin] = useState(true)
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await authApi.getPlatformSettings();
+        setAllowGoogleLogin(Boolean(settings?.allow_google_login));
+      } catch {
+        setAllowGoogleLogin(true);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setLoading(true);
@@ -66,15 +79,21 @@ export default function LoginChoice({ setView, setEmail, isOrganizer, onClose }:
         )}
       </p>
 
-      <div className="w-full flex justify-center mb-8">
-        <GoogleLogin
-          onSuccess={handleGoogleSuccess}
-          onError={handleGoogleError}
-          theme="outline"
-          size="large"
-          text="continue_with"
-        />
-      </div>
+      {allowGoogleLogin ? (
+        <div className="w-full flex justify-center mb-8">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            theme="outline"
+            size="large"
+            text="continue_with"
+          />
+        </div>
+      ) : (
+        <p className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Google login is currently disabled by admin.
+        </p>
+      )}
 
       <div className="w-full flex items-center gap-4 mb-8">
         <div className="h-px bg-gray-200 flex-1"></div>

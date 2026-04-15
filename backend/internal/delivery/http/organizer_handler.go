@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 
@@ -23,10 +24,11 @@ type OrganizerHandler struct {
 	userUsecase       *usecase.UserUsecase
 	walletUsecase     *usecase.WalletUsecase
 	engagementUsecase *usecase.EngagementUsecase
+	cache             *cache.Cache
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase, c *cache.Cache) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase, cache: c}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -127,8 +129,9 @@ func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
 	if endDateStr != "" {
 		endDate, _ = time.Parse(time.RFC3339, endDateStr)
 	}
+	loc, _ := time.LoadLocation("Asia/Calcutta")
 	if startDate.IsZero() {
-		endDate = time.Now()
+		endDate = time.Now().In(loc)
 		startDate = endDate.AddDate(0, 0, -30)
 	}
 
@@ -483,6 +486,12 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
+	if h.cache != nil {
+		if cachedEvent, slugErr := h.eventUsecase.GetEventByID(eventID); slugErr == nil && cachedEvent != nil {
+			h.cache.Delete("event:" + cachedEvent.Slug)
+		}
+	}
+
 	response.Success(c, "Event updated successfully", gin.H{
 		"event_id": eventID,
 		"status":   "draft",
@@ -573,14 +582,15 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 	host := gin.H(nil)
 	user, organizerDetail, _, userErr := h.userUsecase.GetProfile(organizerID)
 	if userErr == nil && user != nil {
-		hostName := user.Name
+		orgName := ""
 		if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-			hostName = organizerDetail.OrganizationName
+			orgName = organizerDetail.OrganizationName
 		}
 		host = gin.H{
-			"name":   hostName,
-			"role":   "Event Organizer",
-			"avatar": user.ProfileImage,
+			"name":         user.Name,
+			"organization": orgName,
+			"role":         "Event Organizer",
+			"avatar":       user.ProfileImage,
 		}
 	}
 
@@ -611,15 +621,22 @@ func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
 	response.Success(c, "Event deleted successfully", nil)
 }
 
-func (h *OrganizerHandler) CancelLiveEvent(c *gin.Context) {
+func (h *OrganizerHandler) RequestEventCancellation(c *gin.Context) {
 	organizerID := c.GetString("user_id")
 	eventID := c.Param("event_id")
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
 
-	err := h.eventUsecase.CancelLiveEvent(c.Request.Context(), organizerID, eventID)
+	err := h.eventUsecase.RequestEventCancellation(c.Request.Context(), organizerID, eventID, req.Reason)
 	if err != nil {
 		response.AppError(c, err)
 		return
 	}
 
-	response.Success(c, "Live event cancelled successfully. All users refunded.", nil)
+	response.Success(c, "Event cancellation request submitted for admin approval", nil)
 }

@@ -39,6 +39,7 @@ export default function MyBookingsPage() {
   const [loadingTickets, setLoadingTickets] = useState<string | null>(null)
   const [loadingCancellation, setLoadingCancellation] = useState<string | null>(null)
   const [eventTickets, setEventTickets] = useState<Record<string, TicketRecord[]>>({})
+  const [refundWindowDays, setRefundWindowDays] = useState(3)
 
   useEffect(() => {
     setFeedbackMap(getFeedbackMap())
@@ -58,6 +59,21 @@ export default function MyBookingsPage() {
     }
 
     void loadBookings()
+  }, [])
+
+  useEffect(() => {
+    const loadPlatformSettings = async () => {
+      try {
+        const settings = await userApi.getPlatformSettings()
+        if (typeof settings?.refund_window_days === "number" && settings.refund_window_days >= 0) {
+          setRefundWindowDays(settings.refund_window_days)
+        }
+      } catch {
+        setRefundWindowDays(3)
+      }
+    }
+
+    void loadPlatformSettings()
   }, [])
 
   const filteredBookings = bookings.filter((booking) => {
@@ -144,8 +160,13 @@ export default function MyBookingsPage() {
 
     try {
       await userApi.cancelBooking(booking.booking_id, { items });
-
-      setRefundNotice("Tickets cancelled. If eligible (24h before event), the amount has been refunded to your wallet. Platform fee is non-refundable.");
+      const isRefundEligible =
+        new Date(booking.event_start_time).getTime() - Date.now() >= refundWindowDays * 24 * 60 * 60 * 1000
+      setRefundNotice(
+        isRefundEligible
+          ? `Tickets cancelled. Refund has been credited to your wallet (cancelled at least ${refundWindowDays} day${refundWindowDays === 1 ? "" : "s"} before the event). Platform fee is non-refundable.`
+          : `Tickets cancelled. No refund was issued because the ${refundWindowDays}-day refund window has passed.`,
+      );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: walletQueryKey }),
         queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
@@ -155,9 +176,8 @@ export default function MyBookingsPage() {
       const validBookings = (data || []).filter((b) => b.ticket_count > 0);
       setBookings(validBookings);
     } catch (error: any) {
-      setBookingActionError(
-        error?.response?.data?.error?.message || "Failed to process cancellation.",
-      )
+      const errorMessage = error?.response?.data?.error?.message || "Failed to process cancellation."
+      setBookingActionError(errorMessage)
     }
 
     setCancellationModal(null)
@@ -361,6 +381,7 @@ export default function MyBookingsPage() {
         open={cancellationModal !== null}
         booking={cancellationModal?.booking ?? null}
         tickets={cancellationModal?.tickets ?? []}
+        refundWindowDays={refundWindowDays}
         onClose={() => setCancellationModal(null)}
         onConfirm={handleConfirmCancellation}
       />

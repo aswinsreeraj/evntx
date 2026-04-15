@@ -400,6 +400,7 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 			"name":                    u.Name,
 			"email":                   u.Email,
 			"is_active":               u.IsActive,
+			"approval_status":         u.ApprovalStatus,
 			"total_bookings":          u.TotalBookings,
 			"total_events":            u.TotalEvents,
 			"wallet_balance":          u.WalletBalance,
@@ -415,6 +416,24 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 			"limit": limit,
 		},
 	})
+}
+
+func (h *UserHandler) AdminApproveOrganizer(c *gin.Context) {
+	organizerID := c.Param("id")
+	if err := h.userUsecase.AdminApproveOrganizer(organizerID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+	apiResponse.Success(c, "Organizer approved successfully", nil)
+}
+
+func (h *UserHandler) AdminRejectOrganizer(c *gin.Context) {
+	organizerID := c.Param("id")
+	if err := h.userUsecase.AdminRejectOrganizer(organizerID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+	apiResponse.Success(c, "Organizer rejected successfully", nil)
 }
 
 func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {

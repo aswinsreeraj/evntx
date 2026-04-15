@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { Download, ChevronDown, Loader2 } from "lucide-react";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState<"sales" | "engagement">("sales");
@@ -210,7 +211,14 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  <button className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm">
+                  <button
+                    onClick={() => {
+                      if (reportStats?.revenue_over_time) {
+                        exportToCSV(reportStats.revenue_over_time, `organizer_revenue_${dateRange}`);
+                      }
+                    }}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"
+                  >
                     Export As <Download className="w-4 h-4 ml-1" />
                   </button>
                 </div>
@@ -384,7 +392,14 @@ export default function Reports() {
                       </div>
                     </div>
 
-                    <button className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm">
+                    <button
+                      onClick={() => {
+                        if (engagementStats?.user_journey) {
+                          exportToCSV(engagementStats.user_journey, `organizer_engagement_journey_${dateRange}`);
+                        }
+                      }}
+                      className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"
+                    >
                       Export As <Download className="w-4 h-4 ml-1" />
                     </button>
                   </div>

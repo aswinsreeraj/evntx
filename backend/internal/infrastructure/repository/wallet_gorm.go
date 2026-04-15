@@ -27,7 +27,7 @@ type WalletTransactionModel struct {
 	ReferenceType string    `gorm:"not null"`
 	ReferenceID   string    `gorm:"not null"`
 	Status        string    `gorm:"not null"`
-	CreatedAt     time.Time `gorm:"not null"`
+	CreatedAt     time.Time `gorm:"index;not null"`
 }
 
 type walletGormRepository struct {

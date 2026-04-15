@@ -21,6 +21,7 @@ type UserRepository interface {
 		page int,
 		limit int,
 	) ([]domain.OrganizerDetails, int64, error)
+	UpdateOrganizerApprovalStatus(userID string, approvalStatus string) error
 
 	UpdateStatus(userID string, isActive bool) error
 	FindUsersByRole(role domain.UserRole) ([]domain.User, error)

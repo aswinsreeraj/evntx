@@ -32,13 +32,43 @@ export default function EventBookingPage() {
   )
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [rawError, setRawError] = useState<string | null>(null)
+  
+  const setError = (msg: string | null) => {
+    const lowerMsg = msg?.toLowerCase() || "";
+    if (lowerMsg.includes("expir") || lowerMsg.includes("invalid state")) {
+      setRawError("Booking expired. try again from the start");
+    } else {
+      setRawError(msg);
+    }
+  }
+
+  const error = rawError;
   const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
   const { data: wallet } = useWallet()
   const { data: paymentSettings } = usePaymentSettings()
   const [isPayingWithWallet, setIsPayingWithWallet] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [isLatePaymentMessage, setIsLatePaymentMessage] = useState(false)
+  const [platformFeeValue, setPlatformFeeValue] = useState(30)
+  const [platformFeeType, setPlatformFeeType] = useState<"fixed" | "percentage">("fixed")
+  const [reservedTotalAmount, setReservedTotalAmount] = useState<number | null>(null)
+
+  useEffect(() => {
+    const loadPlatformSettings = async () => {
+      try {
+        const settings = await userApi.getPlatformSettings()
+        if (typeof settings.platform_fee_value === "number") setPlatformFeeValue(settings.platform_fee_value)
+        if (settings.platform_fee_type === "fixed" || settings.platform_fee_type === "percentage") {
+          setPlatformFeeType(settings.platform_fee_type)
+        }
+      } catch {
+        setPlatformFeeValue(30)
+        setPlatformFeeType("fixed")
+      }
+    }
+    void loadPlatformSettings()
+  }, [])
 
   const razorpaySetting = paymentSettings?.find((p) => p.provider === "razorpay")
   const isRazorpayEnabled = razorpaySetting ? razorpaySetting.is_enabled : false
@@ -54,8 +84,13 @@ export default function EventBookingPage() {
 
   const totalAmount = ticketRows.reduce((sum, ticket) => sum + ticket.amount, 0)
   const totalTickets = ticketRows.reduce((sum, ticket) => sum + ticket.quantity, 0)
-  const platformFee = totalAmount > 0 ? 30 * totalTickets : 0
+  const platformFee = totalAmount > 0
+    ? platformFeeType === "percentage"
+      ? Math.round((totalAmount * (platformFeeValue / 100)) * 100) / 100
+      : Math.round((platformFeeValue * totalTickets) * 100) / 100
+    : 0
   const finalAmount = totalAmount + platformFee
+  const payableAmount = reservedTotalAmount ?? finalAmount
 
   const selectedTickets = ticketRows.filter((ticket) => ticket.quantity > 0)
 
@@ -73,9 +108,9 @@ export default function EventBookingPage() {
     setError(null)
     setCheckoutOpen(true)
     
-    if (data?.id) {
-      trackEvent('ticket_selected', data.id);
-      trackEvent('checkout_started', data.id);
+    if (displayEvent.id) {
+      trackEvent('ticket_selected', displayEvent.id);
+      trackEvent('checkout_started', displayEvent.id);
     }
   }
 
@@ -100,6 +135,9 @@ export default function EventBookingPage() {
       })
 
       setReservedBookingId(response.booking_id)
+      if (typeof response.total_amount === "number") {
+        setReservedTotalAmount(response.total_amount)
+      }
     } catch (reservationError: any) {
       setError(
         reservationError?.response?.data?.message ??
@@ -124,7 +162,7 @@ export default function EventBookingPage() {
         navigate("/profile/bookings", { replace: true })
       }, 2000)
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Wallet payment failed.")
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || "Wallet payment failed.")
     } finally {
       setIsPayingWithWallet(false)
     }
@@ -133,6 +171,13 @@ export default function EventBookingPage() {
   return (
     <div className="bg-white">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
+        <button
+          onClick={() => navigate(`/events/${eventId}`)}
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit"
+        >
+          <span aria-hidden="true">&larr;</span> Back to Event Details
+        </button>
+
         <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
           <div className="grid md:grid-cols-[1.1fr_1fr]">
             <div className="min-h-[180px] bg-[#111827]">
@@ -234,6 +279,7 @@ export default function EventBookingPage() {
           if (!isSubmitting && !reservedBookingId) {
             setCheckoutOpen(false)
             setError(null)
+            setReservedTotalAmount(null)
           }
         }}
         className="relative w-[min(92vw,380px)] rounded-2xl bg-white px-5 pb-5 pt-4 shadow-[0_28px_90px_rgba(15,23,42,0.22)]"
@@ -281,7 +327,11 @@ export default function EventBookingPage() {
                 <span>{formatCurrency(totalAmount)}</span>
               </div>
               <div className="flex items-center justify-between gap-3 text-sm text-[#5d6573]">
-                <span>Platform fee (₹30 per ticket)</span>
+                <span>
+                  {platformFeeType === "percentage"
+                    ? `Platform fee (${platformFeeValue}%)`
+                    : `Platform fee (₹${platformFeeValue} per ticket)`}
+                </span>
                 <span>{formatCurrency(platformFee)}</span>
               </div>
             </div>
@@ -329,7 +379,7 @@ export default function EventBookingPage() {
                   Pay with Razorpay
                 </button>
               )}
-              {isWalletEnabled && wallet && wallet.available_balance >= finalAmount && (
+              {isWalletEnabled && wallet && wallet.available_balance >= payableAmount && (
                 <button
                   type="button"
                   disabled={isPayingWithWallet}
@@ -339,7 +389,7 @@ export default function EventBookingPage() {
                   {isPayingWithWallet ? "Processing Wallet Payment..." : "Pay with Wallet"}
                 </button>
               )}
-              {(!isWalletEnabled) && wallet && wallet.available_balance >= finalAmount && (
+              {(!isWalletEnabled) && wallet && wallet.available_balance >= payableAmount && (
                  <button
                   type="button"
                   disabled
@@ -348,7 +398,7 @@ export default function EventBookingPage() {
                    Pay with Wallet Disabled
                  </button>
               )}
-              {wallet && wallet.available_balance < finalAmount && wallet.available_balance > 0 && (
+              {wallet && wallet.available_balance < payableAmount && wallet.available_balance > 0 && (
                 <p className="text-center text-[10px] text-gray-400">
                   Insufficient wallet balance ({formatCurrency(wallet.available_balance)})
                 </p>
@@ -389,16 +439,16 @@ export default function EventBookingPage() {
               </div>
               <h2 className="text-lg font-bold text-[#111111] mb-2">Payment Received</h2>
               <p className="text-sm text-gray-700 leading-relaxed">
-                Your payment was successful, but the booking expiration time had already passed. 
+                Your payment was successful, but the booking expiration time had already passed.
               </p>
               <p className="text-sm text-gray-700 leading-relaxed mt-2 font-medium">
-                The amount will be refunded to you within 3-5 working days. Please ensure your payout details are updated in your Profile.
+                Your refund has been initiated automatically to the original payment source via Razorpay.
               </p>
               <button 
-                 onClick={() => navigate("/user/profile")}
+                 onClick={() => navigate("/profile/bookings", { replace: true })}
                  className="mt-6 bg-[#0b101e] text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors"
               >
-                Go to Profile
+                Go to My Bookings
               </button>
             </div>
           )}

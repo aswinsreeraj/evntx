@@ -1,7 +1,7 @@
 package http
 
 import (
-	"fmt"
+	"context"
 	"strconv"
 	"strings"
 	"time"
@@ -98,12 +98,12 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 		if endDateStr != "" {
 			endDate, _ = time.Parse(time.RFC3339, endDateStr)
 		}
+		loc, _ := time.LoadLocation("Asia/Calcutta")
 		if startDate.IsZero() {
-			endDate = time.Now()
+			endDate = time.Now().In(loc)
 			startDate = endDate.AddDate(0, 0, -30)
 		}
 		report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
-		fmt.Println(report)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 			return
@@ -113,16 +113,16 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	}
 
 	adminEvents, _, err := h.eventUsecase.AdminSearchEvents("", "", 1, 10000)
-	fmt.Println(adminEvents)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to retrieve events"})
-		return
-	}
 	var eventIDs []string
 	for _, e := range adminEvents {
 		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID || eventIDParam == e.Slug {
 			eventIDs = append(eventIDs, e.ID)
 		}
+	}
+
+	
+	if eventIDParam == "" || eventIDParam == "all" {
+		eventIDs = append(eventIDs, domain.PlatformEventID)
 	}
 
 	var startDate, endDate time.Time
@@ -132,13 +132,13 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 	if endDateStr != "" {
 		endDate, _ = time.Parse(time.RFC3339, endDateStr)
 	}
+	loc, _ := time.LoadLocation("Asia/Calcutta")
 	if startDate.IsZero() {
-		endDate = time.Now()
+		endDate = time.Now().In(loc)
 		startDate = endDate.AddDate(0, 0, -30)
 	}
 
 	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
-	fmt.Println(report)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
 		return
@@ -181,6 +181,7 @@ func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 			"revenue":        evt.Revenue,
 			"city":           evt.City,
 			"status":         evt.Status,
+			"cancellation_request_reason": evt.CancellationRequestReason,
 		})
 	}
 
@@ -191,6 +192,39 @@ func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 			"page":  page,
 			"limit": limit,
 		},
+	})
+}
+
+func (h *AdminHandler) ApproveEventCancellationHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+	if err := h.eventUsecase.ApproveEventCancellation(c.Request.Context(), adminID, eventID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+	response.Success(c, "Event cancellation approved", gin.H{
+		"event_id": eventID,
+		"status":   "cancelled",
+	})
+}
+
+func (h *AdminHandler) RejectEventCancellationHandler(c *gin.Context) {
+	adminID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, pkgErrors.ErrInvalidRequestBody)
+		return
+	}
+	if err := h.eventUsecase.RejectEventCancellation(c.Request.Context(), adminID, eventID, req.Reason); err != nil {
+		response.AppError(c, err)
+		return
+	}
+	response.Success(c, "Event cancellation rejected", gin.H{
+		"event_id": eventID,
+		"status":   "live",
 	})
 }
 
@@ -213,7 +247,7 @@ func (h *AdminHandler) ApproveEventHandler(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" approved", domain.ActionTagEvent, map[string]interface{}{"event_id": eventID}, c.ClientIP())
+		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" approved", domain.ActionTagEvent, buildEventAuditDetails(h, eventID), c.ClientIP())
 	}
 
 	response.Success(c, "Event approved successfully", gin.H{
@@ -250,7 +284,9 @@ func (h *AdminHandler) RejectEventHandler(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" rejected", domain.ActionTagEvent, map[string]interface{}{"event_id": eventID, "reason": req.Reason}, c.ClientIP())
+		eventInfo := buildEventAuditDetails(h, eventID)
+		eventInfo["reason"] = req.Reason
+		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" rejected", domain.ActionTagEvent, eventInfo, c.ClientIP())
 	}
 
 	response.Success(c, "Event rejected successfully", gin.H{
@@ -279,7 +315,9 @@ func (h *AdminHandler) SuspendEventHandler(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" suspended", domain.ActionTagEvent, map[string]interface{}{"event_id": eventID, "reason": req.Reason}, c.ClientIP())
+		eventInfo := buildEventAuditDetails(h, eventID)
+		eventInfo["reason"] = req.Reason
+		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" suspended", domain.ActionTagEvent, eventInfo, c.ClientIP())
 	}
 
 	response.Success(c, "Event suspended successfully", gin.H{
@@ -298,7 +336,7 @@ func (h *AdminHandler) CompleteEventHandler(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" marked completed", domain.ActionTagEvent, map[string]interface{}{"event_id": eventID}, c.ClientIP())
+		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" marked completed", domain.ActionTagEvent, buildEventAuditDetails(h, eventID), c.ClientIP())
 	}
 
 	response.Success(c, "Event completed successfully", gin.H{
@@ -317,7 +355,7 @@ func (h *AdminHandler) SettleEventHandler(c *gin.Context) {
 
 	adminID := c.GetString("user_id")
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" settled", domain.ActionTagEvent, map[string]interface{}{"event_id": eventID}, c.ClientIP())
+		go h.auditUsecase.LogAction(adminID, "Event #"+eventID[:6]+" settled", domain.ActionTagEvent, buildEventAuditDetails(h, eventID), c.ClientIP())
 	}
 
 	response.Success(c, "Settlement completed", gin.H{
@@ -339,14 +377,15 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 	if evt, ok := event.(*domain.Event); ok && h.userUsecase != nil {
 		user, organizerDetail, _, userErr := h.userUsecase.GetProfile(evt.OrganizerID)
 		if userErr == nil && user != nil {
-			hostName := user.Name
+			orgName := ""
 			if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-				hostName = organizerDetail.OrganizationName
+				orgName = organizerDetail.OrganizationName
 			}
 			host = gin.H{
-				"name":   hostName,
-				"role":   "Event Organizer",
-				"avatar": user.ProfileImage,
+				"name":         user.Name,
+				"organization": orgName,
+				"role":         "Event Organizer",
+				"avatar":       user.ProfileImage,
 			}
 		}
 	}
@@ -401,7 +440,7 @@ func (h *AdminHandler) AdminApprovePayout(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Payout #"+payoutID[:6]+" approved", domain.ActionTagPayout, map[string]interface{}{"payout_id": payoutID}, c.ClientIP())
+		go h.auditUsecase.LogAction(adminID, "Payout #"+payoutID[:6]+" approved", domain.ActionTagPayout, buildPayoutAuditDetails(h, c.Request.Context(), payoutID), c.ClientIP())
 	}
 
 	response.Success(c, "Payout approved successfully", nil)
@@ -426,7 +465,7 @@ func (h *AdminHandler) AdminRejectPayout(c *gin.Context) {
 	}
 
 	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Payout #"+payoutID[:6]+" rejected", domain.ActionTagPayout, map[string]interface{}{"payout_id": payoutID, "reason": req.Reason}, c.ClientIP())
+		go h.auditUsecase.LogAction(adminID, "Payout #"+payoutID[:6]+" rejected", domain.ActionTagPayout, buildPayoutAuditDetails(h, c.Request.Context(), payoutID, req.Reason), c.ClientIP())
 	}
 
 	response.Success(c, "Payout rejected successfully", nil)
@@ -454,37 +493,6 @@ func (h *AdminHandler) AdminBulkApprovePayouts(c *gin.Context) {
 	}
 
 	response.Success(c, "Payouts approved successfully", nil)
-}
-
-func (h *AdminHandler) AdminGetRefunds(c *gin.Context) {
-	status := c.Query("status")
-
-	refunds, total, err := h.walletUsecase.AdminGetRefundRequests(c.Request.Context(), status, 1, 50)
-	if err != nil {
-		response.AppError(c, pkgErrors.ErrInternalServerError)
-		return
-	}
-
-	response.Success(c, "Refunds retrieved successfully", gin.H{
-		"refunds": refunds,
-		"total":   total,
-	})
-}
-
-func (h *AdminHandler) AdminProcessRefund(c *gin.Context) {
-	adminID := c.GetString("user_id")
-	refundID := c.Param("id")
-
-	if err := h.walletUsecase.AdminProcessRefundRequest(c.Request.Context(), adminID, refundID); err != nil {
-		response.AppError(c, err)
-		return
-	}
-
-	if h.auditUsecase != nil {
-		go h.auditUsecase.LogAction(adminID, "Refund #"+refundID[:6]+" processed", domain.ActionTagRefund, map[string]interface{}{"refund_id": refundID}, c.ClientIP())
-	}
-
-	response.Success(c, "Refund processed successfully", nil)
 }
 
 func (h *AdminHandler) GetEventEngagement(c *gin.Context) {
@@ -723,4 +731,34 @@ func (h *AdminHandler) GetAuditLogs(c *gin.Context) {
 			"limit": limit,
 		},
 	})
+}
+
+func buildEventAuditDetails(h *AdminHandler, eventID string) map[string]interface{} {
+	info := map[string]interface{}{"event_id": eventID}
+	if h.eventUsecase != nil {
+		event, err := h.eventUsecase.GetEventByID(eventID)
+		if err == nil && event != nil {
+			info["event_title"] = event.Title
+			info["event_slug"] = event.Slug
+		}
+	}
+	return info
+}
+
+func buildPayoutAuditDetails(h *AdminHandler, ctx context.Context, payoutID string, reason ...string) map[string]interface{} {
+	info := map[string]interface{}{"payout_id": payoutID}
+	if len(reason) > 0 && reason[0] != "" {
+		info["reason"] = reason[0]
+	}
+	if h.walletUsecase != nil && h.userUsecase != nil {
+		p, err := h.walletUsecase.GetPayoutByID(ctx, payoutID)
+		if err == nil && p != nil {
+			info["amount"] = p.Amount
+			user, _, _, uErr := h.userUsecase.GetProfile(p.UserID)
+			if uErr == nil && user != nil {
+				info["user_name"] = user.Name
+			}
+		}
+	}
+	return info
 }

@@ -14,6 +14,11 @@ type VerifyOtpResponse = {
 };
 
 export const authApi = {
+    async getPlatformSettings() {
+        const response = await api.get("/settings");
+        return response.data.data;
+    },
+
     async requestOtp(email: string) {
         const response = await api.post("/auth/otp/request", { email });
         return response.data;

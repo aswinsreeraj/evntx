@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEvents, useApproveEvent, useRejectEvent } from "../hooks";
+import { useEvents, useApproveEvent, useRejectEvent, useApproveEventCancellation, useRejectEventCancellation } from "../hooks";
 import AdminLayout from "../components/AdminLayout";
 import { ChevronDown, Download, Search, Filter, X } from "lucide-react";
 import { useDebounce } from "../../../shared/hooks/useDebounce";
+import { exportToCSV } from "../../../shared/utils/csv";
 
 function getStatusColor(status: string) {
   switch (status.toLowerCase()) {
@@ -20,6 +21,8 @@ function getStatusColor(status: string) {
       return "bg-white text-[#e53e5d] border-[#e53e5d] border";
     case "completed":
       return "bg-gray-200 text-gray-700 border-transparent";
+    case "cancellation_pending":
+      return "bg-amber-100 text-amber-700 border border-amber-300";
     default:
       return "bg-gray-100 text-gray-700 border-transparent";
   }
@@ -80,15 +83,18 @@ export default function EventManagementPage() {
 
   const approveEvent = useApproveEvent();
   const rejectEvent = useRejectEvent();
+  const approveEventCancellation = useApproveEventCancellation();
+  const rejectEventCancellation = useRejectEventCancellation();
 
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [modalState, setModalState] = useState<{ isOpen: boolean; type: "Approve" | "Reject" | null; eventId: string | null }>({
+  const [modalState, setModalState] = useState<{ isOpen: boolean; type: "Approve" | "Reject" | "CancellationRequest" | null; eventId: string | null; cancellationReason?: string }>({
     isOpen: false,
     type: null,
     eventId: null,
+    cancellationReason: "",
   });
   const [rejectReason, setRejectReason] = useState("");
 
@@ -118,8 +124,14 @@ export default function EventManagementPage() {
     });
   };
 
-  const handleAction = (eventId: string, type: "Approve" | "Reject") => {
-    setModalState({ isOpen: true, type, eventId });
+  const handleAction = (eventId: string, type: "Approve" | "Reject", cancellationReason?: string) => {
+    setModalState({ isOpen: true, type, eventId, cancellationReason: cancellationReason || "" });
+    setOpenDropdownId(null);
+    setDropdownPosition(null);
+  };
+
+  const handleCancellationAction = (eventId: string, cancellationReason?: string) => {
+    setModalState({ isOpen: true, type: "CancellationRequest", eventId, cancellationReason: cancellationReason || "" });
     setOpenDropdownId(null);
     setDropdownPosition(null);
   };
@@ -207,6 +219,7 @@ export default function EventManagementPage() {
               <option value="live">Live</option>
               <option value="draft">Draft</option>
               <option value="completed">Completed</option>
+              <option value="cancellation_pending">Cancellation Requested</option>
             </select>
             <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -293,7 +306,10 @@ export default function EventManagementPage() {
       </div>
 
       <div className="flex justify-end mt-4">
-        <button className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => exportToCSV(eventsList, "events_list")}
+          className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
+        >
           Download as CSV
           <Download className="w-4 h-4" />
         </button>
@@ -303,7 +319,7 @@ export default function EventManagementPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold">{modalState.type} Event</h2>
+              <h2 className="text-xl font-bold">{modalState.type === "CancellationRequest" ? "Cancellation Request" : `${modalState.type} Event`}</h2>
               <button
                 onClick={() => {
                   setModalState({ isOpen: false, type: null, eventId: null });
@@ -317,25 +333,76 @@ export default function EventManagementPage() {
 
             <div className="p-6">
               <p className="text-gray-600 mb-6">
-                Are you sure you want to {modalState.type?.toLowerCase()} this event?
-                {modalState.type === "Approve" ? " It will be allowed to go live." : " It will be hidden from users."}
+                {modalState.type === "CancellationRequest"
+                  ? "Organizer requested event cancellation. Review the reason below."
+                  : `Are you sure you want to ${modalState.type?.toLowerCase()} this event? ${modalState.type === "Approve" ? "It will be allowed to go live." : "It will be hidden from users."}`}
               </p>
 
-              {modalState.type === "Reject" && (
+              {modalState.type === "CancellationRequest" && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  {modalState.cancellationReason || "No reason provided."}
+                </div>
+              )}
+
+              {(modalState.type === "Reject" || modalState.type === "CancellationRequest") && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-[#0b101e] mb-2">
-                    Reason for Rejection <span className="text-[#e53e5d]">*</span>
+                    {modalState.type === "Reject" ? "Reason for Rejection" : "Reason to reject this cancellation request (optional)"}
                   </label>
                   <textarea
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Provide a reason for the organizer..."
+                    placeholder={modalState.type === "Reject" ? "Provide a reason for the organizer..." : "Optional reason if rejecting this request..."}
                     className="w-full px-4 py-3 bg-[#f8f9fa] border border-transparent rounded-xl text-sm focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all min-h-[100px] resize-none"
                     required
                   />
                 </div>
               )}
 
+              {modalState.type === "CancellationRequest" ? (
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      setModalState({ isOpen: false, type: null, eventId: null });
+                      setRejectReason("");
+                    }}
+                    className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                    disabled={approveEventCancellation.isPending || rejectEventCancellation.isPending}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!modalState.eventId) return;
+                      approveEventCancellation.mutate(modalState.eventId, {
+                        onSuccess: () => {
+                          setModalState({ isOpen: false, type: null, eventId: null });
+                          setRejectReason("");
+                        },
+                      });
+                    }}
+                    disabled={approveEventCancellation.isPending || rejectEventCancellation.isPending}
+                    className="flex-1 px-4 py-3 text-white font-bold rounded-xl bg-[#0ec3c5] hover:bg-[#0da6a8] disabled:opacity-50"
+                  >
+                    {approveEventCancellation.isPending ? "Processing..." : "Approve Request"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!modalState.eventId || !rejectReason.trim()) return;
+                      rejectEventCancellation.mutate({ eventId: modalState.eventId, reason: rejectReason.trim() }, {
+                        onSuccess: () => {
+                          setModalState({ isOpen: false, type: null, eventId: null });
+                          setRejectReason("");
+                        },
+                      });
+                    }}
+                    disabled={approveEventCancellation.isPending || rejectEventCancellation.isPending || !rejectReason.trim()}
+                    className="flex-1 px-4 py-3 text-white font-bold rounded-xl bg-[#e53e5d] hover:bg-[#c2344f] disabled:opacity-50"
+                  >
+                    {rejectEventCancellation.isPending ? "Processing..." : "Reject Request"}
+                  </button>
+                </div>
+              ) : (
               <div className="flex gap-4">
                 <button
                   onClick={() => {
@@ -349,16 +416,23 @@ export default function EventManagementPage() {
                 </button>
                 <button
                   onClick={confirmAction}
-                  disabled={approveEvent.isPending || rejectEvent.isPending || (modalState.type === "Reject" && !rejectReason.trim())}
+                  disabled={
+                    approveEvent.isPending ||
+                    rejectEvent.isPending ||
+                    (modalState.type === "Reject" && !rejectReason.trim())
+                  }
                   className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors ${
                     modalState.type === "Approve"
                       ? "bg-[#0ec3c5] hover:bg-[#0da6a8]"
                       : "bg-[#e53e5d] hover:bg-[#c2344f]"
                   } disabled:opacity-50`}
                 >
-                  {approveEvent.isPending || rejectEvent.isPending ? "Processing..." : `Confirm ${modalState.type}`}
+                  {approveEvent.isPending || rejectEvent.isPending
+                    ? "Processing..."
+                    : `Confirm ${modalState.type}`}
                 </button>
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -402,6 +476,14 @@ export default function EventManagementPage() {
                       onClick={() => handleAction(evt.id, "Reject")}
                     >
                       Reject
+                    </button>
+                  )}
+                  {String(evt.status || "").toLowerCase() === "cancellation_pending" && (
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm font-medium text-amber-700"
+                      onClick={() => handleCancellationAction(evt.id, evt.cancellation_request_reason)}
+                    >
+                      View Cancellation Request
                     </button>
                   )}
                 </div>

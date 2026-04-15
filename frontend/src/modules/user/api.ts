@@ -122,6 +122,12 @@ export type WalletTransactionsResponse = {
   };
 };
 
+export type PublicPlatformSettings = {
+  refund_window_days: number;
+  platform_fee_value: number;
+  platform_fee_type: "fixed" | "percentage";
+};
+
 export const userApi = {
   async getProfile() {
     const res = await api.get("/users/me");
@@ -217,6 +223,11 @@ export const userApi = {
 
   async getPaymentSettings(): Promise<{ provider: string; is_enabled: boolean; config: any }[]> {
     const res = await api.get("/payment-settings");
+    return res.data.data;
+  },
+
+  async getPlatformSettings(): Promise<PublicPlatformSettings> {
+    const res = await api.get("/settings");
     return res.data.data;
   },
 };

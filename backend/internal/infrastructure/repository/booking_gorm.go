@@ -15,13 +15,15 @@ import (
 )
 
 type BookingModel struct {
-	ID          string
-	UserID      string
-	EventID     string
-	Status      string
-	TotalAmount float64
-	ExpiresAt   int64
-	CreatedAt   int64
+	ID               string
+	UserID           string `gorm:"index"`
+	EventID          string `gorm:"index"`
+	Status           string `gorm:"index"`
+	TotalAmount      float64
+	PlatformFeeValue float64
+	PlatformFeeType  string
+	ExpiresAt        int64
+	CreatedAt        int64
 }
 
 type BookingTicketModel struct {
@@ -32,11 +34,11 @@ type BookingTicketModel struct {
 
 type TicketModel struct {
 	ID           string
-	BookingID    string
+	BookingID    string `gorm:"index"`
 	TicketTypeID string
-	TicketCode   string
+	TicketCode   string `gorm:"uniqueIndex"`
 	QRPayload    string
-	Status       string
+	Status       string `gorm:"index"`
 	CheckedInAt  *int64
 }
 
@@ -155,13 +157,15 @@ func (r *bookingGormRepository) FindByID(ctx context.Context, bookingID string) 
 	}
 
 	return &domain.Booking{
-		ID:          model.ID,
-		UserID:      model.UserID,
-		EventID:     model.EventID,
-		Status:      model.Status,
-		TotalAmount: model.TotalAmount,
-		ExpiresAt:   time.Unix(model.ExpiresAt, 0),
-		CreatedAt:   time.Unix(model.CreatedAt, 0),
+		ID:               model.ID,
+		UserID:           model.UserID,
+		EventID:          model.EventID,
+		Status:           model.Status,
+		TotalAmount:      model.TotalAmount,
+		PlatformFeeValue: model.PlatformFeeValue,
+		PlatformFeeType:  model.PlatformFeeType,
+		ExpiresAt:        time.Unix(model.ExpiresAt, 0),
+		CreatedAt:        time.Unix(model.CreatedAt, 0),
 	}, nil
 }
 
@@ -277,8 +281,19 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 				return err
 			}
 
+			var returningFee float64
+			if bm.PlatformFeeType == "percentage" {
+				returningFee = math.Round((totalRefund*(bm.PlatformFeeValue/100))*100) / 100
+			} else {
+				feesPerTicket := bm.PlatformFeeValue
+				if feesPerTicket == 0 {
+					feesPerTicket = 30 
+				}
+				returningFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
+			}
+
 			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-totalRefund)*100) / 100
-			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+float64(totalTicketsCancelled*30))*100) / 100
+			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+returningFee)*100) / 100
 			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
 				"pending_balance": orgWallet.PendingBalance,
 				"reserve_balance": orgWallet.ReserveBalance,
@@ -394,7 +409,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 	if status != "" {
 		query = query.Where("booking_models.status = ?", status)
 	} else {
-		query = query.Where("booking_models.status NOT IN (?)", []string{"reserved", "expired"})
+		query = query.Where("booking_models.status NOT IN (?)", []string{"reserved", "expired", "cancelled"})
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -776,7 +791,26 @@ func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID str
 			return err
 		}
 
-		userPlatformFee := float64(totalTickets * 30)
+		var settings PlatformSettingsModel
+		if err := tx.Where("id = ?", domain.PlatformSettingsID).First(&settings).Error; err != nil {
+			settings.PlatformFeeValue = 30
+			settings.PlatformFeeType = "fixed"
+		}
+
+		var userPlatformFee float64
+		if settings.PlatformFeeType == "percentage" {
+			userPlatformFee = math.Round((normalizedAmount*(settings.PlatformFeeValue/100))*100) / 100
+		} else {
+			userPlatformFee = math.Round(float64(totalTickets)*settings.PlatformFeeValue*100) / 100
+		}
+
+		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
+			"platform_fee_value": settings.PlatformFeeValue,
+			"platform_fee_type":  settings.PlatformFeeType,
+		}).Error; err != nil {
+			return err
+		}
+
 		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
 
 		var platformWallet PlatformWalletModel
