@@ -9,7 +9,6 @@ import (
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
-	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -82,7 +81,6 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	if h.cache != nil {
 		if cachedData, ok := h.cache.Get(cacheKey); ok {
 			response.Success(c, "Event fetched successfully", cachedData)
-			logger.Log.Info().Msgf("Event fetched successfully from cache")
 			return
 		}
 	}

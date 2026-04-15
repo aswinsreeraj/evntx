@@ -7,7 +7,7 @@ import (
 
 func BenchmarkGetEvents(b *testing.B) {
 	url := "http://localhost:8080/events"
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resp, err := http.Get(url)
 		if err != nil {
 			b.Fatal(err)
@@ -31,7 +31,7 @@ func BenchmarkGetEventsParallel(b *testing.B) {
 
 func BenchmarkGetEventDetails(b *testing.B) {
 	url := "http://localhost:8080/events/sand-castle"
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resp, err := http.Get(url)
 		if err != nil {
 			b.Fatal(err)
