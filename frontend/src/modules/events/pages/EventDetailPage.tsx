@@ -107,9 +107,29 @@ export default function EventDetailPage() {
                   {displayEvent.venueAddress && <p>{displayEvent.venueAddress}</p>}
                   {displayEvent.city && <p>{displayEvent.city}</p>}
                   {displayEvent.mapUrl && (
-                    <a href={displayEvent.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#e53e5d] font-medium hover:underline inline-block mt-2">
-                      View on Map
-                    </a>
+                    <div className="mt-2 flex flex-col gap-3">
+                      <div className="w-full overflow-hidden rounded-xl bg-gray-100 border border-gray-100 shadow-sm">
+                        <iframe
+                          title="Event Venue Map"
+                          src={
+                            displayEvent.mapUrl.includes("output=embed") || displayEvent.mapUrl.includes("/embed")
+                              ? displayEvent.mapUrl
+                              : `https://maps.google.com/maps?q=${encodeURIComponent(
+                                  displayEvent.venueAddress ? `${displayEvent.venueName}, ${displayEvent.venueAddress}, ${displayEvent.city || ''}` : `${displayEvent.venueName}, ${displayEvent.city || ''}`
+                                )}&output=embed`
+                          }
+                          width="100%"
+                          height="280"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      </div>
+                      <a href={displayEvent.mapUrl} target="_blank" rel="noopener noreferrer" className="text-[#e53e5d] font-medium hover:underline inline-block">
+                        View Larger Map
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
@@ -173,7 +193,7 @@ export default function EventDetailPage() {
 
                 return (
                   <div className="flex flex-col gap-3">
-                    {isSellingFast && !isSoldOut && (
+                    {isSellingFast && !isSoldOut && displayEvent.status !== "completed" && (
                       <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between">
                          <span className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
@@ -182,23 +202,32 @@ export default function EventDetailPage() {
                          <span>Only {displayEvent.availableCapacity} left</span>
                       </div>
                     )}
-                    <button
-                    disabled={isSoldOut}
-                    className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
-                      isSoldOut
-                        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        : "bg-[#0b101e] hover:bg-black text-white"
-                    }`}
-                    onClick={() => {
-                      if (useAuthStore.getState().isAuthenticated) {
-                        navigate(`/events/${eventId}/book`)
-                      } else {
-                        useAuthStore.getState().openAuthModal("goer")
-                      }
-                    }}
-                  >
-                    {isSoldOut ? "Sold Out" : "Continue to Booking"}
-                  </button>
+                    {displayEvent.status === "completed" ? (
+                      <button
+                        disabled
+                        className="w-full py-3.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-500 cursor-not-allowed"
+                      >
+                        Event Completed
+                      </button>
+                    ) : (
+                      <button
+                        disabled={isSoldOut}
+                        className={`w-full py-3.5 rounded-xl text-sm font-medium transition-colors ${
+                          isSoldOut
+                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                            : "bg-[#0b101e] hover:bg-black text-white"
+                        }`}
+                        onClick={() => {
+                          if (useAuthStore.getState().isAuthenticated) {
+                            navigate(`/events/${eventId}/book`)
+                          } else {
+                            useAuthStore.getState().openAuthModal("goer")
+                          }
+                        }}
+                      >
+                        {isSoldOut ? "Sold Out" : "Continue to Booking"}
+                      </button>
+                    )}
                   </div>
                 );
               })()}

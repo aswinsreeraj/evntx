@@ -64,7 +64,7 @@ func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interfac
 		return nil, nil, nil, nil, err
 	}
 
-	if event.Status != "approved" && event.Status != "live" {
+	if event.Status != "approved" && event.Status != "live" && event.Status != "completed" {
 		return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
 	}
 

@@ -287,7 +287,7 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			} else {
 				feesPerTicket := bm.PlatformFeeValue
 				if feesPerTicket == 0 {
-					feesPerTicket = 30 // fallback
+					feesPerTicket = 30 
 				}
 				returningFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
 			}

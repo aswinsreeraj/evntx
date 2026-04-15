@@ -9,6 +9,7 @@ export type EventTicketOption = {
 export type DisplayEvent = {
   id: string
   title: string
+  status?: string
   coverImageUrl: string
   city: string
   venue: string
@@ -185,6 +186,7 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
   return {
     id: rawEvent.id ?? rawEvent.ID ?? rawEvent.slug ?? rawEvent.Slug ?? eventId,
     title: rawEvent.title ?? rawEvent.Title ?? fallbackEvent.title,
+    status: rawEvent.status ?? rawEvent.Status,
     coverImageUrl: resolveAssetUrl(rawEvent.cover_image_url ?? rawEvent.CoverImageURL ?? rawEvent.coverImageUrl ?? fallbackEvent.cover_image_url) ?? fallbackEvent.cover_image_url,
     city,
     venue,

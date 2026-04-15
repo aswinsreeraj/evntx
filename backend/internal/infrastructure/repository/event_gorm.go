@@ -920,7 +920,7 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 			} else {
 				feesPerTicket := bm.PlatformFeeValue
 				if feesPerTicket == 0 {
-					feesPerTicket = 30 // fallback
+					feesPerTicket = 30 
 				}
 				platformFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
 			}
@@ -1163,7 +1163,7 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 	var revenueByMonth = make(map[string]float64)
 	for i := 11; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0)
-		revenueByMonth[m.Format("Jan")] = 0
+		revenueByMonth[m.Format("Jan 2006")] = 0
 	}
 
 	var revenueByEvent = make(map[string]float64)
@@ -1180,7 +1180,7 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 
 		revenueByEvent[b.EventID] += b.TotalAmount
 
-		monthStr := bCreatedAt.Format("Jan")
+		monthStr := bCreatedAt.Format("Jan 2006")
 		if _, exists := revenueByMonth[monthStr]; exists {
 			revenueByMonth[monthStr] += b.TotalAmount
 		}
@@ -1203,7 +1203,7 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 	stats.PendingEvents = domain.StatCard{Value: float64(pendingEvents), Percentage: 0}
 
 	for i := 11; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan")
+		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
 			Date:   m,
 			Amount: revenueByMonth[m],
@@ -1490,17 +1490,17 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 
 	revenueByMonth := make(map[string]float64)
 	for i := 11; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan")
+		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		revenueByMonth[m] = 0
 	}
 	for _, b := range bookingRows {
-		key := time.Unix(b.CreatedAt, 0).Format("Jan")
+		key := time.Unix(b.CreatedAt, 0).Format("Jan 2006")
 		if _, ok := revenueByMonth[key]; ok {
 			revenueByMonth[key] += b.TotalAmount
 		}
 	}
 	for i := 11; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan")
+		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
 			Date:   m,
 			Amount: revenueByMonth[m],
@@ -1602,19 +1602,19 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		if m.After(endDate) {
 			continue
 		}
-		key := startDate.AddDate(0, months-i, 0).Format("Jan")
+		key := startDate.AddDate(0, months-i, 0).Format("Jan 2006")
 		revenueByMonth[key] = 0
 	}
 
 	revenueByMonth = make(map[string]float64)
 	cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
 	for !cur.After(endDate) {
-		revenueByMonth[cur.Format("Jan")] = 0
+		revenueByMonth[cur.Format("Jan 2006")] = 0
 		cur = cur.AddDate(0, 1, 0)
 	}
 
 	for _, b := range bookingRows {
-		key := time.Unix(b.CreatedAt, 0).Format("Jan")
+		key := time.Unix(b.CreatedAt, 0).Format("Jan 2006")
 		if _, ok := revenueByMonth[key]; ok {
 			revenueByMonth[key] += b.TotalAmount
 		}
@@ -1622,7 +1622,7 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 
 	cur = time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
 	for !cur.After(endDate) {
-		key := cur.Format("Jan")
+		key := cur.Format("Jan 2006")
 		report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
 			Date:   key,
 			Amount: revenueByMonth[key],
@@ -1664,11 +1664,11 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 
 	refundByMonth := make(map[string]float64)
 	for i := 5; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan")
+		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		refundByMonth[m] = 0
 	}
 	for _, r2 := range refundRows {
-		key := time.Unix(r2.CreatedAt, 0).Format("Jan")
+		key := time.Unix(r2.CreatedAt, 0).Format("Jan 2006")
 		if _, ok := refundByMonth[key]; ok {
 			refundByMonth[key] += r2.TotalAmount
 		}
@@ -1676,11 +1676,11 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 
 	var prevRefundTotal float64
 	for k, v := range refundByMonth {
-		if k == firstDayPrevMonth.Format("Jan") {
+		if k == firstDayPrevMonth.Format("Jan 2006") {
 			prevRefundTotal = v
 		}
 	}
-	thisMonthRefund := refundByMonth[now.Format("Jan")]
+	thisMonthRefund := refundByMonth[now.Format("Jan 2006")]
 	refundPct := 0.0
 	if prevRefundTotal > 0 {
 		refundPct = (thisMonthRefund - prevRefundTotal) / prevRefundTotal * 100
@@ -1695,8 +1695,8 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	for i := 5; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0)
 		report.RefundAnalytics = append(report.RefundAnalytics, domain.RefundDataPoint{
-			Month:  m.Format("Jan"),
-			Amount: refundByMonth[m.Format("Jan")],
+			Month:  m.Format("Jan 2006"),
+			Amount: refundByMonth[m.Format("Jan 2006")],
 		})
 	}
 

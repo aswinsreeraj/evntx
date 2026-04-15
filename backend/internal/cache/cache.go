@@ -30,9 +30,9 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	// Check for expiration
+	
 	if time.Now().After(item.ExpiresAt) {
-		// Lazy deletion of expired items
+		
 		c.Delete(key)
 		return nil, false
 	}
