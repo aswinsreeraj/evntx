@@ -8,30 +8,33 @@ EVNTX is a scalable, multi-role event management platform that enables users to 
 
 ### User (Goer)
 
-* Discover and explore events
-* View event details and ticket types
-* Reserve and book tickets
+* Discover and explore events with categorized listings
+* View event details, ticket types, and availability
+* Reserve and book tickets with real-time inventory management
 * Secure payment system integration (Razorpay) for ticket purchases
 * Manage bookings and generated tickets (PDF / QR Code)
 * Wallet system for easy refunds and seamless checkouts
-* Calendar view for upcoming events
+* Calendar view for tracking upcoming events
 * Passwordless authentication (Email OTP & Google OAuth)
 
 ### Organizer
 
-* Create and manage events
-* Submit events for approval
-* Track revenue and engagement analytics
+* Create and manage events with rich media support
+* Submit events for admin approval with state tracking
+* **Engagement Analytics:** Track visitors, event views, ticket selections, and checkout starts
+* **Sales Reports:** Detailed revenue and booking breakdowns
 * Generate and manage tickets for attendees
-* Organizer wallet for receiving direct earnings
-* Request payouts from wallet balance
+* Organizer wallet for direct earnings and ledger-based transactions
+* Request and track payout settlements
 
 ### Admin
 
-* Manage users and organizers
-* Approve/reject events and organizers
-* Configure platform settings
-* Audit logs and reporting
+* **Global Dashboard:** High-level platform metrics and engagement trends
+* **Management Suites:** Comprehensive CRUD for Users, Organizers, and Events
+* **Audit Logging:** Detailed trail of all administrative actions
+* **Advanced Admin Management:** Secure admin creation and deletion with self-deletion protection
+* **Platform Configuration:** Dynamic control over fees, payment providers, and system settings
+* **Reporting:** Global revenue and engagement analytics with **CSV Export** capabilities
 
 ---
 
@@ -43,19 +46,19 @@ The backend strictly follows **Clean Architecture**, ensuring separation between
 
 #### Layers:
 
-* **Domain** → Core business entities
-* **Usecase** → Application logic
-* **Repository (Interface)** → Contracts
-* **Infrastructure** → DB, email, external services
-* **Delivery (HTTP)** → Gin handlers
+* **Domain** → Core business entities (Events, Bookings, Engagement, Audit)
+* **Usecase** → Application logic and business rules
+* **Repository (Interface)** → Contracts for data persistence
+* **Infrastructure** → GORM implementations, email (SMTP), payments (Razorpay)
+* **Delivery (HTTP)** → Gin-gonic handlers and routing
 
-#### Supporting Packages:
+#### Core Systems:
 
-* JWT handling
-* OTP system
-* OAuth integration
-* Structured logging (Zerolog)
-* Background workers
+* **Telemetry Pipeline:** Real-time tracking of visitor sessions and engagement events
+* **Cron Scheduler:** Centralized job registry for expiring bookings, processing payouts, and event auto-completion
+* **In-Memory Caching:** Local caching layer for high-demand endpoints (e.g., event details)
+* **Auth System:** JWT-based session management with Refresh Tokens and RBAC
+* **Audit System:** Automatic logging of sensitive administrative operations
 
 ---
 
@@ -88,35 +91,36 @@ The backend strictly follows **Clean Architecture**, ensuring separation between
 ```id="backend-structure"
 backend/
 ├── cmd/
-│   ├── server/      # Application entrypoint
-│   ├── admin/       # Admin utilities
-│   ├── seeder/      # DB seeding scripts
-│   └── wallet_seeder/ # Wallet initializer
+│   ├── server/          # Application entrypoint
+│   ├── admin/           # Admin utilities
+│   ├── seeder/          # DB seeding scripts
+│   └── wallet_seeder/   # Wallet initializer
 │
 ├── internal/
-│   ├── domain/      # Core entities
-│   ├── usecase/     # Business logic
-│   ├── repository/  # Interfaces
+│   ├── cache/           # In-memory caching implementation
+│   ├── domain/          # Core entities (engagement, audit, settings, etc.)
+│   ├── usecase/         # Business logic layer
+│   ├── repository/      # Repository interfaces
 │   ├── infrastructure/
-│   │   ├── database/
-│   │   ├── email/
-│   │   ├── payment/   # Payment gateway integration
-│   │   └── repository/  # Implementations
+│   │   ├── database/    # DB connection management
+│   │   ├── email/       # SMTP implementation
+│   │   ├── payment/     # Razorpay integration
+│   │   └── repository/  # GORM implementations
 │   ├── delivery/
-│   │   └── http/    # Gin handlers
-│   └── middleware/  # Auth, logging, etc.
+│   │   └── http/        # Gin handlers and API routes
+│   └── middleware/      # Auth, Logging, Rate-limiting, RBAC
 │
 ├── pkg/
-│   ├── errors/
-│   ├── hash/
-│   ├── jwt/
-│   ├── logger/
-│   ├── oauth/
-│   ├── otp/
-│   ├── response/
-│   └── workers/
+│   ├── errors/          # Custom error types
+│   ├── hash/            # Hashing utilities
+│   ├── jwt/             # Token management
+│   ├── logger/          # Zerolog configuration
+│   ├── oauth/           # Google OAuth logic
+│   ├── otp/             # OTP generation
+│   ├── response/        # Standardize API responses
+│   └── workers/         # Cron scheduler and background jobs
 │
-└── assets/          # Static files (images, event media)
+└── assets/              # Static files (images, event media)
 ```
 
 ---
@@ -126,23 +130,23 @@ backend/
 ```id="frontend-structure"
 frontend/
 ├── src/
-│   ├── app/             # App-level setup (routing, providers)
-│   ├── modules/         # Feature-based modules
-│   │   ├── admin/
-│   │   ├── auth/
-│   │   ├── events/
-│   │   ├── home/
-│   │   ├── notifications/
-│   │   ├── organizer/
-│   │   ├── payments/
-│   │   └── user/
+│   ├── app/             # App-level entry, routing, and providers
+│   ├── modules/         # Feature-based modular architecture
+│   │   ├── admin/       # Dashboard, User/Org management, Reports, Settings
+│   │   ├── auth/        # Login, Register, OTP flows
+│   │   ├── events/      # Event discovery and details
+│   │   ├── home/        # Landing page
+│   │   ├── notifications/ # Notification center
+│   │   ├── organizer/   # Org dashboard, Event creation, Analytics
+│   │   ├── payments/    # Razorpay checkout integration
+│   │   └── user/        # User profile, Wallet, Bookings
 │   │
-│   ├── services/        # API layer (Axios)
+│   ├── services/        # Centralized Axios API instances
 │   └── shared/
-│       ├── components/
-│       ├── hooks/       # TanStack Query hooks
-│       ├── ui/
-│       └── utils/
+│       ├── components/  # Layout, Navbar, Breadcrumbs
+│       ├── hooks/       # Custom hooks and TanStack Query logic
+│       ├── ui/          # Atomic UI components
+│       └── utils/       # Helpers and formatters
 │
 └── assets/
 ```
@@ -190,11 +194,12 @@ Full API Documentation: https://docs.google.com/document/d/1G3qYPxqshgR_f2C00_eb
 
 ## Database Design
 
-* PostgreSQL relational schema
-* UUID primary keys
-* State-driven lifecycle modeling
-* Strong referential integrity
-* Ledger-based wallet system
+* PostgreSQL relational schema with curated indexing
+* UUID v4 primary keys for enhanced security
+* State-driven lifecycle modeling for Events and Bookings
+* Ledger-based append-only wallet transaction system
+* Global audit logging for administrative transparency
+* Engagement telemetry tracking (Visitor sessions -> Daily aggregations)
 
 Full Database Documentation: https://docs.google.com/document/d/1nFD9qYgVHtE5nrjjdYi2lhSgqYmTTEnDpu5OhtahSA0/edit?usp=sharing
 
@@ -207,6 +212,7 @@ Full Database Documentation: https://docs.google.com/document/d/1nFD9qYgVHtE5nrj
 ```id="event-life"
 draft → pending → approved → live → completed
 draft → pending → rejected
+live → cancellation_pending → cancelled
 ```
 
 ### Booking
@@ -221,6 +227,13 @@ reserved → expired
 ```id="payment-life"
 initiated → success → refunded
 initiated → failed
+```
+
+### Payout
+
+```id="payout-life"
+pending → approved → settled
+pending → rejected
 ```
 
 ---
@@ -290,11 +303,13 @@ npm run dev
 
 ## Key Design Highlights
 
-* Concurrency-safe ticket inventory
-* Optimistic locking for ticket updates
-* Append-only wallet transaction ledger
-* Structured logging with Zerolog
-* Modular feature-based frontend architecture
+* **Concurrency-Safe Ticket Inventory:** Optimistic locking ensures zero double-booking.
+* **Append-Only Ledger:** Financial integrity via immutable wallet transactions.
+* **Engagement Pipeline:** Context-aware tracking of the user acquisition funnel.
+* **Centralized Job Registry:** Reliable background processing with retry strategies.
+* **In-Memory Caching:** Sub-millisecond response times for critical read paths.
+* **Modular Frontend:** Domain-driven module structure for scalability.
+* **Structured Logging:** Unified Zerolog implementation across all layers.
 
 ---
 
