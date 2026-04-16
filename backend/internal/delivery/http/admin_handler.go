@@ -698,6 +698,33 @@ func (h *AdminHandler) AddAdmin(c *gin.Context) {
 	})
 }
 
+func (h *AdminHandler) DeleteAdmin(c *gin.Context) {
+	if h.userUsecase == nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	adminID := c.Param("id")
+	currentUserID := c.GetString("user_id")
+
+	if adminID == currentUserID {
+		response.AppError(c, pkgErrors.New(400, "BAD_REQUEST", "You cannot delete your own admin account"))
+		return
+	}
+
+	err := h.userUsecase.DeleteAdmin(adminID)
+	if err != nil {
+		response.AppError(c, pkgErrors.New(500, pkgErrors.InternalServerError, "Failed to delete admin user"))
+		return
+	}
+
+	if h.auditUsecase != nil {
+		go h.auditUsecase.LogAction(currentUserID, "Admin user #"+adminID[:6]+" deleted", domain.ActionTagSettings, map[string]interface{}{"deleted_admin_id": adminID}, c.ClientIP())
+	}
+
+	response.Success(c, "Admin deleted successfully", nil)
+}
+
 func (h *AdminHandler) GetAuditLogs(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")

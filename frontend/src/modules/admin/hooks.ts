@@ -162,6 +162,16 @@ export function useAddAdmin() {
   });
 }
 
+export function useDeleteAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (adminId: string) => adminApi.deleteAdmin(adminId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
+  });
+}
+
 export function useAuditLogs(page: number, limit: number) {
   return useQuery({
     queryKey: ["admin-audit-logs", page, limit],

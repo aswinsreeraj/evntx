@@ -407,3 +407,25 @@ func (r *userGormRepository) FindUsersByRole(role domain.UserRole) ([]domain.Use
 	return users, nil
 }
 
+func (r *userGormRepository) Delete(id string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DELETE FROM user_role_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM user_session_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM wallet_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM organizer_detail_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		return tx.Delete(&UserModel{}, "id = ?", id).Error
+	})
+}
+

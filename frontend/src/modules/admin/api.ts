@@ -276,6 +276,11 @@ export const adminApi = {
     return response.data.data;
   },
 
+  async deleteAdmin(adminId: string) {
+    const response = await api.delete(`/admin/admins/${adminId}`);
+    return response.data;
+  },
+
   async getAuditLogs(page: number = 1, limit: number = 20): Promise<{ logs: AuditLog[], pagination: { total: number, page: number, limit: number } }> {
     const response = await api.get(`/admin/audit-logs?page=${page}&limit=${limit}`);
     return response.data.data;

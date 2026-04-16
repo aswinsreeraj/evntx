@@ -205,3 +205,7 @@ func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) {
 	return user, nil
 }
 
+func (u *UserUsecase) DeleteAdmin(adminID string) error {
+	return u.repo.Delete(adminID)
+}
+

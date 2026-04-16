@@ -271,6 +271,7 @@ func main() {
 	adminGroup.PUT("/payment-settings/:provider", adminHandler.UpdatePaymentProvider)
 	adminGroup.GET("/admins", adminHandler.ListAdmins)
 	adminGroup.POST("/admins", adminHandler.AddAdmin)
+	adminGroup.DELETE("/admins/:id", adminHandler.DeleteAdmin)
 	adminGroup.GET("/audit-logs", adminHandler.GetAuditLogs)
 
 	// Event endpoints

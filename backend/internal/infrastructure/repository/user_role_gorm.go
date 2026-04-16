@@ -41,3 +41,7 @@ func (r *userRoleGormRepository) AddRole(userID string, role domain.UserRole) er
 	}
 	return r.db.Save(&model).Error
 }
+
+func (r *userRoleGormRepository) RemoveRole(userID string, role domain.UserRole) error {
+	return r.db.Delete(&UserRoleModel{}, "user_id = ? AND role = ?", userID, string(role)).Error
+}
