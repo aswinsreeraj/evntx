@@ -25,4 +25,5 @@ type UserRepository interface {
 
 	UpdateStatus(userID string, isActive bool) error
 	FindUsersByRole(role domain.UserRole) ([]domain.User, error)
+	Delete(id string) error
 }

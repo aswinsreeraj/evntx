@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
-import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins, useAddAdmin } from "../hooks";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins, useAddAdmin, useDeleteAdmin } from "../hooks";
+import { Loader2, ShieldCheck, Trash2, Info, ChevronDown } from "lucide-react";
+import { useAuthStore } from "../../auth/store/authStore";
+import Modal from "../../../shared/ui/Modal";
 
 export default function SettingsPage() {
   const { data: settings, isLoading: isSettingsLoading } = useSettings();
@@ -11,6 +13,9 @@ export default function SettingsPage() {
   const { mutate: updateSettings, isPending: isSaving } = useUpdateSettings();
   const { mutate: updatePayment } = useUpdatePaymentProvider();
   const { mutate: addAdmin, isPending: isAddingAdmin } = useAddAdmin();
+  const { mutate: deleteAdmin, isPending: isDeletingAdmin } = useDeleteAdmin();
+
+  const currentUser = useAuthStore((state: any) => state.user);
 
   const isLoading = isSettingsLoading || isPaymentsLoading || isAdminsLoading;
 
@@ -21,6 +26,9 @@ export default function SettingsPage() {
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<any>(null);
 
   useEffect(() => {
     if (settings) {
@@ -140,6 +148,34 @@ export default function SettingsPage() {
           {toastMessage.text}
         </div>
       )}
+
+      {showDetailsModal && (
+        <AdminDetailsModal 
+          admin={showDetailsModal} 
+          onClose={() => setShowDetailsModal(null)} 
+        />
+      )}
+
+      {showDeleteConfirm && (
+        <DeleteAdminModal
+          admin={showDeleteConfirm}
+          isLoading={isDeletingAdmin}
+          onClose={() => setShowDeleteConfirm(null)}
+          onConfirm={() => {
+            deleteAdmin(showDeleteConfirm.id, {
+              onSuccess: () => {
+                setShowDeleteConfirm(null);
+                setToastMessage({ type: "success", text: "Admin deleted successfully" });
+                setTimeout(() => setToastMessage(null), 3000);
+              },
+              onError: (err: any) => {
+                setToastMessage({ type: "error", text: err.response?.data?.message || "Failed to delete admin" });
+                setTimeout(() => setToastMessage(null), 3000);
+              }
+            });
+          }}
+        />
+      )}
       
       <div className="flex flex-col gap-6 lg:flex-row items-start relative pb-24">
         
@@ -184,7 +220,7 @@ export default function SettingsPage() {
           </div>
 
           {}
-          <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-[#1c2438] text-white flex items-center justify-center">
@@ -200,7 +236,7 @@ export default function SettingsPage() {
                 </button>
              </div>
              
-             <div className="overflow-x-auto">
+             <div className="">
                <table className="w-full text-sm text-left">
                  <thead className="bg-[#f8fafc] text-gray-700 text-xs uppercase font-bold rounded-t-xl overflow-hidden hidden sm:table-header-group">
                    <tr>
@@ -229,11 +265,49 @@ export default function SettingsPage() {
                            {admin.status}
                          </span>
                        </td>
-                       <td className="px-4 py-3 text-right">
-                         <button className="border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-100 transition inline-flex items-center gap-1 w-full sm:w-auto justify-center">
-                           View
-                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-                         </button>
+                       <td className="px-4 py-3 text-right relative">
+                         <div className="relative inline-block text-left">
+                           <button
+                             onClick={() => setActiveDropdown(activeDropdown === admin.id ? null : admin.id)}
+                             className="border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-100 transition inline-flex items-center gap-1 w-full sm:w-auto justify-center"
+                           >
+                             View
+                             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${activeDropdown === admin.id ? 'rotate-180' : ''}`} />
+                           </button>
+
+                           {activeDropdown === admin.id && (
+                             <>
+                                <div 
+                                  className="fixed inset-0 z-10" 
+                                  onClick={() => setActiveDropdown(null)}
+                                />
+                                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white shadow-xl border border-gray-100 py-1 z-[100] overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right">
+                                  <button
+                                    onClick={() => {
+                                      setShowDetailsModal(admin);
+                                      setActiveDropdown(null);
+                                    }}
+                                    className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition text-left"
+                                  >
+                                    <Info className="w-4 h-4 text-blue-500" />
+                                    View Details
+                                  </button>
+                                  {currentUser?.id !== admin.id && (
+                                    <button
+                                      onClick={() => {
+                                        setShowDeleteConfirm(admin);
+                                        setActiveDropdown(null);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 transition text-left border-t border-gray-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      Delete Admin
+                                    </button>
+                                  )}
+                                </div>
+                             </>
+                           )}
+                         </div>
                        </td>
                      </tr>
                    ))}
@@ -411,6 +485,99 @@ export default function SettingsPage() {
     </AdminLayout>
   );
 }
+
+function AdminDetailsModal({ admin, onClose }: { admin: any, onClose: () => void }) {
+  return (
+    <Modal open={!!admin} onClose={onClose}>
+      <div className="space-y-6 py-2">
+        <h3 className="text-lg font-bold text-[#111827]">Admin Details</h3>
+        <div className="flex items-center gap-4 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+           <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-lg font-bold">
+             {admin.name.charAt(0).toUpperCase()}
+           </div>
+           <div>
+             <h4 className="font-bold text-gray-900">{admin.name}</h4>
+             <p className="text-sm text-gray-500">{admin.role}</p>
+           </div>
+        </div>
+
+        <div className="space-y-4 px-1">
+           <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</span>
+              <span className="text-sm font-medium text-gray-700">{admin.email}</span>
+           </div>
+           
+           <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Permissions</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {admin.permissions.split(',').map((p: string) => (
+                  <span key={p} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold ring-1 ring-gray-200">
+                    {p.trim()}
+                  </span>
+                ))}
+              </div>
+           </div>
+
+           <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Current Status</span>
+              <div className="mt-1">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${admin.status === "Active" ? "bg-teal-100 text-teal-700" : "bg-rose-100 text-rose-700"}`}>
+                  {admin.status}
+                </span>
+              </div>
+           </div>
+        </div>
+
+        <div className="pt-4 flex justify-end">
+           <button 
+             onClick={onClose}
+             className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition"
+           >
+             Close
+           </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteAdminModal({ admin, onConfirm, onClose, isLoading }: { admin: any, onConfirm: () => void, onClose: () => void, isLoading: boolean }) {
+  return (
+    <Modal open={!!admin} onClose={onClose}>
+       <div className="space-y-6 pt-2">
+          <h3 className="text-lg font-bold text-[#111827]">Delete Admin</h3>
+          <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-2">
+             <Trash2 className="w-8 h-8" />
+          </div>
+          
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-bold text-gray-900">Are you sure?</h3>
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">
+              You are about to delete <span className="font-bold text-gray-900">{admin.name}</span>. This action cannot be undone and they will lose all administrative access.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+             <button 
+               onClick={onClose}
+               disabled={isLoading}
+               className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition disabled:opacity-50"
+             >
+               No, Cancel
+             </button>
+             <button 
+               onClick={onConfirm}
+               disabled={isLoading}
+               className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
+             >
+               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, Delete User"}
+             </button>
+          </div>
+       </div>
+    </Modal>
+  );
+}
+
 
 function Toggle({ isChecked, onToggle, disabled = false }: { isChecked: boolean, onToggle: () => void, disabled?: boolean }) {
   return (
