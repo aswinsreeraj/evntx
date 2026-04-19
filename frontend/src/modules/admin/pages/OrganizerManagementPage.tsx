@@ -238,7 +238,15 @@ export default function OrganizerManagementPage() {
 
       <div className="flex justify-end mt-4">
         <button
-          onClick={() => exportToCSV(organizersList, "organizers_list")}
+          onClick={() => exportToCSV(organizersList, "organizers_list", [
+            { header: "Name", key: "name" },
+            { header: "Email", key: "email" },
+            { header: "Total Bookings", key: "total_bookings" },
+            { header: "Total Events", key: "total_events" },
+            { header: "Wallet Balance", key: "wallet_balance" },
+            { header: "Total Revenue Generated", key: "total_revenue_generated" },
+            { header: "Status", key: "approval_status" },
+          ])}
           className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
         >
           Download as CSV

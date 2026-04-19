@@ -224,7 +224,13 @@ export default function UserManagementPage() {
 
       <div className="flex justify-end mt-4">
         <button
-          onClick={() => exportToCSV(usersList, "users_list")}
+          onClick={() => exportToCSV(usersList, "users_list", [
+            { header: "Name", key: "name" },
+            { header: "Email", key: "email" },
+            { header: "Total Bookings", key: "total_bookings" },
+            { header: "Wallet Balance", key: "wallet_balance" },
+            { header: "Status", key: "is_active" },
+          ])}
           className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
         >
           Download as CSV

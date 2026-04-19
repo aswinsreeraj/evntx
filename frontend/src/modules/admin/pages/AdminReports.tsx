@@ -555,7 +555,11 @@ export default function AdminReports() {
                     <button
                       onClick={() => {
                         if (engagementStats?.user_journey) {
-                          exportToCSV(engagementStats.user_journey, `admin_engagement_journey_${dateRange}`);
+                          exportToCSV(engagementStats.user_journey, `admin_engagement_journey_${dateRange}`, [
+                            { header: "Stage", key: "label" },
+                            { header: "Count", key: "count" },
+                            { header: "Percentage", key: "percentage" },
+                          ]);
                         }
                       }}
                       className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"

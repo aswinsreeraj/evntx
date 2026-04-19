@@ -1,16 +1,23 @@
-export function exportToCSV(data: any[], filename: string) {
+export function exportToCSV(data: any[], filename: string, columns?: { header: string; key: string }[]) {
   if (!data || !data.length) return;
 
-  const headers = Object.keys(data[0]);
+  const headers = columns ? columns.map(c => c.header) : Object.keys(data[0]);
+  const keys = columns ? columns.map(c => c.key) : Object.keys(data[0]);
+
   const csvRows = [];
 
-  
-  csvRows.push(headers.join(','));
+  // Add header row
+  csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
 
-  
+  // Add data rows
   for (const row of data) {
-    const values = headers.map(header => {
-      let val = row[header] === null || row[header] === undefined ? '' : row[header];
+    const values = keys.map(key => {
+      let val = row[key];
+      if (val === null || val === undefined) {
+        val = '';
+      } else if (typeof val === 'boolean') {
+        val = val ? 'Yes' : 'No';
+      }
       
       val = ('' + val).replace(/"/g, '""');
       return `"${val}"`;
