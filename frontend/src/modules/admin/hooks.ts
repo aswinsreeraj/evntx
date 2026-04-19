@@ -29,6 +29,26 @@ export function useOrganizers(params: any) {
   });
 }
 
+export function useApproveOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.approveOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
+export function useRejectOrganizer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizerId: string) => adminApi.rejectOrganizer(organizerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-organizers"] });
+    },
+  });
+}
+
 export function useEvents(params: any) {
   return useQuery({
     queryKey: ["admin-events", params],
@@ -56,5 +76,105 @@ export function useRejectEvent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
     },
+  });
+}
+
+export function useApproveEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => adminApi.approveEventCancellation(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
+export function useRejectEventCancellation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, reason }: { eventId: string; reason: string }) =>
+      adminApi.rejectEventCancellation(eventId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+    },
+  });
+}
+
+export function usePlatformWallet() {
+  return useQuery({
+    queryKey: ["admin-platform-wallet"],
+    queryFn: () => adminApi.getPlatformWallet(),
+  });
+}
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ["admin-settings"],
+    queryFn: () => adminApi.getPlatformSettings(),
+  });
+}
+
+export function useUpdateSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Partial<Parameters<typeof adminApi.updatePlatformSettings>[0]>) =>
+      adminApi.updatePlatformSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+    },
+  });
+}
+
+export function usePaymentSettings() {
+  return useQuery({
+    queryKey: ["admin-payment-settings"],
+    queryFn: () => adminApi.getPaymentSettings(),
+  });
+}
+
+export function useUpdatePaymentProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ provider, data }: { provider: string; data: { is_enabled: boolean; config: Record<string, any> } }) =>
+      adminApi.updatePaymentProvider(provider, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-payment-settings"] });
+    },
+  });
+}
+
+export function useAdmins() {
+  return useQuery({
+    queryKey: ["admin-users-list"], 
+    queryFn: () => adminApi.getAdmins(),
+  });
+}
+
+export function useAddAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; email: string }) => adminApi.addAdmin(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
+  });
+}
+
+export function useDeleteAdmin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (adminId: string) => adminApi.deleteAdmin(adminId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-list"] });
+    },
+  });
+}
+
+export function useAuditLogs(page: number, limit: number) {
+  return useQuery({
+    queryKey: ["admin-audit-logs", page, limit],
+    queryFn: () => adminApi.getAuditLogs(page, limit),
   });
 }

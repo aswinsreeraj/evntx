@@ -20,21 +20,23 @@ type User struct {
 }
 
 type OrganizerDetail struct {
-	UserID           string `json:"user_id"`
-	OrganizationName string `json:"organization_name"`
-	Address          string `json:"address"`
+	UserID           string     `json:"user_id"`
+	OrganizationName string     `json:"organization_name"`
+	Address          string     `json:"address"`
+	ApprovalStatus   string     `json:"approval_status"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
 }
 
 type OrganizerDetails struct {
 	User
 	OrganizerDetail
-	TotalBookings int64 `json:"total_bookings"`
-	TotalEvents   int64 `json:"total_events"`
-	WalletBalance int64 `json:"wallet_balance"`
-	TotalRevenue  int64 `json:"total_revenue"`
+	TotalBookings int64   `json:"total_bookings"`
+	TotalEvents   int64   `json:"total_events"`
+	WalletBalance float64 `json:"wallet_balance"`
+	TotalRevenue  float64 `json:"total_revenue"`
 }
 type AdminUserDetails struct {
 	User
-	TotalBookings int64 `json:"total_bookings"`
-	WalletBalance int64 `json:"wallet_balance"`
+	TotalBookings int64   `json:"total_bookings"`
+	WalletBalance float64 `json:"wallet_balance"`
 }

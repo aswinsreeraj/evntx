@@ -23,6 +23,7 @@ export type UserBooking = {
   coverImageUrl: string;
   venue: string;
   tags: string[];
+  event_status: string;
 };
 
 export type UserTicket = {
@@ -35,6 +36,98 @@ export type UserTicket = {
   checked_in_at?: string | null;
 };
 
+export type WalletData = {
+  available_balance: number;
+  pending_balance: number;
+  total_credited: number;
+  total_debited: number;
+};
+
+export interface PayoutCredentialPayload {
+  account_holder_name: string;
+  account_number: string;
+  ifsc_code: string;
+  upi_id?: string;
+}
+
+export interface PayoutRequestData {
+  id: string;
+  user_id: string;
+  amount: number;
+  status: string;
+  requested_at: string;
+  reviewed_at?: string;
+  processed_at?: string;
+  admin_id?: string;
+  failure_reason?: string;
+  created_at: string;
+}
+
+export interface PayoutsResponse {
+  payouts: PayoutRequestData[];
+  total: number;
+}
+
+export type TicketContextDetails = {
+  ticket_type_id: string;
+  name: string;
+  quantity: number;
+};
+
+export type EventContextDetails = {
+  event_id: string;
+  title: string;
+  city: string;
+  start_time: string;
+};
+
+export type BookingContextDetails = {
+  booking_id: string;
+  status: string;
+  total_amount: number;
+  created_at: string;
+  event: EventContextDetails;
+  tickets: TicketContextDetails[];
+};
+
+export type PayoutContextDetails = {
+  amount: number;
+  status: string;
+  processed_at: string;
+};
+
+export type WalletTransactionContext = {
+  type: string;
+  details: BookingContextDetails | PayoutContextDetails | any;
+};
+
+export type WalletTransaction = {
+  id: string;
+  wallet_id: string;
+  type: "cr" | "dr";
+  amount: number;
+  reference_type: string;
+  reference_id: string;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+  context?: WalletTransactionContext;
+};
+
+export type WalletTransactionsResponse = {
+  transactions: WalletTransaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
+export type PublicPlatformSettings = {
+  refund_window_days: number;
+  platform_fee_value: number;
+  platform_fee_type: "fixed" | "percentage";
+};
+
 export const userApi = {
   async getProfile() {
     const res = await api.get("/users/me");
@@ -43,6 +136,36 @@ export const userApi = {
 
   async updateProfile(payload: UpdateProfilePayload) {
     const res = await api.put("/users/me", payload);
+    return res.data.data;
+  },
+
+  async getWallet(): Promise<WalletData> {
+    const res = await api.get("/users/me/wallet");
+    return res.data.data;
+  },
+
+  async getWalletTransactions(params?: {
+    page?: number;
+    limit?: number;
+    type?: "cr" | "dr";
+    status?: "pending" | "completed" | "failed";
+  }): Promise<WalletTransactionsResponse> {
+    const res = await api.get("/users/me/wallet/transactions", { params });
+    return res.data.data;
+  },
+
+  async addPayoutCredentials(payload: PayoutCredentialPayload) {
+    const res = await api.post("/users/me/payout/credentials", payload);
+    return res.data;
+  },
+
+  async requestPayout(amount: number) {
+    const res = await api.post("/users/me/wallet/payout", { amount });
+    return res.data;
+  },
+
+  async getPayouts(): Promise<PayoutsResponse> {
+    const res = await api.get("/users/me/payouts");
     return res.data.data;
   },
 
@@ -77,5 +200,34 @@ export const userApi = {
 
   async cancelBooking(bookingId: string, payload: { items: { ticket_type: string; quantity: number }[] }): Promise<void> {
     await api.post(`/bookings/${bookingId}/cancel`, payload);
+  },
+
+  async refundBooking(bookingId: string): Promise<void> {
+    await api.post(`/bookings/${bookingId}/refund`);
+  },
+
+
+
+  async createAddFundOrder(amount: number): Promise<{ id: string; amount: number; currency: string; razorpay_key: string }> {
+    const res = await api.post("/users/me/wallet/add-fund", { amount });
+    return res.data.data;
+  },
+
+  async verifyAddFundPayment(payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<void> {
+    await api.post("/users/me/wallet/add-fund/verify", payload);
+  },
+
+  async payWithWallet(bookingId: string): Promise<void> {
+    await api.post(`/bookings/${bookingId}/pay-with-wallet`);
+  },
+
+  async getPaymentSettings(): Promise<{ provider: string; is_enabled: boolean; config: any }[]> {
+    const res = await api.get("/payment-settings");
+    return res.data.data;
+  },
+
+  async getPlatformSettings(): Promise<PublicPlatformSettings> {
+    const res = await api.get("/settings");
+    return res.data.data;
   },
 };

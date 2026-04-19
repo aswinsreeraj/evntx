@@ -41,6 +41,8 @@ func main() {
 
 	if err := db.AutoMigrate(
 		&infraRepo.UserModel{},
+		&infraRepo.WalletModel{},
+		&infraRepo.WalletTransactionModel{},
 		&infraRepo.OrganizerDetailModel{},
 		&infraRepo.UserRoleModel{},
 		&infraRepo.EventModel{},
@@ -67,21 +69,32 @@ func ensureOrganizer(db *gorm.DB, now time.Time) infraRepo.UserModel {
 		log.Println("Sample organizer already exists")
 	} else if err == gorm.ErrRecordNotFound {
 		organizer = infraRepo.UserModel{
-			ID:               uuid.NewString(),
-			Name:             "Sample Organizer",
-			Email:            "test@organizer.com",
-			Mobile:           "9876543210",
-			Dob:              "1992-06-12",
-			Gender:           "Female",
-			ProfileImage:     "",
-			Locations:        []string{"Kochi", "Bangalore", "Pune"},
-			IsActive:         true,
-			EmailVerified:    true,
-			CreatedAt:        now,
-			UpdatedAt:        now,
+			ID:            uuid.NewString(),
+			Name:          "Sample Organizer",
+			Email:         "test@organizer.com",
+			Mobile:        "9876543210",
+			Dob:           "1992-06-12",
+			Gender:        "Female",
+			ProfileImage:  "",
+			Locations:     []string{"Kochi", "Bangalore", "Pune"},
+			IsActive:      true,
+			EmailVerified: true,
+			CreatedAt:     now,
+			UpdatedAt:     now,
 		}
 
-		if err := db.Create(&organizer).Error; err != nil {
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(&organizer).Error; err != nil {
+				return err
+			}
+
+			wallet := infraRepo.WalletModel{
+				ID:     uuid.NewString(),
+				UserID: organizer.ID,
+			}
+
+			return tx.Create(&wallet).Error
+		}); err != nil {
 			log.Fatalf("Failed to create sample organizer: %v", err)
 		}
 		log.Println("Created sample organizer test@organizer.com")
@@ -132,7 +145,18 @@ func seedGoers(db *gorm.DB, now time.Time) {
 				UpdatedAt:     now,
 			}
 
-			if err := db.Create(&user).Error; err != nil {
+			if err := db.Transaction(func(tx *gorm.DB) error {
+				if err := tx.Create(&user).Error; err != nil {
+					return err
+				}
+
+				wallet := infraRepo.WalletModel{
+					ID:     uuid.NewString(),
+					UserID: user.ID,
+				}
+
+				return tx.Create(&wallet).Error
+			}); err != nil {
 				log.Printf("Failed to create user %s: %v", email, err)
 				continue
 			}

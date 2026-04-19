@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aswinsreeraj/evntx/internal/cache"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 
@@ -19,12 +20,15 @@ import (
 )
 
 type OrganizerHandler struct {
-	eventUsecase *usecase.EventUsecase
-	userUsecase  *usecase.UserUsecase
+	eventUsecase      *usecase.EventUsecase
+	userUsecase       *usecase.UserUsecase
+	walletUsecase     *usecase.WalletUsecase
+	engagementUsecase *usecase.EngagementUsecase
+	cache             *cache.Cache
 }
 
-func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase) *OrganizerHandler {
-	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu}
+func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase, c *cache.Cache) *OrganizerHandler {
+	return &OrganizerHandler{eventUsecase: eu, userUsecase: uu, walletUsecase: wu, engagementUsecase: engUsecase, cache: c}
 }
 
 func (h *OrganizerHandler) GetProfile(c *gin.Context) {
@@ -54,6 +58,168 @@ func (h *OrganizerHandler) GetProfile(c *gin.Context) {
 		"locations":         user.Locations,
 		"organization_name": orgName,
 		"address":           address,
+	})
+}
+
+func (h *OrganizerHandler) GetDashboard(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	stats, err := h.eventUsecase.GetOrganizerDashboardStats(userID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve dashboard stats"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": stats})
+}
+
+func (h *OrganizerHandler) GetSalesReport(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	eventID := c.Query("event_id")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	stats, err := h.eventUsecase.GetSalesReport(userID, eventID, startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve sales report stats"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": stats})
+}
+
+func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	eventIDParam := c.Query("event_id")
+	startDateStr := c.Query("start_date")
+	endDateStr := c.Query("end_date")
+
+	
+	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), userID, "")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve organizer events"})
+		return
+	}
+
+	var eventIDs []string
+	for _, e := range events {
+		if eventIDParam == "" || eventIDParam == "all" || eventIDParam == e.ID || eventIDParam == e.Slug {
+			eventIDs = append(eventIDs, e.ID)
+		}
+	}
+
+	var startDate, endDate time.Time
+	if startDateStr != "" {
+		startDate, _ = time.Parse(time.RFC3339, startDateStr)
+	}
+	if endDateStr != "" {
+		endDate, _ = time.Parse(time.RFC3339, endDateStr)
+	}
+	loc, _ := time.LoadLocation("Asia/Calcutta")
+	if startDate.IsZero() {
+		endDate = time.Now().In(loc)
+		startDate = endDate.AddDate(0, 0, -30)
+	}
+
+	report, err := h.engagementUsecase.GetEngagementReport(c.Request.Context(), eventIDs, startDate, endDate)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to retrieve engagement report"})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": report})
+}
+
+func (h *OrganizerHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.walletUsecase.GetWalletByUserID(userID)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrResourceNotFound)
+		return
+	}
+
+	response.Success(c, "Organizer wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"reserve_balance":   wallet.ReserveBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+	})
+}
+
+func (h *OrganizerHandler) AddPayoutCredentials(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		AccountHolderName string `json:"account_holder_name" binding:"required"`
+		AccountNumber     string `json:"account_number" binding:"required"`
+		IFSCCode          string `json:"ifsc_code" binding:"required"`
+		UPIID             string `json:"upi_id"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.AddPayoutCredentials(c.Request.Context(), userID, req.AccountHolderName, req.AccountNumber, req.IFSCCode, req.UPIID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout credentials saved securely", nil)
+}
+
+func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(c.Request.Context(), userID, req.Amount); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payout request submitted", gin.H{
+		"amount": req.Amount,
+		"status": "pending",
+	})
+}
+
+func (h *OrganizerHandler) GetPayouts(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	payouts, total, err := h.walletUsecase.GetPayoutRequestsByUser(c.Request.Context(), userID, 1, 50)
+	if err != nil {
+		response.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "Payouts retrieved successfully", gin.H{
+		"payouts": payouts,
+		"total":   total,
 	})
 }
 
@@ -116,6 +282,7 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 		VenueName:     req.VenueName,
 		Category:      req.Category,
 		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
 		Tags:          tagsStr,
 		CoverImageURL: req.CoverImageURL,
 	}
@@ -267,42 +434,48 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 	}
 
 	var tickets []domain.TicketType
-	for _, t := range req.TicketTypes {
-		ticket := domain.TicketType{}
-		if t.ID != nil {
-			ticket.ID = *t.ID
+	if req.TicketTypes != nil {
+		tickets = make([]domain.TicketType, 0, len(req.TicketTypes))
+		for _, t := range req.TicketTypes {
+			ticket := domain.TicketType{}
+			if t.ID != nil {
+				ticket.ID = *t.ID
+			}
+			if t.Name != nil {
+				ticket.Name = *t.Name
+			}
+			if t.Price != nil {
+				ticket.Price = *t.Price
+			}
+			if t.TotalQuantity != nil {
+				ticket.TotalQuantity = *t.TotalQuantity
+			}
+			tickets = append(tickets, ticket)
 		}
-		if t.Name != nil {
-			ticket.Name = *t.Name
-		}
-		if t.Price != nil {
-			ticket.Price = *t.Price
-		}
-		if t.TotalQuantity != nil {
-			ticket.TotalQuantity = *t.TotalQuantity
-		}
-		tickets = append(tickets, ticket)
 	}
 
 	var personnels []domain.EventPersonnel
-	for _, p := range req.KeyPersonnel {
-		personnel := domain.EventPersonnel{}
-		if p.ID != nil {
-			personnel.ID = *p.ID
+	if req.KeyPersonnel != nil {
+		personnels = make([]domain.EventPersonnel, 0, len(req.KeyPersonnel))
+		for _, p := range req.KeyPersonnel {
+			personnel := domain.EventPersonnel{}
+			if p.ID != nil {
+				personnel.ID = *p.ID
+			}
+			if p.Name != nil {
+				personnel.Name = *p.Name
+			}
+			if p.Role != nil {
+				personnel.Role = *p.Role
+			}
+			if p.Image != nil {
+				personnel.Image = *p.Image
+			}
+			if p.ProfileLink != nil {
+				personnel.ProfileLink = *p.ProfileLink
+			}
+			personnels = append(personnels, personnel)
 		}
-		if p.Name != nil {
-			personnel.Name = *p.Name
-		}
-		if p.Role != nil {
-			personnel.Role = *p.Role
-		}
-		if p.Image != nil {
-			personnel.Image = *p.Image
-		}
-		if p.ProfileLink != nil {
-			personnel.ProfileLink = *p.ProfileLink
-		}
-		personnels = append(personnels, personnel)
 	}
 
 	err := h.eventUsecase.UpdateEvent(c.Request.Context(), organizerID, eventID, eventUpdates, detailsUpdates, tickets, personnels)
@@ -317,6 +490,12 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 		}
 		response.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, errMsg))
 		return
+	}
+
+	if h.cache != nil {
+		if cachedEvent, slugErr := h.eventUsecase.GetEventByID(eventID); slugErr == nil && cachedEvent != nil {
+			h.cache.Delete("event:" + cachedEvent.Slug)
+		}
 	}
 
 	response.Success(c, "Event updated successfully", gin.H{
@@ -409,14 +588,21 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 	host := gin.H(nil)
 	user, organizerDetail, _, userErr := h.userUsecase.GetProfile(organizerID)
 	if userErr == nil && user != nil {
-		hostName := user.Name
+		orgName := ""
 		if organizerDetail != nil && organizerDetail.OrganizationName != "" {
-			hostName = organizerDetail.OrganizationName
+			orgName = organizerDetail.OrganizationName
 		}
 		host = gin.H{
-			"name":   hostName,
-			"role":   "Event Organizer",
-			"avatar": user.ProfileImage,
+			"name":         user.Name,
+			"organization": orgName,
+			"role":         "Event Organizer",
+			"avatar":       user.ProfileImage,
+			"email":        user.Email,
+			"mobile":       user.Mobile,
+			"address":      "",
+		}
+		if organizerDetail != nil {
+			host["address"] = organizerDetail.Address
 		}
 	}
 
@@ -445,4 +631,24 @@ func (h *OrganizerHandler) DeleteEvent(c *gin.Context) {
 	}
 
 	response.Success(c, "Event deleted successfully", nil)
+}
+
+func (h *OrganizerHandler) RequestEventCancellation(c *gin.Context) {
+	organizerID := c.GetString("user_id")
+	eventID := c.Param("event_id")
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	err := h.eventUsecase.RequestEventCancellation(c.Request.Context(), organizerID, eventID, req.Reason)
+	if err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Event cancellation request submitted for admin approval", nil)
 }

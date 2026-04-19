@@ -10,6 +10,7 @@ import (
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	"github.com/aswinsreeraj/evntx/pkg/hash"
 	jwtutil "github.com/aswinsreeraj/evntx/pkg/jwt"
 	oauthutil "github.com/aswinsreeraj/evntx/pkg/oauth"
@@ -24,6 +25,8 @@ type AuthUsecase struct {
 	sessionRepo repository.UserSessionRepository
 	emailSender repository.EmailSender
 	roleRepo    repository.UserRoleRepository
+	walletRepo  repository.WalletRepository
+	settingsRepo repository.SettingsRepository
 }
 
 func NewAuthUsecase(
@@ -32,6 +35,8 @@ func NewAuthUsecase(
 	sessionRepo repository.UserSessionRepository,
 	emailSender repository.EmailSender,
 	roleRepo repository.UserRoleRepository,
+	walletRepo repository.WalletRepository,
+	settingsRepo repository.SettingsRepository,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		otpRepo:     otpRepo,
@@ -39,6 +44,8 @@ func NewAuthUsecase(
 		sessionRepo: sessionRepo,
 		emailSender: emailSender,
 		roleRepo:    roleRepo,
+		walletRepo:  walletRepo,
+		settingsRepo: settingsRepo,
 	}
 }
 
@@ -48,6 +55,20 @@ func getAdminEmail() string {
 		return "admin@evntx.com"
 	}
 	return email
+}
+
+func (u *AuthUsecase) ensureOrganizerNotPending(userID string) error {
+	detail, err := u.userRepo.GetOrganizerDetails(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	if detail != nil && detail.ApprovalStatus == "pending" {
+		return apiErrors.New(403, apiErrors.ForbiddenAction, "Your organizer account is pending admin approval. You can log in after approval.")
+	}
+	return nil
 }
 
 func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
@@ -61,8 +82,14 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 			return false, err
 		}
 	} else if !user.IsActive {
-		return false, fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
+		return false, apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
 
+	}
+
+	if isNewUser && u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.EnableUserRegistration {
+			return false, apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+		}
 	}
 
 	rawOTP, err := otp.GenerateOTP()
@@ -130,11 +157,28 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 			if err := u.userRepo.Create(user); err != nil {
 				return nil, nil, "", "", err
 			}
+
+			wallet := &domain.Wallet{
+				ID:               uuid.NewString(),
+				UserID:           user.ID,
+				AvailableBalance: 0,
+				PendingBalance:   0,
+				TotalCredited:    0,
+				TotalDebited:     0,
+				UpdatedAt:        time.Now(),
+			}
+			if err := u.walletRepo.CreateWallet(wallet); err != nil {
+				logger.Log.Error().Err(err).Msg("failed to create wallet for user during authentication/registration")
+			}
 		} else {
 			return nil, nil, "", "", err
 		}
 	} else if !user.IsActive {
-		return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
+		return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+	}
+
+	if pendingErr := u.ensureOrganizerNotPending(user.ID); pendingErr != nil {
+		return nil, nil, "", "", pendingErr
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
@@ -172,6 +216,13 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 }
 
 func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organizationName, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) {
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil {
+			if !settings.EnableUserRegistration {
+				return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+			}
+		}
+	}
 
 	storedOTP, err := u.otpRepo.FindValidOTP(email)
 	if err != nil {
@@ -210,7 +261,7 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 		}
 	} else {
 		if !user.IsActive {
-			return nil, nil, "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
+			return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
 		}
 		user.Name = name
 		user.Dob = dob
@@ -218,6 +269,52 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 		if err := u.userRepo.Update(user); err != nil {
 			return nil, nil, "", "", err
 		}
+	}
+
+	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
+	if err != nil {
+		roles = []domain.UserRole{}
+	}
+
+	requiresApproval := false
+	if roleStr == "organizer" && u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil {
+			requiresApproval = settings.RequireAdminApprovalForOrganizers
+		}
+	}
+
+	if roleStr == "organizer" {
+		hasOrganizer := false
+		for _, r := range roles {
+			if r == domain.RoleOrganizer {
+				hasOrganizer = true
+				break
+			}
+		}
+		if !hasOrganizer && !requiresApproval {
+			if err := u.roleRepo.AddRole(user.ID, domain.RoleOrganizer); err == nil {
+				roles = append(roles, domain.RoleOrganizer)
+			}
+		}
+	}
+
+	if roleStr == "organizer" && organizationName != "" {
+		approvalStatus := "approved"
+		if requiresApproval {
+			approvalStatus = "pending"
+		}
+		if err := u.userRepo.UpsertOrganizerDetails(&domain.OrganizerDetail{
+			UserID:           user.ID,
+			OrganizationName: organizationName,
+			Address:          "",
+			ApprovalStatus:   approvalStatus,
+		}); err != nil {
+			return nil, nil, "", "", err
+		}
+	}
+
+	if roleStr == "organizer" && requiresApproval {
+		return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "Organizer registration submitted and pending admin approval. You can log in once approved.")
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)
@@ -244,36 +341,6 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 
 	if err := u.sessionRepo.Create(session); err != nil {
 		return nil, nil, "", "", err
-	}
-
-	roles, err := u.roleRepo.GetRolesByUserID(user.ID)
-	if err != nil {
-		roles = []domain.UserRole{}
-	}
-
-	if roleStr == "organizer" {
-		hasOrganizer := false
-		for _, r := range roles {
-			if r == domain.RoleOrganizer {
-				hasOrganizer = true
-				break
-			}
-		}
-		if !hasOrganizer {
-			if err := u.roleRepo.AddRole(user.ID, domain.RoleOrganizer); err == nil {
-				roles = append(roles, domain.RoleOrganizer)
-			}
-		}
-	}
-
-	if roleStr == "organizer" && organizationName != "" {
-		if err := u.userRepo.UpsertOrganizerDetails(&domain.OrganizerDetail{
-			UserID:           user.ID,
-			OrganizationName: organizationName,
-			Address:          "",
-		}); err != nil {
-			return nil, nil, "", "", err
-		}
 	}
 
 	return user, roles, accessToken, refreshToken, nil
@@ -318,6 +385,13 @@ func (u *AuthUsecase) Logout(refreshToken string) error {
 }
 
 func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string, error) {
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil {
+			if !settings.AllowGoogleLogin {
+				return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "Google login is currently disabled by admin")
+			}
+		}
+	}
 
 	googleUser, err := oauthutil.VerifyGoogleIDToken(idToken)
 	if err != nil {
@@ -326,6 +400,11 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 
 	user, err := u.userRepo.FindByEmail(googleUser.Email)
 	if err != nil {
+		if u.settingsRepo != nil {
+			if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.EnableUserRegistration {
+				return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+			}
+		}
 
 		user = &domain.User{
 			ID:            uuid.NewString(),
@@ -337,8 +416,25 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 		if err := u.userRepo.Create(user); err != nil {
 			return "", "", err
 		}
+
+		wallet := &domain.Wallet{
+			ID:               uuid.NewString(),
+			UserID:           user.ID,
+			AvailableBalance: 0,
+			PendingBalance:   0,
+			TotalCredited:    0,
+			TotalDebited:     0,
+			UpdatedAt:        time.Now(),
+		}
+		if err := u.walletRepo.CreateWallet(wallet); err != nil {
+			logger.Log.Error().Err(err).Msg("failed to create wallet for user during Google login")
+		}
 	} else if !user.IsActive {
-		return "", "", fmt.Errorf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail())
+		return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+	}
+
+	if pendingErr := u.ensureOrganizerNotPending(user.ID); pendingErr != nil {
+		return "", "", pendingErr
 	}
 
 	accessToken, err := jwtutil.GenerateAccessToken(user.ID)

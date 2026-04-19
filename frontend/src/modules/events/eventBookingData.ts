@@ -9,6 +9,7 @@ export type EventTicketOption = {
 export type DisplayEvent = {
   id: string
   title: string
+  status?: string
   coverImageUrl: string
   city: string
   venue: string
@@ -30,8 +31,12 @@ export type DisplayEvent = {
   }
   host?: {
     name: string
+    organization?: string
     role: string
     avatar: string
+    address?: string
+    email?: string
+    mobile?: string
   }
   personnel?: Array<{
     name: string
@@ -184,6 +189,7 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
   return {
     id: rawEvent.id ?? rawEvent.ID ?? rawEvent.slug ?? rawEvent.Slug ?? eventId,
     title: rawEvent.title ?? rawEvent.Title ?? fallbackEvent.title,
+    status: rawEvent.status ?? rawEvent.Status,
     coverImageUrl: resolveAssetUrl(rawEvent.cover_image_url ?? rawEvent.CoverImageURL ?? rawEvent.coverImageUrl ?? fallbackEvent.cover_image_url) ?? fallbackEvent.cover_image_url,
     city,
     venue,
@@ -208,10 +214,14 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
     host: hostSource
       ? {
           name: hostSource.name ?? hostSource.Name ?? fallbackEvent.host.name,
+          organization: hostSource.organization ?? hostSource.Organization,
           role: hostSource.role ?? hostSource.Role ?? fallbackEvent.host.role,
           avatar:
             resolveAssetUrl(hostSource.avatar ?? hostSource.image ?? hostSource.Image ?? fallbackEvent.host.avatar) ??
             fallbackEvent.host.avatar,
+          address: hostSource.address ?? hostSource.Address,
+          email: hostSource.email ?? hostSource.Email,
+          mobile: hostSource.mobile ?? hostSource.Mobile,
         }
       : undefined,
     personnel: personnel.length > 0 ? personnel : undefined,

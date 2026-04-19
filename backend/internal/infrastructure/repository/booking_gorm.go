@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -10,16 +11,19 @@ import (
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type BookingModel struct {
-	ID          string
-	UserID      string
-	EventID     string
-	Status      string
-	TotalAmount float64
-	ExpiresAt   int64
-	CreatedAt   int64
+	ID               string
+	UserID           string `gorm:"index"`
+	EventID          string `gorm:"index"`
+	Status           string `gorm:"index"`
+	TotalAmount      float64
+	PlatformFeeValue float64
+	PlatformFeeType  string
+	ExpiresAt        int64
+	CreatedAt        int64
 }
 
 type BookingTicketModel struct {
@@ -30,11 +34,11 @@ type BookingTicketModel struct {
 
 type TicketModel struct {
 	ID           string
-	BookingID    string
+	BookingID    string `gorm:"index"`
 	TicketTypeID string
-	TicketCode   string
+	TicketCode   string `gorm:"uniqueIndex"`
 	QRPayload    string
-	Status       string
+	Status       string `gorm:"index"`
 	CheckedInAt  *int64
 }
 
@@ -145,18 +149,39 @@ func (r *bookingGormRepository) ReserveTickets(ctx context.Context, booking *dom
 	return apiErrors.ErrTicketSoldOut
 }
 
-func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
+func (r *bookingGormRepository) FindByID(ctx context.Context, bookingID string) (*domain.Booking, error) {
+	var model BookingModel
+
+	if err := r.db.WithContext(ctx).Where("id = ?", bookingID).First(&model).Error; err != nil {
+		return nil, err
+	}
+
+	return &domain.Booking{
+		ID:               model.ID,
+		UserID:           model.UserID,
+		EventID:          model.EventID,
+		Status:           model.Status,
+		TotalAmount:      model.TotalAmount,
+		PlatformFeeValue: model.PlatformFeeValue,
+		PlatformFeeType:  model.PlatformFeeType,
+		ExpiresAt:        time.Unix(model.ExpiresAt, 0),
+		CreatedAt:        time.Unix(model.CreatedAt, 0),
+	}, nil
+}
+
+func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest, isRefundable bool) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var bm BookingModel
 		if err := tx.Where("id = ? AND user_id = ?", bookingID, userID).First(&bm).Error; err != nil {
 			return apiErrors.ErrResourceNotFound
 		}
 
-		if bm.Status != "confirmed" && bm.Status != "reserved" {
+		if bm.Status != "paid" && bm.Status != "confirmed" && bm.Status != "reserved" {
 			return apiErrors.ErrInvalidStateTransition
 		}
 
 		var totalRefund float64
+		var totalTicketsCancelled int
 
 		for _, item := range items {
 			if item.Quantity <= 0 {
@@ -201,9 +226,84 @@ func (r *bookingGormRepository) CancelBooking(ctx context.Context, bookingID str
 			}
 
 			totalRefund += tt.Price * float64(item.Quantity)
+			totalTicketsCancelled += item.Quantity
 		}
 
-		if totalRefund > 0 {
+		if (bm.Status == "paid" || bm.Status == "confirmed") && totalRefund > 0 && isRefundable {
+			now := time.Now()
+
+			var userWallet WalletModel
+			if err := tx.Where("user_id = ?", bm.UserID).First(&userWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      userWallet.ID,
+				Type:          domain.WalletTransactionTypeCredit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance+totalRefund)*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
+				"available_balance": userWallet.AvailableBalance,
+				"updated_at":        now,
+			}).Error; err != nil {
+				return err
+			}
+
+			var event EventModel
+			if err := tx.Where("id = ?", bm.EventID).First(&event).Error; err != nil {
+				return err
+			}
+
+			var orgWallet WalletModel
+			if err := tx.Where("user_id = ?", event.OrganizerID).First(&orgWallet).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&WalletTransactionModel{
+				ID:            uuid.NewString(),
+				WalletID:      orgWallet.ID,
+				Type:          domain.WalletTransactionTypeDebit,
+				Amount:        totalRefund,
+				ReferenceType: domain.WalletReferenceTypeUserCancellation,
+				ReferenceID:   bookingID,
+				Status:        domain.WalletTransactionStatusCompleted,
+				CreatedAt:     now,
+			}).Error; err != nil {
+				return err
+			}
+
+			var returningFee float64
+			if bm.PlatformFeeType == "percentage" {
+				returningFee = math.Round((totalRefund*(bm.PlatformFeeValue/100))*100) / 100
+			} else {
+				feesPerTicket := bm.PlatformFeeValue
+				if feesPerTicket == 0 {
+					feesPerTicket = 30 
+				}
+				returningFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
+			}
+
+			orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance-totalRefund)*100) / 100
+			orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance+returningFee)*100) / 100
+			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+				"pending_balance": orgWallet.PendingBalance,
+				"reserve_balance": orgWallet.ReserveBalance,
+				"updated_at":      now,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		if totalRefund > 0 && isRefundable {
 			if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).
 				Update("total_amount", gorm.Expr("total_amount - ?", totalRefund)).Error; err != nil {
 				return err
@@ -277,12 +377,39 @@ func (r *bookingGormRepository) ExpireBookings(ctx context.Context) ([]domain.Bo
 	return returnedBookings, nil
 }
 
+func (r *bookingGormRepository) GetPaidBookingsByEventID(ctx context.Context, eventID string) ([]domain.Booking, error) {
+	var models []BookingModel
+
+	if err := r.db.WithContext(ctx).
+		Where("event_id = ? AND status = ?", eventID, "paid").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	bookings := make([]domain.Booking, 0, len(models))
+	for _, model := range models {
+		bookings = append(bookings, domain.Booking{
+			ID:          model.ID,
+			UserID:      model.UserID,
+			EventID:     model.EventID,
+			Status:      model.Status,
+			TotalAmount: model.TotalAmount,
+			ExpiresAt:   time.Unix(model.ExpiresAt, 0),
+			CreatedAt:   time.Unix(model.CreatedAt, 0),
+		})
+	}
+
+	return bookings, nil
+}
+
 func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
 	var total int64
-	query := r.db.WithContext(ctx).Table("booking_models").Where("user_id = ?", userID)
+	query := r.db.WithContext(ctx).Table("booking_models").Where("booking_models.user_id = ?", userID)
 
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("booking_models.status = ?", status)
+	} else {
+		query = query.Where("booking_models.status NOT IN (?)", []string{"reserved", "expired", "cancelled"})
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -304,24 +431,26 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 		CoverImageURL  string
 		VenueName      string
 		Tags           string
+		EventStatus    string
 	}
 
 	err := query.Select(`
-		booking_models.id AS booking_id, 
-		booking_models.event_id, 
-		event_models.title AS event_title, 
-		event_models.city AS event_city, 
-		event_models.start_time AS event_start_time, 
-		booking_models.status, 
-		booking_models.total_amount, 
-		booking_models.created_at, 
+		booking_models.id AS booking_id,
+		booking_models.event_id,
+		event_models.title AS event_title,
+		event_models.city AS event_city,
+		event_models.start_time AS event_start_time,
+		booking_models.status AS status,
+		booking_models.total_amount,
+		booking_models.created_at,
 		event_models.cover_image_url,
 		event_models.venue_name,
 		event_models.tags,
+		event_models.status AS event_status,
 		COALESCE(SUM(booking_ticket_models.quantity), 0) AS ticket_count
 	`).
-		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
-		Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id = booking_models.id").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Joins("LEFT JOIN booking_ticket_models ON booking_ticket_models.booking_id::uuid = booking_models.id::uuid").
 		Group("booking_models.id, event_models.id").
 		Order("booking_models.created_at DESC").
 		Limit(limit).
@@ -347,6 +476,7 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 			CoverImageURL:  r.CoverImageURL,
 			VenueName:      r.VenueName,
 			Tags:           r.Tags,
+			EventStatus:    r.EventStatus,
 		})
 	}
 
@@ -355,9 +485,9 @@ func (r *bookingGormRepository) GetUserBookings(ctx context.Context, userID stri
 
 func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
 	query := r.db.WithContext(ctx).Table("ticket_models").
-		Joins("JOIN booking_models ON booking_models.id = ticket_models.booking_id").
-		Joins("JOIN event_models ON event_models.id = booking_models.event_id").
-		Joins("JOIN ticket_type_models ON ticket_type_models.id = ticket_models.ticket_type_id").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Joins("JOIN ticket_type_models ON ticket_type_models.id::uuid = ticket_models.ticket_type_id::uuid").
 		Where("booking_models.user_id = ?", userID)
 
 	if bookingID != "" {
@@ -371,6 +501,8 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 	} else {
 		query = query.Where("ticket_models.status != ?", "cancelled")
 	}
+
+	query = query.Where("booking_models.status IN (?)", []string{"paid", "confirmed"})
 
 	var results []struct {
 		TicketID    string
@@ -421,4 +553,326 @@ func (r *bookingGormRepository) GetUserTickets(ctx context.Context, userID strin
 	}
 
 	return tickets, nil
+}
+
+func (r *bookingGormRepository) CheckInTicket(
+	ctx context.Context,
+	eventID string,
+	ticketCode string,
+) (*domain.TicketCheckIn, error) {
+	var checkedInTicket *domain.TicketCheckIn
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var result struct {
+			TicketID    string
+			TicketCode  string
+			EventID     string
+			Status      string
+			CheckedInAt *int64
+		}
+
+		if err := tx.Table("ticket_models").
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Select(`
+				ticket_models.id AS ticket_id,
+				ticket_models.ticket_code,
+				booking_models.event_id,
+				ticket_models.status,
+				ticket_models.checked_in_at
+			`).
+			Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+			Where("ticket_models.ticket_code = ?", ticketCode).
+			Take(&result).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apiErrors.New(404, apiErrors.ResourceNotFound, "Ticket not found")
+			}
+
+			return err
+		}
+
+		if result.EventID != eventID {
+			return apiErrors.New(404, apiErrors.ResourceNotFound, "Ticket not found")
+		}
+
+		if result.Status == "used" {
+			return apiErrors.New(409, apiErrors.InvalidStateTransition, "Ticket already used")
+		}
+
+		if result.Status != "valid" {
+			return apiErrors.New(400, apiErrors.InvalidStateTransition, "Ticket is not valid for check-in")
+		}
+
+		now := time.Now()
+		checkedInAt := now.Unix()
+
+		updateResult := tx.Model(&TicketModel{}).
+			Where("id = ? AND status = ?", result.TicketID, "valid").
+			Updates(map[string]interface{}{
+				"status":        "used",
+				"checked_in_at": checkedInAt,
+			})
+		if updateResult.Error != nil {
+			return updateResult.Error
+		}
+		if updateResult.RowsAffected == 0 {
+			return apiErrors.New(409, apiErrors.InvalidStateTransition, "Ticket already used")
+		}
+
+		checkedInTicket = &domain.TicketCheckIn{
+			TicketID:    result.TicketID,
+			TicketCode:  result.TicketCode,
+			Status:      "used",
+			CheckedInAt: now,
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return checkedInTicket, nil
+}
+
+func (r *bookingGormRepository) GetTicketCountByBookingID(ctx context.Context, bookingID string) (int, error) {
+	var models []BookingTicketModel
+	if err := r.db.WithContext(ctx).Where("booking_id = ?", bookingID).Find(&models).Error; err != nil {
+		return 0, err
+	}
+	total := 0
+	for _, m := range models {
+		total += m.Quantity
+	}
+	return total, nil
+}
+
+func (r *bookingGormRepository) GetBookingContextsByIDs(ctx context.Context, bookingIDs []string) (map[string]domain.BookingContextDetails, error) {
+	result := make(map[string]domain.BookingContextDetails)
+	if len(bookingIDs) == 0 {
+		return result, nil
+	}
+
+	var bookings []struct {
+		BookingID      string
+		Status         string
+		TotalAmount    float64
+		CreatedAt      int64
+		EventID        string
+		EventTitle     string
+		EventCity      string
+		EventStartTime int64
+	}
+
+	if err := r.db.WithContext(ctx).Table("booking_models").
+		Select(`
+			booking_models.id AS booking_id,
+			booking_models.status AS status,
+			booking_models.total_amount,
+			booking_models.created_at,
+			event_models.id AS event_id,
+			event_models.title AS event_title,
+			event_models.city AS event_city,
+			event_models.start_time AS event_start_time
+		`).
+		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
+		Where("booking_models.id IN ?", bookingIDs).
+		Find(&bookings).Error; err != nil {
+		return nil, err
+	}
+
+	var tickets []struct {
+		BookingID    string
+		TicketTypeID string
+		Name         string
+		Quantity     int
+	}
+
+	if err := r.db.WithContext(ctx).Table("booking_ticket_models").
+		Select(`
+			booking_ticket_models.booking_id,
+			booking_ticket_models.ticket_type_id,
+			ticket_type_models.name,
+			SUM(booking_ticket_models.quantity) AS quantity
+		`).
+		Joins("JOIN ticket_type_models ON ticket_type_models.id::uuid = booking_ticket_models.ticket_type_id::uuid").
+		Where("booking_ticket_models.booking_id IN ?", bookingIDs).
+		Group("booking_ticket_models.booking_id, booking_ticket_models.ticket_type_id, ticket_type_models.name").
+		Find(&tickets).Error; err != nil {
+		return nil, err
+	}
+
+	ticketsMap := make(map[string][]domain.TicketContextDetails)
+	for _, t := range tickets {
+		ticketsMap[t.BookingID] = append(ticketsMap[t.BookingID], domain.TicketContextDetails{
+			TicketTypeID: t.TicketTypeID,
+			Name:         t.Name,
+			Quantity:     t.Quantity,
+		})
+	}
+
+	for _, b := range bookings {
+		bTickets := ticketsMap[b.BookingID]
+		if bTickets == nil {
+			bTickets = []domain.TicketContextDetails{}
+		}
+
+		result[b.BookingID] = domain.BookingContextDetails{
+			BookingID:   b.BookingID,
+			Status:      b.Status,
+			TotalAmount: b.TotalAmount,
+			CreatedAt:   time.Unix(b.CreatedAt, 0),
+			Event: domain.EventContextDetails{
+				EventID:   b.EventID,
+				Title:     b.EventTitle,
+				City:      b.EventCity,
+				StartTime: time.Unix(b.EventStartTime, 0),
+			},
+			Tickets: bTickets,
+		}
+	}
+
+	return result, nil
+}
+
+func (r *bookingGormRepository) PayWithWallet(ctx context.Context, bookingID string, userID string, amount float64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var booking BookingModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND user_id = ? AND status = ?", bookingID, userID, "reserved").First(&booking).Error; err != nil {
+			return err
+		}
+
+		if math.Abs(booking.TotalAmount-amount) > 0.01 {
+			return apiErrors.New(400, apiErrors.InvalidRequestBody, "amount mismatch")
+		}
+
+		var wallet WalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", userID).First(&wallet).Error; err != nil {
+			return err
+		}
+
+		if wallet.AvailableBalance < amount {
+			return apiErrors.ErrInsufficientBalance
+		}
+
+		now := time.Now()
+		normalizedAmount := math.Round(amount*100) / 100
+
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      wallet.ID,
+			Type:          domain.WalletTransactionTypeDebit,
+			Amount:        normalizedAmount,
+			ReferenceType: domain.WalletReferenceTypePurchase,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+
+		wallet.AvailableBalance = math.Round((wallet.AvailableBalance-normalizedAmount)*100) / 100
+		wallet.TotalDebited = math.Round((wallet.TotalDebited+normalizedAmount)*100) / 100
+		wallet.UpdatedAt = now
+
+		if err := tx.Model(&WalletModel{}).Where("id = ?", wallet.ID).Updates(map[string]interface{}{
+			"available_balance": wallet.AvailableBalance,
+			"total_debited":     wallet.TotalDebited,
+			"updated_at":        wallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Update("status", "paid").Error; err != nil {
+			return err
+		}
+
+		var totalTickets int64
+		if err := tx.Model(&BookingTicketModel{}).Where("booking_id = ?", bookingID).Select("COALESCE(SUM(quantity), 0)").Scan(&totalTickets).Error; err != nil {
+			return err
+		}
+
+		var settings PlatformSettingsModel
+		if err := tx.Where("id = ?", domain.PlatformSettingsID).First(&settings).Error; err != nil {
+			settings.PlatformFeeValue = 30
+			settings.PlatformFeeType = "fixed"
+		}
+
+		var userPlatformFee float64
+		if settings.PlatformFeeType == "percentage" {
+			userPlatformFee = math.Round((normalizedAmount*(settings.PlatformFeeValue/100))*100) / 100
+		} else {
+			userPlatformFee = math.Round(float64(totalTickets)*settings.PlatformFeeValue*100) / 100
+		}
+
+		if err := tx.Model(&BookingModel{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
+			"platform_fee_value": settings.PlatformFeeValue,
+			"platform_fee_type":  settings.PlatformFeeType,
+		}).Error; err != nil {
+			return err
+		}
+
+		baseTicketRevenue := math.Round((normalizedAmount-userPlatformFee)*100) / 100
+
+		var platformWallet PlatformWalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", domain.PlatformWalletID).First(&platformWallet).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&PlatformWalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      domain.PlatformWalletID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        userPlatformFee,
+			ReferenceType: domain.PlatformRefTypePayment,
+			ReferenceID:   bookingID,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+		platformWallet.AvailableBalance = math.Round((platformWallet.AvailableBalance+userPlatformFee)*100) / 100
+		platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+userPlatformFee)*100) / 100
+		platformWallet.UpdatedAt = now
+		if err := tx.Model(&PlatformWalletModel{}).Where("id = ?", domain.PlatformWalletID).Updates(map[string]interface{}{
+			"available_balance": platformWallet.AvailableBalance,
+			"total_credited":    platformWallet.TotalCredited,
+			"updated_at":        platformWallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		var event EventModel
+		if err := tx.Where("id = ?", booking.EventID).First(&event).Error; err != nil {
+			return err
+		}
+
+		var orgWallet WalletModel
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("user_id = ?", event.OrganizerID).First(&orgWallet).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&WalletTransactionModel{
+			ID:            uuid.NewString(),
+			WalletID:      orgWallet.ID,
+			Type:          domain.WalletTransactionTypeCredit,
+			Amount:        baseTicketRevenue,
+			ReferenceType: domain.WalletReferenceTypeEarning,
+			ReferenceID:   bookingID,
+			Status:        domain.WalletTransactionStatusCompleted,
+			CreatedAt:     now,
+		}).Error; err != nil {
+			return err
+		}
+		orgWallet.PendingBalance = math.Round((orgWallet.PendingBalance+baseTicketRevenue)*100) / 100
+		orgWallet.ReserveBalance = math.Round((orgWallet.ReserveBalance-userPlatformFee)*100) / 100
+		orgWallet.TotalCredited = math.Round((orgWallet.TotalCredited+baseTicketRevenue)*100) / 100
+		orgWallet.UpdatedAt = now
+		if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
+			"pending_balance": orgWallet.PendingBalance,
+			"reserve_balance": orgWallet.ReserveBalance,
+			"total_credited":  orgWallet.TotalCredited,
+			"updated_at":      orgWallet.UpdatedAt,
+		}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

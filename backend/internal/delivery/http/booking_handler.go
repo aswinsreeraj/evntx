@@ -12,11 +12,13 @@ import (
 
 type BookingHandler struct {
 	bookingUsecase *usecase.BookingUsecase
+	paymentUsecase *usecase.PaymentUsecase
 }
 
-func NewBookingHandler(bookingUsecase *usecase.BookingUsecase) *BookingHandler {
+func NewBookingHandler(bookingUsecase *usecase.BookingUsecase, paymentUsecase *usecase.PaymentUsecase) *BookingHandler {
 	return &BookingHandler{
 		bookingUsecase: bookingUsecase,
+		paymentUsecase: paymentUsecase,
 	}
 }
 
@@ -92,4 +94,28 @@ func (h *BookingHandler) CancelBooking(c *gin.Context) {
 		"success": true,
 		"message": "Booking cancelled successfully",
 	})
+}
+
+func (h *BookingHandler) RefundBooking(c *gin.Context) {
+	userID := c.GetString("user_id")
+	bookingID := c.Param("booking_id")
+
+	if err := h.paymentUsecase.RefundPaymentToWallet(c.Request.Context(), bookingID, userID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Refund processed successfully", nil)
+}
+
+func (h *BookingHandler) PayWithWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+	bookingID := c.Param("booking_id")
+
+	if err := h.bookingUsecase.PayWithWallet(c.Request.Context(), bookingID, userID); err != nil {
+		response.AppError(c, err)
+		return
+	}
+
+	response.Success(c, "Payment processed successfully via wallet", nil)
 }

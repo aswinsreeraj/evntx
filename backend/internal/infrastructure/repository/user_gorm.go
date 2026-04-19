@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -26,6 +27,8 @@ type OrganizerDetailModel struct {
 	UserID           string `gorm:"type:uuid;primaryKey"`
 	OrganizationName string
 	Address          string
+	ApprovalStatus   string `gorm:"size:20;default:'approved';not null"`
+	ReviewedAt       *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -52,7 +55,22 @@ func (r *userGormRepository) Create(user *domain.User) error {
 		EmailVerified: user.EmailVerified,
 	}
 
-	return r.db.Create(&model).Error
+	walletModel := WalletModel{
+		ID:               uuid.NewString(),
+		UserID:           user.ID,
+		AvailableBalance: 0,
+		PendingBalance:   0,
+		TotalCredited:    0,
+		TotalDebited:     0,
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&model).Error; err != nil {
+			return err
+		}
+
+		return tx.Create(&walletModel).Error
+	})
 }
 
 func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {
@@ -132,14 +150,22 @@ func (r *userGormRepository) GetOrganizerDetails(userID string) (*domain.Organiz
 		UserID:           model.UserID,
 		OrganizationName: model.OrganizationName,
 		Address:          model.Address,
+		ApprovalStatus:   model.ApprovalStatus,
+		ReviewedAt:       model.ReviewedAt,
 	}, nil
 }
 
 func (r *userGormRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail) error {
+	approvalStatus := detail.ApprovalStatus
+	if approvalStatus == "" {
+		approvalStatus = "approved"
+	}
 	model := OrganizerDetailModel{
 		UserID:           detail.UserID,
 		OrganizationName: detail.OrganizationName,
 		Address:          detail.Address,
+		ApprovalStatus:   approvalStatus,
+		ReviewedAt:       detail.ReviewedAt,
 		UpdatedAt:        time.Now(),
 	}
 
@@ -156,6 +182,7 @@ func (r *userGormRepository) Search(
 	var results []struct {
 		UserModel
 		TotalBookings int64
+		WalletBalance float64
 	}
 	var total int64
 
@@ -164,8 +191,12 @@ func (r *userGormRepository) Search(
 			user_models.*,
 			COALESCE((
 				SELECT COUNT(b.id) FROM booking_models b
-				WHERE b.user_id = user_models.id::text AND b.status = 'confirmed'
-			), 0) AS total_bookings
+				WHERE b.user_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
+			), 0) AS total_bookings,
+			COALESCE((
+				SELECT available_balance FROM wallet_models w
+				WHERE w.user_id = user_models.id
+			), 0) AS wallet_balance
 		`)
 
 	query = query.Where(
@@ -218,7 +249,7 @@ func (r *userGormRepository) Search(
 				UpdatedAt:     res.UpdatedAt,
 			},
 			TotalBookings: res.TotalBookings,
-			WalletBalance: 0,
+			WalletBalance: res.WalletBalance,
 		})
 	}
 
@@ -236,9 +267,12 @@ func (r *userGormRepository) SearchOrganizers(
 		UserModel
 		OrganizationName string
 		Address          string
+		ApprovalStatus   string
+		ReviewedAt       *time.Time
 		TotalEvents      int64
 		TotalBookings    int64
 		TotalRevenue     float64
+		WalletBalance    float64
 	}
 	var total int64
 
@@ -247,22 +281,34 @@ func (r *userGormRepository) SearchOrganizers(
 			user_models.*,
 			organizer_detail_models.organization_name,
 			organizer_detail_models.address,
+			organizer_detail_models.approval_status,
+			organizer_detail_models.reviewed_at,
 			COALESCE((
 				SELECT COUNT(e.id) FROM event_models e WHERE e.organizer_id = user_models.id::text
 			), 0) AS total_events,
 			COALESCE((
 				SELECT COUNT(b.id) FROM booking_models b
 				JOIN event_models e ON e.id = b.event_id
-				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
+				WHERE e.organizer_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
 			), 0) AS total_bookings,
 			COALESCE((
 				SELECT SUM(b.total_amount) FROM booking_models b
 				JOIN event_models e ON e.id = b.event_id
-				WHERE e.organizer_id = user_models.id::text AND b.status = 'confirmed'
-			), 0) AS total_revenue
+				WHERE e.organizer_id = user_models.id::text AND b.status IN ('paid', 'confirmed')
+			), 0) AS total_revenue,
+			COALESCE((
+				SELECT available_balance FROM wallet_models w
+				WHERE w.user_id = user_models.id
+			), 0) AS wallet_balance
 		`).
-		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
+		Joins("LEFT JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", domain.RoleOrganizer).
 		Joins("LEFT JOIN organizer_detail_models ON organizer_detail_models.user_id::uuid = user_models.id")
+
+	query = query.Where(
+		"user_role_models.role = ? OR organizer_detail_models.approval_status IN ?",
+		domain.RoleOrganizer,
+		[]string{"pending", "rejected"},
+	)
 
 	if search != "" {
 		query = query.Where(
@@ -276,6 +322,8 @@ func (r *userGormRepository) SearchOrganizers(
 		query = query.Where("user_models.is_active = ?", true)
 	} else if status == "suspended" || status == "inactive" {
 		query = query.Where("user_models.is_active = ?", false)
+	} else if status == "pending" || status == "approved" || status == "rejected" {
+		query = query.Where("organizer_detail_models.approval_status = ?", status)
 	}
 
 	query.Count(&total)
@@ -304,15 +352,28 @@ func (r *userGormRepository) SearchOrganizers(
 			OrganizerDetail: domain.OrganizerDetail{
 				OrganizationName: m.OrganizationName,
 				Address:          m.Address,
+				ApprovalStatus:   m.ApprovalStatus,
+				ReviewedAt:       m.ReviewedAt,
 			},
 			TotalBookings: m.TotalBookings,
 			TotalEvents:   m.TotalEvents,
-			WalletBalance: 0,
-			TotalRevenue:  int64(m.TotalRevenue),
+			WalletBalance: m.WalletBalance,
+			TotalRevenue:  m.TotalRevenue,
 		})
 	}
 
 	return orgs, total, nil
+}
+
+func (r *userGormRepository) UpdateOrganizerApprovalStatus(userID string, approvalStatus string) error {
+	now := time.Now()
+	return r.db.Model(&OrganizerDetailModel{}).
+		Where("user_id = ?", userID).
+		Updates(map[string]interface{}{
+			"approval_status": approvalStatus,
+			"reviewed_at":     &now,
+			"updated_at":      now,
+		}).Error
 }
 
 func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {
@@ -320,3 +381,51 @@ func (r *userGormRepository) UpdateStatus(userID string, isActive bool) error {
 		Where("id = ?", userID).
 		Update("is_active", isActive).Error
 }
+
+func (r *userGormRepository) FindUsersByRole(role domain.UserRole) ([]domain.User, error) {
+	var models []UserModel
+	err := r.db.Table("user_models").
+		Joins("INNER JOIN user_role_models ON user_role_models.user_id::uuid = user_models.id AND user_role_models.role = ?", role).
+		Order("user_models.created_at DESC").
+		Find(&models).Error
+	if err != nil {
+		return nil, err
+	}
+	users := make([]domain.User, 0, len(models))
+	for _, m := range models {
+		users = append(users, domain.User{
+			ID:            m.ID,
+			Name:          m.Name,
+			Email:         m.Email,
+			Mobile:        m.Mobile,
+			IsActive:      m.IsActive,
+			EmailVerified: m.EmailVerified,
+			CreatedAt:     m.CreatedAt,
+			UpdatedAt:     m.UpdatedAt,
+		})
+	}
+	return users, nil
+}
+
+func (r *userGormRepository) Delete(id string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DELETE FROM user_role_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM user_session_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM wallet_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM organizer_detail_models WHERE user_id::uuid = ?", id).Error; err != nil {
+			return err
+		}
+
+		return tx.Delete(&UserModel{}, "id = ?", id).Error
+	})
+}
+

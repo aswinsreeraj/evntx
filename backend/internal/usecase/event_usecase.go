@@ -14,11 +14,19 @@ import (
 )
 
 type EventUsecase struct {
-	repo repository.EventRepository
+	repo                repository.EventRepository
+	bookingRepo         repository.BookingRepository
+	notificationUsecase *NotificationUsecase
+	settingsRepo        repository.SettingsRepository
 }
 
-func NewEventUsecase(repo repository.EventRepository) *EventUsecase {
-	return &EventUsecase{repo: repo}
+func NewEventUsecase(
+	repo repository.EventRepository,
+	bookingRepo repository.BookingRepository,
+	notificationUsecase *NotificationUsecase,
+	settingsRepo repository.SettingsRepository,
+) *EventUsecase {
+	return &EventUsecase{repo: repo, bookingRepo: bookingRepo, notificationUsecase: notificationUsecase, settingsRepo: settingsRepo}
 }
 
 func (u *EventUsecase) ListEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) (interface{}, int64, float64, float64, error) {
@@ -29,6 +37,26 @@ func (u *EventUsecase) AdminSearchEvents(search string, status string, page int,
 	return u.repo.AdminSearchEvents(search, status, page, limit)
 }
 
+func (u *EventUsecase) GetOrganizerDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error) {
+	return u.repo.GetDashboardStats(organizerID)
+}
+
+func (u *EventUsecase) GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error) {
+	return u.repo.GetSalesReport(organizerID, eventID, startDate, endDate)
+}
+
+func (u *EventUsecase) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
+	return u.repo.GetAdminDashboardStats()
+}
+
+func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) {
+	return u.repo.GetAdminRevenueReport(startDate, endDate)
+}
+
+func (u *EventUsecase) GetEventByID(id string) (*domain.Event, error) {
+	return u.repo.GetEventByID(id)
+}
+
 func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) {
 
 	event, err := u.repo.GetEventBySlug(slug)
@@ -36,7 +64,7 @@ func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interfac
 		return nil, nil, nil, nil, err
 	}
 
-	if event.Status != "approved" && event.Status != "live" {
+	if event.Status != "approved" && event.Status != "live" && event.Status != "completed" {
 		return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
 	}
 
@@ -247,7 +275,7 @@ func (u *EventUsecase) UpdateEvent(
 	now := time.Now()
 	eventUpdates["updated_at"] = now
 	detailsUpdates["updated_at"] = now
- 
+
 	if event.Status == "approved" {
 		eventUpdates["status"] = "draft"
 		logger.Log.Info().
@@ -301,7 +329,14 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 		return apiErrors.ErrInvalidStateTransition
 	}
 
-	err = u.repo.UpdateEventStatus(ctx, eventID, "pending")
+	nextStatus := "pending"
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.RequireAdminApprovalForEvents {
+			nextStatus = "approved"
+		}
+	}
+
+	err = u.repo.UpdateEventStatus(ctx, eventID, nextStatus)
 	if err != nil {
 		return err
 	}
@@ -311,7 +346,7 @@ func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID s
 		Str("entity", "event").
 		Str("entity_id", eventID).
 		Str("from", event.Status).
-		Str("to", "pending").
+		Str("to", nextStatus).
 		Str("actor_id", organizerID).
 		Msg("")
 
@@ -324,7 +359,7 @@ func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID
 		return apiErrors.ErrResourceNotFound
 	}
 
-	if event.Status == "approved" || event.Status == "live" || event.Status == "completed" {
+	if event.Status != "pending" {
 		return apiErrors.ErrInvalidStateTransition
 	}
 
@@ -351,7 +386,7 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 		return apiErrors.ErrResourceNotFound
 	}
 
-	if event.Status == "rejected" || event.Status == "completed" {
+	if event.Status != "pending" {
 		return apiErrors.ErrInvalidStateTransition
 	}
 
@@ -372,6 +407,115 @@ func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID 
 	return nil
 }
 
+func (u *EventUsecase) SuspendLiveEvent(ctx context.Context, adminID string, eventID string, reason string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+
+	if event.Status != "live" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	err = u.repo.SuspendLiveEvent(ctx, eventID, adminID, reason)
+	if err != nil {
+		return err
+	}
+
+	if u.notificationUsecase != nil {
+		err = u.notificationUsecase.SendNotification(
+			event.OrganizerID,
+			"event_suspended",
+			"Event Suspended",
+			"Your event '"+event.Title+"' has been suspended by the admin. Reason: "+reason,
+			nil,
+		)
+		if err != nil {
+			logger.Log.Error().Err(err).Msg("Failed to send suspension notification")
+		}
+	}
+
+	logger.Log.Info().
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "suspended").
+		Str("actor_id", adminID).
+		Msg("")
+
+	return nil
+}
+
+func (u *EventUsecase) CompleteEvent(ctx context.Context, adminID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+
+	if event.Status != "live" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	if err := u.repo.UpdateEventStatus(ctx, eventID, "completed"); err != nil {
+		return err
+	}
+
+	if err := u.SettleEventEarnings(ctx, eventID); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "completed").
+		Str("actor_id", adminID).
+		Msg("")
+
+	return nil
+}
+
+func (u *EventUsecase) SettleEventEarnings(ctx context.Context, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+
+	if event.Status != "completed" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	if event.Settled {
+		return apiErrors.ErrDuplicateResource
+	}
+
+	bookings, err := u.bookingRepo.GetPaidBookingsByEventID(ctx, eventID)
+	if err != nil {
+		return err
+	}
+
+	var totalAmount float64
+	for _, booking := range bookings {
+		totalAmount += booking.TotalAmount
+	}
+
+	if err := u.repo.SettleEventEarnings(ctx, eventID, event.OrganizerID, totalAmount); err != nil {
+		return err
+	}
+
+	logger.Log.Info().
+		Str("event", "event_earnings_settled").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("organizer_id", event.OrganizerID).
+		Float64("amount", totalAmount).
+		Msg("")
+
+	return nil
+}
+
 func (u *EventUsecase) GetOrganizerEvents(ctx context.Context, organizerID string, status string) ([]domain.Event, error) {
 	return u.repo.GetEventsByOrganizerID(organizerID, status)
 }
@@ -386,10 +530,117 @@ func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, even
 		return apiErrors.ErrForbiddenAction
 	}
 
+	if event.Status == "completed" || event.Status == "live" {
+		return apiErrors.New(400, apiErrors.InvalidStateTransition, "Cannot delete a completed or live event")
+	}
+
 	err = u.repo.DeleteEvent(ctx, eventID)
 	if err != nil {
 		logger.Log.Error().Err(err).Msg("Failed to delete event")
 		return err
+	}
+
+	return nil
+}
+
+func (u *EventUsecase) RequestEventCancellation(ctx context.Context, organizerID string, eventID string, reason string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+	if event.OrganizerID != organizerID {
+		return apiErrors.ErrForbiddenAction
+	}
+	if event.Status != "live" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+	if u.settingsRepo != nil {
+		if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil && !settings.AllowEventCancellation {
+			return apiErrors.New(403, apiErrors.ForbiddenAction, "Event cancellation requests are currently disabled by admin")
+		}
+	}
+	if err := u.repo.RequestEventCancellation(ctx, eventID, organizerID, reason); err != nil {
+		return err
+	}
+	logger.Log.Info().
+		Str("event", "event_state_changed").
+		Str("entity", "event").
+		Str("entity_id", eventID).
+		Str("from", event.Status).
+		Str("to", "cancellation_pending").
+		Str("actor_id", organizerID).
+		Msg("")
+	return nil
+}
+
+func (u *EventUsecase) ApproveEventCancellation(ctx context.Context, adminID string, eventID string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+	if event.Status != "cancellation_pending" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+	if err := u.repo.CancelLiveEvent(ctx, eventID, event.OrganizerID); err != nil {
+		return err
+	}
+	if u.notificationUsecase != nil {
+		_ = u.notificationUsecase.SendNotification(
+			event.OrganizerID,
+			"event_cancellation_approved",
+			"Event cancellation approved",
+			"Your event cancellation request has been approved by admin.",
+			map[string]interface{}{"event_id": eventID},
+		)
+	}
+	return nil
+}
+
+func (u *EventUsecase) RejectEventCancellation(ctx context.Context, adminID string, eventID string, reason string) error {
+	event, err := u.repo.GetEventByID(eventID)
+	if err != nil {
+		return apiErrors.ErrResourceNotFound
+	}
+	if event.Status != "cancellation_pending" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+	if err := u.repo.RejectEventCancellation(ctx, eventID, adminID, reason); err != nil {
+		return err
+	}
+	if u.notificationUsecase != nil {
+		_ = u.notificationUsecase.SendNotification(
+			event.OrganizerID,
+			"event_cancellation_rejected",
+			"Event cancellation rejected",
+			"Your event cancellation request was rejected by admin. Reason: "+reason,
+			map[string]interface{}{"event_id": eventID, "reason": reason},
+		)
+	}
+	return nil
+}
+
+func (u *EventUsecase) AutoProcessCompletedEvents(ctx context.Context) error {
+	now := time.Now()
+	events, err := u.repo.FindPastLiveEvents(ctx, now)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		if err := u.repo.UpdateEventStatus(ctx, event.ID, "completed"); err != nil {
+			logger.Log.Error().Err(err).Str("event_id", event.ID).Msg("Failed to auto-complete event status")
+			continue
+		}
+
+		if err := u.SettleEventEarnings(ctx, event.ID); err != nil {
+			logger.Log.Error().Err(err).Str("event_id", event.ID).Msg("Failed to settle event earnings automatically")
+			continue
+		}
+
+		logger.Log.Info().
+			Str("event", "event_auto_completed").
+			Str("entity_id", event.ID).
+			Msg("Successfully auto-completed event and settled earnings")
 	}
 
 	return nil

@@ -1,20 +1,24 @@
 import { Minus, Plus, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
 import Modal from "../../../shared/ui/Modal"
 import { useEvent } from "../hooks"
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData"
 import { eventsApi } from "../api"
-import { saveBookingConfirmation } from "../bookingStorage"
 import { useAuthStore } from "../../auth/store/authStore"
-
-const PLATFORM_FEE_RATE = 0.05
+import RazorpayButton from "../../payments/components/RazorpayButton"
+import { useWallet, usePaymentSettings, walletQueryKey, walletTransactionsQueryKey } from "../../user/hooks"
+import { userApi } from "../../user/api"
+import { useEngagement } from "../../../shared/hooks/useEngagement";
 
 export default function EventBookingPage() {
+  const queryClient = useQueryClient()
   const { eventId } = useParams()
   const navigate = useNavigate()
   const { data, isLoading } = useEvent(eventId!)
   const { user, roles } = useAuthStore()
+  const { trackEvent } = useEngagement();
 
   const displayEvent = buildDisplayEvent(eventId ?? "", data)
 
@@ -28,7 +32,49 @@ export default function EventBookingPage() {
   )
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [rawError, setRawError] = useState<string | null>(null)
+  
+  const setError = (msg: string | null) => {
+    const lowerMsg = msg?.toLowerCase() || "";
+    if (lowerMsg.includes("expir") || lowerMsg.includes("invalid state")) {
+      setRawError("Booking expired. try again from the start");
+    } else {
+      setRawError(msg);
+    }
+  }
+
+  const error = rawError;
+  const [reservedBookingId, setReservedBookingId] = useState<string | null>(null)
+  const { data: wallet } = useWallet()
+  const { data: paymentSettings } = usePaymentSettings()
+  const [isPayingWithWallet, setIsPayingWithWallet] = useState(false)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [isLatePaymentMessage, setIsLatePaymentMessage] = useState(false)
+  const [platformFeeValue, setPlatformFeeValue] = useState(30)
+  const [platformFeeType, setPlatformFeeType] = useState<"fixed" | "percentage">("fixed")
+  const [reservedTotalAmount, setReservedTotalAmount] = useState<number | null>(null)
+
+  useEffect(() => {
+    const loadPlatformSettings = async () => {
+      try {
+        const settings = await userApi.getPlatformSettings()
+        if (typeof settings.platform_fee_value === "number") setPlatformFeeValue(settings.platform_fee_value)
+        if (settings.platform_fee_type === "fixed" || settings.platform_fee_type === "percentage") {
+          setPlatformFeeType(settings.platform_fee_type)
+        }
+      } catch {
+        setPlatformFeeValue(30)
+        setPlatformFeeType("fixed")
+      }
+    }
+    void loadPlatformSettings()
+  }, [])
+
+  const razorpaySetting = paymentSettings?.find((p) => p.provider === "razorpay")
+  const isRazorpayEnabled = razorpaySetting ? razorpaySetting.is_enabled : false
+
+  const walletSetting = paymentSettings?.find((p) => p.provider === "wallet")
+  const isWalletEnabled = walletSetting ? walletSetting.is_enabled : false
 
   const ticketRows = displayEvent.ticketTypes.map((ticket) => ({
     ...ticket,
@@ -37,12 +83,19 @@ export default function EventBookingPage() {
   }))
 
   const totalAmount = ticketRows.reduce((sum, ticket) => sum + ticket.amount, 0)
-  const platformFee = totalAmount > 0 ? Math.round(totalAmount * PLATFORM_FEE_RATE) : 0
+  const totalTickets = ticketRows.reduce((sum, ticket) => sum + ticket.quantity, 0)
+  const platformFee = totalAmount > 0
+    ? platformFeeType === "percentage"
+      ? Math.round((totalAmount * (platformFeeValue / 100)) * 100) / 100
+      : Math.round((platformFeeValue * totalTickets) * 100) / 100
+    : 0
   const finalAmount = totalAmount + platformFee
+  const payableAmount = reservedTotalAmount ?? finalAmount
 
   const selectedTickets = ticketRows.filter((ticket) => ticket.quantity > 0)
 
   const updateQuantity = (ticketName: string, nextQuantity: number, limit?: number) => {
+    if (reservedBookingId) return
     const safeQuantity = Math.max(0, Math.min(limit ?? Number.POSITIVE_INFINITY, nextQuantity))
     setQuantities((current) => ({
       ...current,
@@ -53,69 +106,78 @@ export default function EventBookingPage() {
   const handleProceed = () => {
     if (selectedTickets.length === 0) return
     setError(null)
-    if (totalAmount > 0) {
-      setCheckoutOpen(true)
-    } else {
-      handlePayment()
+    setCheckoutOpen(true)
+    
+    if (displayEvent.id) {
+      trackEvent('ticket_selected', displayEvent.id);
+      trackEvent('checkout_started', displayEvent.id);
     }
   }
- 
-  const handlePayment = async () => {
+
+  const handleReservation = async () => {
     if (!eventId || selectedTickets.length === 0) return
- 
+
     setIsSubmitting(true)
     setError(null)
- 
+
     try {
       const hasTicketIds = selectedTickets.every((ticket) => ticket.id)
-      let bookingId = `BK-${Date.now()}`
- 
-      if (hasTicketIds) {
-        const response = await eventsApi.reserveTickets({
-          eventId: displayEvent.id,
-          tickets: selectedTickets.map((ticket) => ({
-            ticket_type_id: ticket.id!,
-            quantity: ticket.quantity,
-          })),
-        })
- 
-        bookingId = response.booking_id
+      if (!hasTicketIds) {
+        throw new Error("Ticket information is incomplete. Please refresh and try again.")
       }
- 
-      saveBookingConfirmation({
-        bookingId,
-        eventId,
-        eventTitle: displayEvent.title,
-        eventImage: displayEvent.coverImageUrl,
-        eventDate: displayEvent.dateLabel,
-        eventTime: displayEvent.timeLabel,
-        venue: displayEvent.displayLocation,
-        totalAmount,
-        platformFee,
-        finalAmount,
-        email: user?.name ? `${user.name.toLowerCase().replace(/\s+/g, "")}@example.com` : "johnsmith@example.com",
+
+      const response = await eventsApi.reserveTickets({
+        eventId: displayEvent.id,
         tickets: selectedTickets.map((ticket) => ({
-          ticketName: ticket.name,
+          ticket_type_id: ticket.id!,
           quantity: ticket.quantity,
-          unitPrice: ticket.price,
         })),
-        createdAt: new Date().toISOString(),
       })
- 
-      navigate(`/events/${eventId}/confirmation`)
-    } catch (paymentError: any) {
+
+      setReservedBookingId(response.booking_id)
+      if (typeof response.total_amount === "number") {
+        setReservedTotalAmount(response.total_amount)
+      }
+    } catch (reservationError: any) {
       setError(
-        paymentError?.response?.data?.message ??
-          "We could not complete this booking right now. Please try again.",
+        reservationError?.response?.data?.message ??
+          reservationError?.message ??
+          "We could not reserve tickets right now. Please try again.",
       )
     } finally {
       setIsSubmitting(false)
     }
   }
- 
+
+  const handlePayWithWallet = async () => {
+    if (!reservedBookingId) return
+    setIsPayingWithWallet(true)
+    setError(null)
+    try {
+      await userApi.payWithWallet(reservedBookingId)
+      await queryClient.invalidateQueries({ queryKey: walletQueryKey });
+      await queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+      setPaymentSuccess(true);
+      setTimeout(() => {
+        navigate("/profile/bookings", { replace: true })
+      }, 2000)
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || "Wallet payment failed.")
+    } finally {
+      setIsPayingWithWallet(false)
+    }
+  }
+
   return (
     <div className="bg-white">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-8">
+        <button
+          onClick={() => navigate(`/events/${eventId}`)}
+          className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit"
+        >
+          <span aria-hidden="true">&larr;</span> Back to Event Details
+        </button>
+
         <section className="overflow-hidden rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
           <div className="grid md:grid-cols-[1.1fr_1fr]">
             <div className="min-h-[180px] bg-[#111827]">
@@ -125,7 +187,7 @@ export default function EventBookingPage() {
                 className="h-full w-full object-cover"
               />
             </div>
- 
+
             <div className="flex flex-col justify-center gap-2 p-6">
               <h1 className="max-w-md text-lg font-semibold tracking-tight text-[#111111]">
                 {displayEvent.title}
@@ -136,13 +198,13 @@ export default function EventBookingPage() {
             </div>
           </div>
         </section>
- 
+
         <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
           <div className="text-center">
             <h2 className="text-xl font-semibold tracking-tight text-[#111111]">Ticket Selection</h2>
             {isLoading ? <p className="mt-1 text-xs text-[#8d949e]">Loading event details...</p> : null}
           </div>
- 
+
           <div className="flex flex-col gap-3">
             {ticketRows.map((ticket) => {
               const isSoldOut = ticket.availableQuantity === 0;
@@ -193,20 +255,20 @@ export default function EventBookingPage() {
               </div>
             )})}
           </div>
- 
+
           <div className="flex justify-end">
             <div className="text-right text-base font-semibold text-[#111111]">
               Total Amount: {formatCurrency(totalAmount)}
             </div>
           </div>
- 
+
           <button
             type="button"
             disabled={selectedTickets.length === 0 || isSubmitting}
             className="rounded-xl bg-[#111827] px-6 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             onClick={handleProceed}
           >
-            {isSubmitting ? "Processing..." : (totalAmount > 0 ? "Proceed to Payment" : "Confirm Booking")}
+            {isSubmitting ? "Processing..." : "Reserve Tickets"}
           </button>
         </section>
       </div>
@@ -214,9 +276,10 @@ export default function EventBookingPage() {
       <Modal
         open={checkoutOpen}
         onClose={() => {
-          if (!isSubmitting) {
+          if (!isSubmitting && !reservedBookingId) {
             setCheckoutOpen(false)
             setError(null)
+            setReservedTotalAmount(null)
           }
         }}
         className="relative w-[min(92vw,380px)] rounded-2xl bg-white px-5 pb-5 pt-4 shadow-[0_28px_90px_rgba(15,23,42,0.22)]"
@@ -231,7 +294,7 @@ export default function EventBookingPage() {
         </button>
 
         <div className="flex flex-col items-center gap-4">
-          <h2 className="text-base font-medium text-[#111111]">Checkout</h2>
+          <h2 className="text-base font-medium text-[#111111]">Reserve Tickets</h2>
 
           <div className="w-full rounded-xl border border-[#dfdfdf] bg-white px-4 py-3 shadow-sm">
             <h3 className="text-center text-sm font-medium text-[#111111]">Order Summary</h3>
@@ -263,8 +326,12 @@ export default function EventBookingPage() {
                 <span>Order Amount</span>
                 <span>{formatCurrency(totalAmount)}</span>
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Platform fee (5%)</span>
+              <div className="flex items-center justify-between gap-3 text-sm text-[#5d6573]">
+                <span>
+                  {platformFeeType === "percentage"
+                    ? `Platform fee (${platformFeeValue}%)`
+                    : `Platform fee (₹${platformFeeValue} per ticket)`}
+                </span>
                 <span>{formatCurrency(platformFee)}</span>
               </div>
             </div>
@@ -283,14 +350,108 @@ export default function EventBookingPage() {
             </div>
           ) : null}
 
-          <button
-            type="button"
-            className="w-full rounded-xl bg-[#090c44] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#06082f] disabled:cursor-not-allowed disabled:opacity-70"
-            onClick={handlePayment}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Processing..." : "Pay using Razorpay"}
-          </button>
+          {reservedBookingId ? (
+            <div className="flex w-full flex-col gap-2">
+              {isRazorpayEnabled ? (
+                <RazorpayButton
+                  bookingId={reservedBookingId}
+                  eventTitle={displayEvent.title}
+                  onSuccess={(isLatePayment) => {
+                    queryClient.invalidateQueries({ queryKey: walletQueryKey });
+                    queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey });
+                    if (isLatePayment) {
+                      setIsLatePaymentMessage(true);
+                    } else {
+                      setPaymentSuccess(true);
+                      setTimeout(() => {
+                        navigate("/profile/bookings", { replace: true })
+                      }, 2000)
+                    }
+                  }}
+                  onError={(msg) => setError(msg)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="flex w-full items-center justify-center rounded-xl bg-gray-200 px-6 py-2.5 text-[15px] font-semibold text-gray-400 cursor-not-allowed"
+                >
+                  Pay with Razorpay
+                </button>
+              )}
+              {isWalletEnabled && wallet && wallet.available_balance >= payableAmount && (
+                <button
+                  type="button"
+                  disabled={isPayingWithWallet}
+                  onClick={handlePayWithWallet}
+                  className="flex w-full items-center justify-center rounded-xl border border-[#111827] bg-white px-6 py-2.5 text-[15px] font-semibold text-[#111827] transition hover:bg-[#f7f7f7] disabled:opacity-50"
+                >
+                  {isPayingWithWallet ? "Processing Wallet Payment..." : "Pay with Wallet"}
+                </button>
+              )}
+              {(!isWalletEnabled) && wallet && wallet.available_balance >= payableAmount && (
+                 <button
+                  type="button"
+                  disabled
+                  className="flex w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-50 px-6 py-2.5 text-[15px] font-semibold text-gray-400 cursor-not-allowed"
+                 >
+                   Pay with Wallet Disabled
+                 </button>
+              )}
+              {wallet && wallet.available_balance < payableAmount && wallet.available_balance > 0 && (
+                <p className="text-center text-[10px] text-gray-400">
+                  Insufficient wallet balance ({formatCurrency(wallet.available_balance)})
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="w-full rounded-xl bg-[#0b101e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={handleReservation}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing..." : "Reserve Booking"}
+            </button>
+          )}
+
+          {paymentSuccess && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/95 text-center backdrop-blur-sm z-50">
+              <div className="mb-4 text-[#34c759]">
+                 {}
+                <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-[#111111]">Payment Successful!</h2>
+              <p className="mt-2 text-sm text-[#8d949e]">Your tickets have been confirmed.</p>
+              <p className="mt-1 text-xs text-[#8d949e]">Redirecting...</p>
+            </div>
+          )}
+
+          {isLatePaymentMessage && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-[#fff5f6] text-center p-6 z-50">
+              <div className="mb-4 text-[#e53e5d]">
+                 {}
+                <svg className="h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-[#111111] mb-2">Payment Received</h2>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                Your payment was successful, but the booking expiration time had already passed.
+              </p>
+              <p className="text-sm text-gray-700 leading-relaxed mt-2 font-medium">
+                Your refund has been initiated automatically to the original payment source via Razorpay.
+              </p>
+              <button 
+                 onClick={() => navigate("/profile/bookings", { replace: true })}
+                 className="mt-6 bg-[#0b101e] text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-black transition-colors"
+              >
+                Go to My Bookings
+              </button>
+            </div>
+          )}
         </div>
       </Modal>
     </div>

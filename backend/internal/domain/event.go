@@ -3,21 +3,23 @@ package domain
 import "time"
 
 type Event struct {
-	ID            string    `json:"id"`
-	OrganizerID   string    `json:"organizer_id"`
-	Title         string    `json:"title"`
-	Slug          string    `json:"slug"`
-	City          string    `json:"city"`
-	VenueName     string    `json:"venue_name"`
-	Category      string    `json:"category"`
-	StartTime     time.Time `json:"start_time"`
-	EndTime       time.Time `json:"end_time"`
-	Tags          string    `json:"tags"`
-	Status        string    `json:"status"`
+	ID                string    `json:"id"`
+	OrganizerID       string    `json:"organizer_id"`
+	Title             string    `json:"title"`
+	Slug              string    `json:"slug"`
+	City              string    `json:"city"`
+	VenueName         string    `json:"venue_name"`
+	Category          string    `json:"category"`
+	StartTime         time.Time `json:"start_time"`
+	EndTime           time.Time `json:"end_time"`
+	Tags              string    `json:"tags"`
+	Status            string    `json:"status"`
 	CoverImageURL     string    `json:"cover_image_url"`
 	MinPrice          float64   `json:"min_price"`
 	AvailableCapacity int       `json:"available_capacity"`
+	Settled           bool      `json:"settled"`
 	RejectionReason   string    `json:"rejection_reason,omitempty"`
+	CancellationRequestReason string    `json:"cancellation_request_reason,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

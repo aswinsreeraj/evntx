@@ -1,8 +1,11 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../auth/store/authStore";
 import { tokenManager } from "../../../services/tokenManager";
-import { Bell, CircleUserRound, Plus } from "lucide-react";
+import NotificationMenu from "../../../shared/components/NotificationMenu";
+import { CircleUserRound, Plus } from "lucide-react";
+import { organizerApi, organizerWalletSummaryQueryKey } from "../api";
 
 interface OrganizerLayoutProps {
   children: React.ReactNode;
@@ -12,16 +15,15 @@ interface OrganizerLayoutProps {
 export default function OrganizerLayout({ children, activeTab }: OrganizerLayoutProps) {
   const navigate = useNavigate();
   const { logout } = useAuthStore();
-  const [showNotifications, setShowNotifications] = React.useState(false);
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const notificationRef = React.useRef<HTMLDivElement>(null);
   const profileMenuRef = React.useRef<HTMLDivElement>(null);
+  const { data: walletSummary } = useQuery({
+    queryKey: organizerWalletSummaryQueryKey,
+    queryFn: () => organizerApi.getWalletSummary(),
+  });
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
@@ -30,11 +32,6 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const notifications = [
-    { id: 1, title: "Event pending", body: "One of your events is waiting for admin approval." },
-    { id: 2, title: "New booking", body: "You received a new reservation for Friday Night at Vapour Ladies Night." },
-  ];
 
   const handleLogout = () => {
     logout();
@@ -67,10 +64,10 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
 
         <div className="flex flex-col gap-1 mb-8">
           <p className="px-4 text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Main</p>
-          <SidebarItem label="Dashboard" />
+          <SidebarItem label="Dashboard" route="/organizer/dashboard" />
           <SidebarItem label="My Events" route="/organizer/events" />
-          <SidebarItem label="Reports" />
-          <SidebarItem label="Wallet" />
+          <SidebarItem label="Reports" route="/organizer/reports" />
+          <SidebarItem label="Wallet" route="/organizer/wallet" />
         </div>
 
         <div className="flex flex-col gap-1">
@@ -101,34 +98,18 @@ export default function OrganizerLayout({ children, activeTab }: OrganizerLayout
                 Create Event
               </button>
 
-              <div className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36]">
-                Wallet: ₹1,000
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/organizer/wallet")}
+                className="rounded-full bg-[#f4f7fb] px-5 py-2 text-sm font-medium text-[#2a2f36] transition hover:bg-[#e9eef6]"
+              >
+                Wallet: ₹{new Intl.NumberFormat("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(walletSummary?.available_balance ?? 0)}
+              </button>
 
-              <div className="relative" ref={notificationRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowNotifications((current) => !current)}
-                  className="relative rounded-full p-2 text-[#6c7480] transition hover:bg-[#f5f5f5]"
-                >
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#ff445d]" />
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 top-12 w-80 rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
-                    <div className="px-2 py-1 text-sm font-semibold text-[#111827]">Notifications</div>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} className="rounded-xl bg-[#f8fafc] px-3 py-3">
-                          <div className="text-sm font-medium text-[#111827]">{notification.title}</div>
-                          <div className="mt-1 text-xs text-[#6b7280]">{notification.body}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <NotificationMenu />
 
               <div className="relative" ref={profileMenuRef}>
                 <button

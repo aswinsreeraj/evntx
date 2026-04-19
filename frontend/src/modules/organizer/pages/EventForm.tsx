@@ -13,7 +13,7 @@ export default function EventForm() {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Comedy");
   const [startTime, setStartTime] = useState("");
-  const [endTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [status, setStatus] = useState("draft");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
@@ -56,6 +56,12 @@ export default function EventForm() {
               const st = new Date(event.start_time);
               st.setMinutes(st.getMinutes() - st.getTimezoneOffset());
               setStartTime(st.toISOString().slice(0, 16));
+            }
+
+            if (event.end_time) {
+              const et = new Date(event.end_time);
+              et.setMinutes(et.getMinutes() - et.getTimezoneOffset());
+              setEndTime(et.toISOString().slice(0, 16));
             }
 
             if (event.tags) {
@@ -201,7 +207,7 @@ export default function EventForm() {
         venue_name: venueName,
         category,
         start_time: new Date(startTime).toISOString(),
-        end_time: endTime ? new Date(endTime).toISOString() : new Date(startTime).toISOString(),
+        end_time: endTime ? new Date(endTime).toISOString() : new Date(new Date(startTime).getTime() + 2 * 60 * 60 * 1000).toISOString(),
         tags: tags,
         cover_image_url: finalCoverUrl || (coverImagePreview ? coverImagePreview.replace(import.meta.env.VITE_API_BASE_URL || "", "") : ""),
         status: (isEditMode && status.toLowerCase() === "approved") ? "draft" : status,
@@ -212,9 +218,9 @@ export default function EventForm() {
           total_capacity: totalCapacity,
           terms_and_conditions: terms,
         },
-        ticket_types: entryType === "Free" 
+        ticket_types: entryType === "Free"
           ? [{ name: "Free Entry", price: 0, total_quantity: Number(freeQuantity) }]
-          : tickets.map(t => ({
+          : tickets.filter(t => t.name.trim() !== "").map(t => ({
               ...t,
               price: Number(t.price),
               total_quantity: Number(t.total_quantity)
@@ -228,8 +234,8 @@ export default function EventForm() {
         await organizerApi.createEvent(payload as CreateEventPayload);
       }
 
-      navigate("/organizer/events", { 
-        state: { toastMessage: isEditMode ? "Event successfully updated!" : "Event successfully created!" } 
+      navigate("/organizer/events", {
+        state: { toastMessage: isEditMode ? "Event successfully updated!" : "Event successfully created!" }
       });
 
     } catch (err: any) {
@@ -296,7 +302,7 @@ export default function EventForm() {
                       <option value="Conference">Conference</option>
                   </select>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 col-span-2">
                   <div className="flex-1">
                       <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">Start Date & Time</label>
                       <input
@@ -305,6 +311,16 @@ export default function EventForm() {
                         min={new Date().toISOString().slice(0, 16)}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
+                      />
+                  </div>
+                  <div className="flex-1">
+                      <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">End Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        min={startTime || new Date().toISOString().slice(0, 16)}
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                       />
                   </div>
@@ -369,13 +385,13 @@ export default function EventForm() {
                 </div>
                 <div>
                      <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase text-left">Venue Location (City)</label>
-                     <input 
-                       type="text" 
-                       required 
-                       placeholder="e.g. Kochi" 
-                       value={city} 
-                       onChange={e => setCity(e.target.value)} 
-                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                     <input
+                       type="text"
+                       required
+                       placeholder="e.g. Kochi"
+                       value={city}
+                       onChange={e => setCity(e.target.value)}
+                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                      />
                 </div>
               </div>
@@ -408,14 +424,14 @@ export default function EventForm() {
                           <div>
                               <label className="block text-sm font-bold text-gray-900 tracking-wide mb-1 uppercase">Total Capacity</label>
                               <p className="text-xs text-gray-500 mb-4">Set the maximum number of people who can attend for free.</p>
-                              <input 
-                                type="number" 
-                                required 
-                                min="1" 
-                                placeholder="e.g. 500" 
-                                value={freeQuantity || ''} 
-                                onChange={e => setFreeQuantity(Number(e.target.value))} 
-                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400" 
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                placeholder="e.g. 500"
+                                value={freeQuantity || ''}
+                                onChange={e => setFreeQuantity(Number(e.target.value))}
+                                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                               />
                           </div>
                       </div>
@@ -446,7 +462,7 @@ export default function EventForm() {
                               <div className="grid grid-cols-1 gap-4 mb-4">
                                   <div>
                                       <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Ticket Name</label>
-                                      <input type="text" required placeholder="Premium" value={ticket.name} onChange={e => updateTicket(idx, "name", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
+                                      <input type="text" required placeholder="Premium" value={ticket.name} onChange={e => updateTicket(idx, "name", e.target.value)} disabled={isEditMode && status !== "draft" && !!(ticket as any).id} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
                                   </div>
                               </div>
                                <div className="grid grid-cols-2 gap-4">
@@ -454,7 +470,7 @@ export default function EventForm() {
                                        <div className="flex justify-between items-center mb-1.5">
                                            <label className="block text-[11px] font-bold text-gray-500 tracking-wider uppercase">Price (₹)</label>
                                        </div>
-                                       <input type="number" required min="1" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
+                                       <input type="number" required min="1" placeholder="5000" value={ticket.price || ''} onChange={e => updateTicket(idx, "price", e.target.value)} disabled={isEditMode && status !== "draft" && !!(ticket as any).id} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white outline-none disabled:bg-gray-100 disabled:text-gray-500 focus:border-gray-400" />
                                    </div>
                                    <div>
                                        <label className="block text-[11px] font-bold text-gray-500 tracking-wider mb-1.5 uppercase">Quantity</label>
@@ -464,7 +480,7 @@ export default function EventForm() {
                            </div>
                        ))}
                    </div>
- 
+
                    <div className="grid grid-cols-2 gap-6 mt-6">
                        <div>
                            <label className="block text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Total Capacity</label>

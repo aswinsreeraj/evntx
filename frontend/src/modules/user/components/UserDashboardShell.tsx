@@ -10,6 +10,7 @@ const navigationItems = [
   { label: "Profile", to: "/profile" },
   { label: "Bookings", to: "/profile/bookings" },
   { label: "Calendar", to: "/profile/calendar" },
+  { label: "Wallet", to: "/wallet" },
 ]
 
 export default function UserDashboardShell({ children }: Props) {

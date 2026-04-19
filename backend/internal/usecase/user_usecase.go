@@ -3,17 +3,26 @@ package usecase
 import (
 	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/repository"
+	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserUsecase struct {
-	repo     repository.UserRepository
-	roleRepo repository.UserRoleRepository
+	repo       repository.UserRepository
+	roleRepo   repository.UserRoleRepository
+	walletRepo repository.WalletRepository
+	emailSender repository.EmailSender
 }
 
-func NewUserUsecase(r repository.UserRepository, roleRepo repository.UserRoleRepository) *UserUsecase {
-	return &UserUsecase{repo: r, roleRepo: roleRepo}
+func NewUserUsecase(
+	r repository.UserRepository,
+	roleRepo repository.UserRoleRepository,
+	walletRepo repository.WalletRepository,
+	emailSender repository.EmailSender,
+) *UserUsecase {
+	return &UserUsecase{repo: r, roleRepo: roleRepo, walletRepo: walletRepo, emailSender: emailSender}
 }
 
 func (u *UserUsecase) Register(email string) (*domain.User, error) {
@@ -59,6 +68,10 @@ func (u *UserUsecase) GetProfile(userID string) (*domain.User, *domain.Organizer
 	}
 
 	return user, nil, []domain.UserRole{}, nil
+}
+
+func (u *UserUsecase) GetWallet(userID string) (*domain.Wallet, error) {
+	return u.walletRepo.GetWalletByUserID(userID)
 }
 
 func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizationName, address string, locations []string) error {
@@ -128,3 +141,71 @@ func (u *UserUsecase) UploadProfileImage(userID string, imageURL string) error {
 	user.ProfileImage = imageURL
 	return u.repo.Update(user)
 }
+
+func (u *UserUsecase) AdminApproveOrganizer(userID string) error {
+	detail, err := u.repo.GetOrganizerDetails(userID)
+	if err != nil {
+		return err
+	}
+	if detail.ApprovalStatus == "approved" {
+		return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already approved")
+	}
+
+	if err := u.repo.UpdateOrganizerApprovalStatus(userID, "approved"); err != nil {
+		return err
+	}
+	if err := u.roleRepo.AddRole(userID, domain.RoleOrganizer); err != nil {
+		return err
+	}
+
+	if u.emailSender != nil {
+		user, err := u.repo.FindByID(userID)
+		if err == nil {
+			if mailErr := u.emailSender.SendOrganizerApproval(user.Email, user.Name); mailErr != nil {
+				logger.Log.Warn().Err(mailErr).Str("user_id", userID).Msg("failed to send organizer approval email")
+			}
+		}
+	}
+	return nil
+}
+
+func (u *UserUsecase) AdminRejectOrganizer(userID string) error {
+	detail, err := u.repo.GetOrganizerDetails(userID)
+	if err != nil {
+		return err
+	}
+	if detail.ApprovalStatus == "rejected" {
+		return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already rejected")
+	}
+
+	return u.repo.UpdateOrganizerApprovalStatus(userID, "rejected")
+}
+
+func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) {
+	return u.repo.FindUsersByRole(domain.RoleAdmin)
+}
+
+func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) {
+	user := &domain.User{
+		ID:            uuid.NewString(),
+		Name:          name,
+		Email:         email,
+		IsActive:      true,
+		EmailVerified: true,
+	}
+
+	if err := u.repo.Create(user); err != nil {
+		return nil, err
+	}
+
+	if err := u.roleRepo.AddRole(user.ID, domain.RoleAdmin); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (u *UserUsecase) DeleteAdmin(adminID string) error {
+	return u.repo.Delete(adminID)
+}
+

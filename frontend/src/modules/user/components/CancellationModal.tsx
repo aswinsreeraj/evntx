@@ -15,11 +15,12 @@ type Props = {
   booking: BookingRecord | null
   tickets: TicketRecord[]
   open: boolean
+  refundWindowDays: number
   onClose: () => void
   onConfirm: (selection: Array<{ ticketType: string; cancelCount: number; refundAmount: number }>) => void
 }
 
-export default function CancellationModal({ booking, tickets, open, onClose, onConfirm }: Props) {
+export default function CancellationModal({ booking, tickets, open, refundWindowDays, onClose, onConfirm }: Props) {
   const groupedOptions = useMemo(() => {
     if (!booking) return []
 
@@ -29,7 +30,9 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
     })
 
     return Array.from(grouped.entries()).map(([ticketType, count]) => {
-      const price = (booking.total_amount / tickets.length) || 0
+
+      const baseTotal = booking.total_amount - (30 * tickets.length)
+      const price = (baseTotal / tickets.length) || 0
 
       return {
         ticketType,
@@ -48,7 +51,11 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
     }
   }, [groupedOptions, open])
 
-  const totalRefund = selection.reduce((sum, item) => sum + item.cancelCount * item.price, 0)
+  const rawRefund = selection.reduce((sum, item) => sum + item.cancelCount * item.price, 0)
+  const eventStart = booking ? new Date(booking.event_start_time).getTime() : null
+  const refundWindowMs = Math.max(0, refundWindowDays) * 24 * 60 * 60 * 1000
+  const isRefundEligible = eventStart !== null && (eventStart - Date.now()) >= refundWindowMs
+  const totalRefund = isRefundEligible ? rawRefund : 0
 
   const updateCount = (ticketType: string, nextCount: number) => {
     setSelection((current) =>
@@ -125,7 +132,11 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
 
         <div className="mt-4 flex w-full items-center gap-2 rounded-xl border border-[#ffb9c1] bg-[#fff3f5] px-3 py-2.5 text-xs text-[#ef3650]">
           <Info className="h-4 w-4 fill-[#ef3650] text-white flex-shrink-0" />
-          <span>Refunds are deposited to the wallet.</span>
+          <span>
+            {isRefundEligible
+              ? `Refunds are deposited to the wallet when cancelled at least ${refundWindowDays} day${refundWindowDays === 1 ? "" : "s"} before the event.`
+              : `No refund will be given because the ${refundWindowDays}-day refund window has passed.`}
+          </span>
         </div>
 
         <div className="mt-5 flex w-full flex-col gap-2">
@@ -139,7 +150,7 @@ export default function CancellationModal({ booking, tickets, open, onClose, onC
                   .map((item) => ({
                     ticketType: item.ticketType,
                     cancelCount: item.cancelCount,
-                    refundAmount: item.cancelCount * item.price,
+                    refundAmount: isRefundEligible ? item.cancelCount * item.price : 0,
                   })),
               )
             }

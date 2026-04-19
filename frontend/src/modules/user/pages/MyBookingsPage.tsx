@@ -1,11 +1,13 @@
 import { MapPin, Star } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import CancellationModal from "../components/CancellationModal"
 import UserDashboardShell from "../components/UserDashboardShell"
 import TicketModal from "../components/TicketModal"
 import { userApi } from "../api"
 import { getFeedbackMap, saveFeedbackMap, type FeedbackRecord } from "../feedbackStorage"
+import { walletQueryKey, walletTransactionsQueryKey } from "../hooks"
 import {
   formatDateBadge,
   formatEventTime,
@@ -24,9 +26,12 @@ type CancellationModalState = {
 }
 
 export default function MyBookingsPage() {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<"upcoming" | "finished">("upcoming")
   const [bookings, setBookings] = useState<BookingRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [refundNotice, setRefundNotice] = useState("")
+  const [bookingActionError, setBookingActionError] = useState("")
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord>>({})
   const [draftFeedback, setDraftFeedback] = useState<Record<string, FeedbackRecord>>({})
   const [ticketModal, setTicketModal] = useState<TicketModalState | null>(null)
@@ -34,6 +39,7 @@ export default function MyBookingsPage() {
   const [loadingTickets, setLoadingTickets] = useState<string | null>(null)
   const [loadingCancellation, setLoadingCancellation] = useState<string | null>(null)
   const [eventTickets, setEventTickets] = useState<Record<string, TicketRecord[]>>({})
+  const [refundWindowDays, setRefundWindowDays] = useState(3)
 
   useEffect(() => {
     setFeedbackMap(getFeedbackMap())
@@ -55,9 +61,23 @@ export default function MyBookingsPage() {
     void loadBookings()
   }, [])
 
+  useEffect(() => {
+    const loadPlatformSettings = async () => {
+      try {
+        const settings = await userApi.getPlatformSettings()
+        if (typeof settings?.refund_window_days === "number" && settings.refund_window_days >= 0) {
+          setRefundWindowDays(settings.refund_window_days)
+        }
+      } catch {
+        setRefundWindowDays(3)
+      }
+    }
+
+    void loadPlatformSettings()
+  }, [])
+
   const filteredBookings = bookings.filter((booking) => {
-    const bookingDate = new Date(booking.event_start_time)
-    const bookingStatus = bookingDate.getTime() >= Date.now() ? "upcoming" : "finished"
+    const bookingStatus = booking.event_status === "completed" ? "finished" : "upcoming"
     return bookingStatus === activeTab
   })
 
@@ -130,20 +150,34 @@ export default function MyBookingsPage() {
     if (!cancellationModal) return
 
     const { booking } = cancellationModal
-
-    const items = selection.map(s => ({
+    const items = selection.map((s) => ({
       ticket_type: s.ticketType,
-      quantity: s.cancelCount
-    }))
+      quantity: s.cancelCount,
+    }));
+
+    setRefundNotice("");
+    setBookingActionError("");
 
     try {
-      await userApi.cancelBooking(booking.booking_id, { items })
+      await userApi.cancelBooking(booking.booking_id, { items });
+      const isRefundEligible =
+        new Date(booking.event_start_time).getTime() - Date.now() >= refundWindowDays * 24 * 60 * 60 * 1000
+      setRefundNotice(
+        isRefundEligible
+          ? `Tickets cancelled. Refund has been credited to your wallet (cancelled at least ${refundWindowDays} day${refundWindowDays === 1 ? "" : "s"} before the event). Platform fee is non-refundable.`
+          : `Tickets cancelled. No refund was issued because the ${refundWindowDays}-day refund window has passed.`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: walletQueryKey }),
+        queryClient.invalidateQueries({ queryKey: walletTransactionsQueryKey }),
+      ]);
 
-      const data = await userApi.getMyBookings()
-      const validBookings = (data || []).filter(b => b.ticket_count > 0)
-      setBookings(validBookings)
-    } catch {
-
+      const data = await userApi.getMyBookings();
+      const validBookings = (data || []).filter((b) => b.ticket_count > 0);
+      setBookings(validBookings);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error?.message || "Failed to process cancellation."
+      setBookingActionError(errorMessage)
     }
 
     setCancellationModal(null)
@@ -165,6 +199,18 @@ export default function MyBookingsPage() {
             </button>
           ))}
         </div>
+
+        {refundNotice ? (
+          <div className="mb-5 rounded-2xl border border-[#d9f3e3] bg-[#f1fbf5] px-4 py-3 text-sm font-medium text-[#118a43]">
+            {refundNotice}
+          </div>
+        ) : null}
+
+        {bookingActionError ? (
+          <div className="mb-5 rounded-2xl border border-[#ffd7dd] bg-[#fff5f7] px-4 py-3 text-sm font-medium text-[#d22d4c]">
+            {bookingActionError}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-6">
           {loading ? (
@@ -189,7 +235,7 @@ export default function MyBookingsPage() {
           {!loading && filteredBookings.map((booking) => {
             const savedFeedback = feedbackMap[booking.booking_id]
             const currentDraft = draftFeedback[booking.booking_id] ?? savedFeedback ?? { rating: 0, comment: "" }
-            const isFinished = new Date(booking.event_start_time).getTime() < Date.now()
+            const isFinished = booking.event_status === "completed"
             const showFeedbackForm = isFinished && !!draftFeedback[booking.booking_id]
 
             return (
@@ -335,6 +381,7 @@ export default function MyBookingsPage() {
         open={cancellationModal !== null}
         booking={cancellationModal?.booking ?? null}
         tickets={cancellationModal?.tickets ?? []}
+        refundWindowDays={refundWindowDays}
         onClose={() => setCancellationModal(null)}
         onConfirm={handleConfirmCancellation}
       />

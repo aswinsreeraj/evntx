@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
@@ -13,14 +14,26 @@ import (
 )
 
 type BookingUsecase struct {
-	bookingRepo repository.BookingRepository
-	eventRepo   repository.EventRepository
+	bookingRepo         repository.BookingRepository
+	eventRepo           repository.EventRepository
+	notificationUsecase *NotificationUsecase
+	roleRepo            repository.UserRoleRepository
+	settingsRepo        repository.SettingsRepository
 }
 
-func NewBookingUsecase(bookingRepo repository.BookingRepository, eventRepo repository.EventRepository) *BookingUsecase {
+func NewBookingUsecase(
+	bookingRepo repository.BookingRepository,
+	eventRepo repository.EventRepository,
+	roleRepo repository.UserRoleRepository,
+	notificationUsecase *NotificationUsecase,
+	settingsRepo repository.SettingsRepository,
+) *BookingUsecase {
 	return &BookingUsecase{
-		bookingRepo: bookingRepo,
-		eventRepo:   eventRepo,
+		bookingRepo:         bookingRepo,
+		eventRepo:           eventRepo,
+		roleRepo:            roleRepo,
+		notificationUsecase: notificationUsecase,
+		settingsRepo:        settingsRepo,
 	}
 }
 
@@ -44,7 +57,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		ticketMap[tt.ID] = tt
 	}
 
-	var totalAmount float64
+	var baseTotal float64
 	var bookingTickets []domain.BookingTicket
 	bookingID := uuid.New().String()
 
@@ -54,7 +67,7 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 			return nil, apiErrors.ErrInvalidRequestBody
 		}
 
-		totalAmount += tt.Price * float64(req.Quantity)
+		baseTotal += tt.Price * float64(req.Quantity)
 
 		bookingTickets = append(bookingTickets, domain.BookingTicket{
 			BookingID:    bookingID,
@@ -64,13 +77,33 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	}
 
 	now := time.Now()
-	expiresAt := now.Add(10 * time.Minute)
+	expiresAt := now.Add(1 * time.Minute)
+
+	var totalTickets int
+	for _, req := range requests {
+		totalTickets += req.Quantity
+	}
+
+	userFee := 0.0
+	if baseTotal > 0 {
+		userFee = float64(30 * totalTickets)
+		if u.settingsRepo != nil {
+			if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil {
+				if settings.PlatformFeeType == domain.PlatformFeeTypePercentage {
+					userFee = math.Round((baseTotal*(settings.PlatformFeeValue/100))*100) / 100
+				} else {
+					userFee = math.Round((float64(totalTickets)*settings.PlatformFeeValue)*100) / 100
+				}
+			}
+		}
+	}
+	totalAmount := baseTotal + userFee
 
 	booking := &domain.Booking{
 		ID:          bookingID,
 		UserID:      userID,
 		EventID:     eventID,
-		Status:      "confirmed",
+		Status:      "reserved",
 		TotalAmount: totalAmount,
 		ExpiresAt:   expiresAt,
 		CreatedAt:   now,
@@ -102,6 +135,27 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		Float64("total_amount", booking.TotalAmount).
 		Time("expires_at", booking.ExpiresAt).
 		Msg("")
+
+	if u.notificationUsecase != nil {
+		if notifyErr := u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypeBookingReserved,
+			"Booking reserved",
+			"Booking reserved. Complete payment before expiry.",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+				"expires_at":  booking.ExpiresAt,
+			},
+		); notifyErr != nil {
+			logger.Log.Warn().
+				Err(notifyErr).
+				Str("user_id", userID).
+				Str("booking_id", booking.ID).
+				Msg("notification_send_failed")
+		}
+	}
 
 	return booking, nil
 }
@@ -144,7 +198,27 @@ func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, even
 }
 
 func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error {
-	err := u.bookingRepo.CancelBooking(ctx, bookingID, userID, items)
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	event, err := u.eventRepo.GetEventByID(booking.EventID)
+	if err != nil {
+		return err
+	}
+
+	refundWindowDays := 1
+	settings, settingsErr := u.settingsRepo.GetPlatformSettings()
+	if settingsErr == nil && settings.RefundWindowDays >= 0 {
+		refundWindowDays = settings.RefundWindowDays
+	}
+
+	refundWindowDuration := time.Duration(refundWindowDays) * 24 * time.Hour
+	timeUntilEvent := time.Until(event.StartTime)
+	isRefundable := timeUntilEvent >= refundWindowDuration
+
+	err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
 	if err != nil {
 		return err
 	}
@@ -155,6 +229,128 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 		Int("items_count", len(items)).
 		Time("timestamp", time.Now()).
 		Msg("booking_cancelled_partially")
+
+	if u.notificationUsecase != nil && event.OrganizerID != "" {
+		if notifyErr := u.notificationUsecase.SendNotification(
+			event.OrganizerID,
+			domain.NotificationTypeBookingCancelled,
+			"Booking cancelled",
+			"A user cancelled ticket(s) for your event.",
+			map[string]interface{}{
+				"booking_id":            bookingID,
+				"event_id":              booking.EventID,
+				"event_title":           event.Title,
+				"cancelled_by_user_id":  userID,
+				"cancelled_items_count": len(items),
+				"is_refundable":         isRefundable,
+			},
+		); notifyErr != nil {
+			logger.Log.Warn().
+				Err(notifyErr).
+				Str("organizer_id", event.OrganizerID).
+				Str("booking_id", bookingID).
+				Msg("booking_cancellation_notification_failed")
+		}
+	}
+
+	return nil
+}
+
+func (u *BookingUsecase) CheckInTicket(
+	ctx context.Context,
+	eventID string,
+	actorID string,
+	ticketCode string,
+) (*domain.TicketCheckIn, error) {
+	roles, err := u.roleRepo.GetRolesByUserID(actorID)
+	if err != nil {
+		return nil, err
+	}
+
+	isAdmin := false
+	isOrganizer := false
+	for _, role := range roles {
+		switch role {
+		case domain.RoleAdmin:
+			isAdmin = true
+		case domain.RoleOrganizer:
+			isOrganizer = true
+		}
+	}
+
+	if !isAdmin {
+		if !isOrganizer {
+			return nil, apiErrors.ErrForbiddenAction
+		}
+
+		event, err := u.eventRepo.GetEventByID(eventID)
+		if err != nil {
+			return nil, err
+		}
+
+		if event.OrganizerID != actorID {
+			return nil, apiErrors.ErrForbiddenAction
+		}
+	}
+
+	return u.bookingRepo.CheckInTicket(ctx, eventID, ticketCode)
+}
+
+func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, userID string) error {
+	booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+	if err != nil {
+		return err
+	}
+
+	if booking.UserID != userID {
+		return apiErrors.ErrForbiddenAction
+	}
+
+	walletSetting, err := u.settingsRepo.GetPaymentProviderConfig("wallet")
+	if err == nil && !walletSetting.IsEnabled {
+		return apiErrors.New(400, "PAYMENT_DISABLED", "Wallet payment is disabled by admin")
+	}
+
+	if booking.Status != "reserved" {
+		return apiErrors.ErrInvalidStateTransition
+	}
+
+	if time.Now().After(booking.ExpiresAt) {
+		return apiErrors.ErrBookingExpired
+	}
+
+	err = u.bookingRepo.PayWithWallet(ctx, bookingID, userID, booking.TotalAmount)
+	if err != nil {
+		return err
+	}
+
+	if u.notificationUsecase != nil {
+		event, _ := u.eventRepo.GetEventByID(booking.EventID)
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypePaymentSuccess,
+			"Payment successful",
+			"Payment successful via wallet. Tickets confirmed.",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+				"amount":      booking.TotalAmount,
+			},
+		)
+
+		_ = u.notificationUsecase.SendNotification(
+			userID,
+			domain.NotificationTypeTicketGenerated,
+			"Your tickets are generated",
+			"Your tickets are generated",
+			map[string]interface{}{
+				"booking_id":  booking.ID,
+				"event_id":    booking.EventID,
+				"event_title": event.Title,
+			},
+		)
+	}
 
 	return nil
 }

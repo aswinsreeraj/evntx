@@ -1,26 +1,38 @@
 package http
 
 import (
+	"errors"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/aswinsreeraj/evntx/internal/domain"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	apiResponse "github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type UserHandler struct {
 	userUsecase    *usecase.UserUsecase
+	walletUsecase  *usecase.WalletUsecase
 	bookingUsecase *usecase.BookingUsecase
+	auditUsecase   *usecase.AuditUsecase
 }
 
-func NewUserHandler(userUsecase *usecase.UserUsecase, bookingUsecase *usecase.BookingUsecase) *UserHandler {
+func NewUserHandler(
+	userUsecase *usecase.UserUsecase,
+	walletUsecase *usecase.WalletUsecase,
+	bookingUsecase *usecase.BookingUsecase,
+	auditUsecase *usecase.AuditUsecase,
+) *UserHandler {
 	return &UserHandler{
 		userUsecase:    userUsecase,
+		walletUsecase:  walletUsecase,
 		bookingUsecase: bookingUsecase,
+		auditUsecase:   auditUsecase,
 	}
 }
 
@@ -51,6 +63,209 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Profile retrieved successfully", resp)
+}
+
+func (h *UserHandler) GetWallet(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	wallet, err := h.walletUsecase.GetWalletByUserID(userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
+			return
+		}
+
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	apiResponse.Success(c, "Wallet retrieved successfully", gin.H{
+		"available_balance": wallet.AvailableBalance,
+		"pending_balance":   wallet.PendingBalance,
+		"total_credited":    wallet.TotalCredited,
+		"total_debited":     wallet.TotalDebited,
+	})
+}
+
+func (h *UserHandler) AddPayoutCredentials(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		AccountHolderName string `json:"account_holder_name" binding:"required"`
+		AccountNumber     string `json:"account_number" binding:"required"`
+		IFSCCode          string `json:"ifsc_code" binding:"required"`
+		UPIID             string `json:"upi_id"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.AddPayoutCredentials(c.Request.Context(), userID, req.AccountHolderName, req.AccountNumber, req.IFSCCode, req.UPIID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Payout credentials saved securely", nil)
+}
+
+func (h *UserHandler) RequestPayout(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.RequestPayout(c.Request.Context(), userID, req.Amount); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Payout request submitted", gin.H{
+		"amount": req.Amount,
+		"status": "pending",
+	})
+}
+
+func (h *UserHandler) GetPayouts(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	payouts, total, err := h.walletUsecase.GetPayoutRequestsByUser(c.Request.Context(), userID, 1, 50)
+	if err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	apiResponse.Success(c, "Payouts retrieved successfully", gin.H{
+		"payouts": payouts,
+		"total":   total,
+	})
+}
+
+func (h *UserHandler) CreateAddFundOrder(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		Amount float64 `json:"amount" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	resp, err := h.walletUsecase.CreateAddFundOrder(userID, req.Amount)
+	if err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Add Fund order created", resp)
+}
+
+func (h *UserHandler) VerifyAddFundPayment(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		RazorpayOrderID   string `json:"razorpay_order_id" binding:"required"`
+		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
+		RazorpaySignature string `json:"razorpay_signature" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		apiResponse.AppError(c, apiErrors.ErrInvalidRequestBody)
+		return
+	}
+
+	if err := h.walletUsecase.VerifyAddFundPayment(
+		userID,
+		req.RazorpayOrderID,
+		req.RazorpayPaymentID,
+		req.RazorpaySignature,
+	); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+
+	apiResponse.Success(c, "Funds added successfully", nil)
+}
+
+func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	filters := domain.WalletTransactionFilter{
+		Type:   c.Query("type"),
+		Status: c.Query("status"),
+	}
+
+	if filters.Type != "" &&
+		filters.Type != domain.WalletTransactionTypeCredit &&
+		filters.Type != domain.WalletTransactionTypeDebit {
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid wallet transaction type"))
+		return
+	}
+
+	if filters.Status != "" &&
+		filters.Status != domain.WalletTransactionStatusPending &&
+		filters.Status != domain.WalletTransactionStatusCompleted &&
+		filters.Status != domain.WalletTransactionStatusFailed {
+		apiResponse.AppError(c, apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid wallet transaction status"))
+		return
+	}
+
+	transactions, total, err := h.walletUsecase.GetTransactionsByUserID(userID, filters, page, limit)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apiResponse.AppError(c, apiErrors.ErrResourceNotFound)
+			return
+		}
+
+		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
+		return
+	}
+
+	responseTransactions := make([]gin.H, 0, len(transactions))
+	for _, txn := range transactions {
+		responseTransactions = append(responseTransactions, gin.H{
+			"id":             txn.ID,
+			"wallet_id":      txn.WalletID,
+			"type":           txn.Type,
+			"amount":         txn.Amount,
+			"reference_type": txn.ReferenceType,
+			"reference_id":   txn.ReferenceID,
+			"status":         txn.Status,
+			"created_at":     txn.CreatedAt,
+			"context":        txn.Context,
+		})
+	}
+
+	apiResponse.Success(c, "Wallet transactions retrieved successfully", gin.H{
+		"transactions": responseTransactions,
+		"pagination": gin.H{
+			"page":  page,
+			"limit": limit,
+			"total": total,
+		},
+	})
 }
 
 type updateProfileRequest struct {
@@ -142,6 +357,24 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 		return
 	}
 
+	if h.auditUsecase != nil {
+		adminID := c.GetString("user_id")
+		clientIP := c.ClientIP()
+		statusText := "suspended"
+		if req.IsActive {
+			statusText = "changed to active"
+		}
+		
+		
+		
+		actionText := "User #" + userID[:6] + " " + statusText
+		
+		h.auditUsecase.LogAction(adminID, actionText, domain.ActionTagUser, map[string]interface{}{
+			"user_id": userID,
+			"status": req.IsActive,
+		}, clientIP)
+	}
+
 	apiResponse.Success(c, "User status updated successfully", nil)
 }
 
@@ -167,6 +400,7 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 			"name":                    u.Name,
 			"email":                   u.Email,
 			"is_active":               u.IsActive,
+			"approval_status":         u.ApprovalStatus,
 			"total_bookings":          u.TotalBookings,
 			"total_events":            u.TotalEvents,
 			"wallet_balance":          u.WalletBalance,
@@ -182,6 +416,24 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 			"limit": limit,
 		},
 	})
+}
+
+func (h *UserHandler) AdminApproveOrganizer(c *gin.Context) {
+	organizerID := c.Param("id")
+	if err := h.userUsecase.AdminApproveOrganizer(organizerID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+	apiResponse.Success(c, "Organizer approved successfully", nil)
+}
+
+func (h *UserHandler) AdminRejectOrganizer(c *gin.Context) {
+	organizerID := c.Param("id")
+	if err := h.userUsecase.AdminRejectOrganizer(organizerID); err != nil {
+		apiResponse.AppError(c, err)
+		return
+	}
+	apiResponse.Success(c, "Organizer rejected successfully", nil)
 }
 
 func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
@@ -222,6 +474,7 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 			"coverImageUrl":    b.CoverImageURL,
 			"venue":            b.VenueName,
 			"tags":             strings.Split(b.Tags, ","),
+			"event_status":     b.EventStatus,
 		})
 	}
 
