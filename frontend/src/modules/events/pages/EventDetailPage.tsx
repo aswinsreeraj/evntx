@@ -58,6 +58,11 @@ export default function EventDetailPage() {
               <span aria-hidden="true">&larr;</span> Back to Admin Events
             </button>
           )}
+          {!isAdmin && (
+            <button onClick={() => navigate('/events')} className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-900 transition w-fit mb-2">
+              <span aria-hidden="true">&larr;</span> Back to Explore Events
+            </button>
+          )}
           <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-sm">
             <img
               src={displayEvent.coverImageUrl}
