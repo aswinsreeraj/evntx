@@ -9,7 +9,7 @@ EVNTX is a scalable, multi-role event management platform that enables users to 
 ### User (Goer)
 
 * Discover and explore events with categorized listings
-* View event details, ticket types, and availability
+* View event details, ticket types, and **verified host information**
 * Reserve and book tickets with real-time inventory management
 * Secure payment system integration (Razorpay) for ticket purchases
 * Manage bookings and generated tickets (PDF / QR Code)
@@ -19,7 +19,7 @@ EVNTX is a scalable, multi-role event management platform that enables users to 
 
 ### Organizer
 
-* Create and manage events with rich media support
+* Create and manage events with rich media support and **precise ticket inventory editing**
 * Submit events for admin approval with state tracking
 * **Engagement Analytics:** Track visitors, event views, ticket selections, and checkout starts
 * **Sales Reports:** Detailed revenue and booking breakdowns
