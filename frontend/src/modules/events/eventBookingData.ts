@@ -34,6 +34,9 @@ export type DisplayEvent = {
     organization?: string
     role: string
     avatar: string
+    address?: string
+    email?: string
+    mobile?: string
   }
   personnel?: Array<{
     name: string
@@ -216,6 +219,9 @@ export const buildDisplayEvent = (eventId: string, payload: any): DisplayEvent =
           avatar:
             resolveAssetUrl(hostSource.avatar ?? hostSource.image ?? hostSource.Image ?? fallbackEvent.host.avatar) ??
             fallbackEvent.host.avatar,
+          address: hostSource.address ?? hostSource.Address,
+          email: hostSource.email ?? hostSource.Email,
+          mobile: hostSource.mobile ?? hostSource.Mobile,
         }
       : undefined,
     personnel: personnel.length > 0 ? personnel : undefined,

@@ -214,7 +214,10 @@ export default function Reports() {
                   <button
                     onClick={() => {
                       if (reportStats?.revenue_over_time) {
-                        exportToCSV(reportStats.revenue_over_time, `organizer_revenue_${dateRange}`);
+                        exportToCSV(reportStats.revenue_over_time, `organizer_revenue_${dateRange}`, [
+                          { header: "Date", key: "date" },
+                          { header: "Amount", key: "amount" },
+                        ]);
                       }
                     }}
                     className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"
@@ -395,7 +398,11 @@ export default function Reports() {
                     <button
                       onClick={() => {
                         if (engagementStats?.user_journey) {
-                          exportToCSV(engagementStats.user_journey, `organizer_engagement_journey_${dateRange}`);
+                          exportToCSV(engagementStats.user_journey, `organizer_engagement_journey_${dateRange}`, [
+                            { header: "Stage", key: "label" },
+                            { header: "Count", key: "count" },
+                            { header: "Percentage", key: "percentage" },
+                          ]);
                         }
                       }}
                       className="w-full bg-white border border-gray-200 rounded-xl py-3.5 flex items-center justify-center gap-2 text-sm font-semibold text-[#111827] hover:bg-gray-50 transition-colors shadow-sm"

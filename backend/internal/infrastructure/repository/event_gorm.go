@@ -582,21 +582,40 @@ func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, e
 			}
 		}
 
-		for _, ticket := range ticketUpdates {
-			model := TicketTypeModel{
-				ID:                ticket.ID,
-				EventID:           ticket.EventID,
-				Name:              ticket.Name,
-				Price:             ticket.Price,
-				TotalQuantity:     ticket.TotalQuantity,
-				AvailableQuantity: ticket.AvailableQuantity,
-				Version:           ticket.Version,
-				CreatedAt:         ticket.CreatedAt.Unix(),
-				UpdatedAt:         ticket.UpdatedAt.Unix(),
+		if ticketUpdates != nil {
+			var ticketIDs []string
+			for _, t := range ticketUpdates {
+				if t.ID != "" {
+					ticketIDs = append(ticketIDs, t.ID)
+				}
 			}
 
-			if err := tx.Save(&model).Error; err != nil {
-				return err
+			if len(ticketIDs) > 0 {
+				if err := tx.Where("event_id = ? AND id NOT IN ?", eventID, ticketIDs).Delete(&TicketTypeModel{}).Error; err != nil {
+					return err
+				}
+			} else {
+				if err := tx.Where("event_id = ?", eventID).Delete(&TicketTypeModel{}).Error; err != nil {
+					return err
+				}
+			}
+
+			for _, ticket := range ticketUpdates {
+				model := TicketTypeModel{
+					ID:                ticket.ID,
+					EventID:           ticket.EventID,
+					Name:              ticket.Name,
+					Price:             ticket.Price,
+					TotalQuantity:     ticket.TotalQuantity,
+					AvailableQuantity: ticket.AvailableQuantity,
+					Version:           ticket.Version,
+					CreatedAt:         ticket.CreatedAt.Unix(),
+					UpdatedAt:         ticket.UpdatedAt.Unix(),
+				}
+
+				if err := tx.Save(&model).Error; err != nil {
+					return err
+				}
 			}
 		}
 

@@ -105,6 +105,10 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 				"organization": orgName,
 				"role":         "Event Organizer",
 				"avatar":       user.ProfileImage,
+				"address":      "",
+			}
+			if organizerDetail != nil {
+				host["address"] = organizerDetail.Address
 			}
 		}
 	}

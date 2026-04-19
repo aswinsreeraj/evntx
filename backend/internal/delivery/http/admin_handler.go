@@ -386,6 +386,12 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 				"organization": orgName,
 				"role":         "Event Organizer",
 				"avatar":       user.ProfileImage,
+				"email":        user.Email,
+				"mobile":       user.Mobile,
+				"address":      "",
+			}
+			if organizerDetail != nil {
+				host["address"] = organizerDetail.Address
 			}
 		}
 	}

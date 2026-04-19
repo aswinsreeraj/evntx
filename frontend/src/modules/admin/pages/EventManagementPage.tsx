@@ -307,7 +307,15 @@ export default function EventManagementPage() {
 
       <div className="flex justify-end mt-4">
         <button
-          onClick={() => exportToCSV(eventsList, "events_list")}
+          onClick={() => exportToCSV(eventsList, "events_list", [
+            { header: "Event Name", key: "title" },
+            { header: "Organizer", key: "organizer_name" },
+            { header: "Date", key: "start_time" },
+            { header: "Tickets Sold", key: "tickets_sold" },
+            { header: "Revenue", key: "revenue" },
+            { header: "City", key: "city" },
+            { header: "Status", key: "status" },
+          ])}
           className="flex items-center gap-2 border border-gray-900 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
         >
           Download as CSV
