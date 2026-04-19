@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useEvent } from "../hooks";
-import { CalendarDays, MapPin, Clock, Hourglass, X } from "lucide-react";
+import { CalendarDays, MapPin, Clock, Hourglass, X, Mail, Phone } from "lucide-react";
 import { useState, useEffect } from "react";
 import { buildDisplayEvent, formatCurrency } from "../eventBookingData";
 import { useAuthStore } from "../../auth/store/authStore";
@@ -318,6 +318,32 @@ export default function EventDetailPage() {
              <p className="text-sm text-gray-600 mb-6 leading-relaxed">
                This organizer manages events on EVNTX. Stay tuned for their upcoming events and more information about their organization profile.
              </p>
+
+             <div className="w-full flex flex-col gap-3 mb-6 text-left border-t border-gray-100 pt-6">
+                {displayEvent.host.address && (
+                  <div className="flex items-start gap-3 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 text-[#e53e5d] shrink-0 mt-0.5" />
+                    <span>{displayEvent.host.address}</span>
+                  </div>
+                )}
+                {isAdmin && (
+                  <>
+                    {displayEvent.host.email && (
+                      <div className="flex items-start gap-3 text-sm text-gray-600">
+                        <Mail className="w-4 h-4 text-[#e53e5d] shrink-0 mt-0.5" />
+                        <span className="break-all">{displayEvent.host.email}</span>
+                      </div>
+                    )}
+                    {displayEvent.host.mobile && (
+                      <div className="flex items-start gap-3 text-sm text-gray-600">
+                        <Phone className="w-4 h-4 text-[#e53e5d] shrink-0 mt-0.5" />
+                        <span>{displayEvent.host.mobile}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+             </div>
+
              <button
                 onClick={() => setIsHostModalOpen(false)}
                 className="bg-[#0b101e] text-white py-3 px-6 rounded-xl hover:bg-black transition-colors font-medium text-sm w-full"

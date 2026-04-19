@@ -434,42 +434,48 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 	}
 
 	var tickets []domain.TicketType
-	for _, t := range req.TicketTypes {
-		ticket := domain.TicketType{}
-		if t.ID != nil {
-			ticket.ID = *t.ID
+	if req.TicketTypes != nil {
+		tickets = make([]domain.TicketType, 0, len(req.TicketTypes))
+		for _, t := range req.TicketTypes {
+			ticket := domain.TicketType{}
+			if t.ID != nil {
+				ticket.ID = *t.ID
+			}
+			if t.Name != nil {
+				ticket.Name = *t.Name
+			}
+			if t.Price != nil {
+				ticket.Price = *t.Price
+			}
+			if t.TotalQuantity != nil {
+				ticket.TotalQuantity = *t.TotalQuantity
+			}
+			tickets = append(tickets, ticket)
 		}
-		if t.Name != nil {
-			ticket.Name = *t.Name
-		}
-		if t.Price != nil {
-			ticket.Price = *t.Price
-		}
-		if t.TotalQuantity != nil {
-			ticket.TotalQuantity = *t.TotalQuantity
-		}
-		tickets = append(tickets, ticket)
 	}
 
 	var personnels []domain.EventPersonnel
-	for _, p := range req.KeyPersonnel {
-		personnel := domain.EventPersonnel{}
-		if p.ID != nil {
-			personnel.ID = *p.ID
+	if req.KeyPersonnel != nil {
+		personnels = make([]domain.EventPersonnel, 0, len(req.KeyPersonnel))
+		for _, p := range req.KeyPersonnel {
+			personnel := domain.EventPersonnel{}
+			if p.ID != nil {
+				personnel.ID = *p.ID
+			}
+			if p.Name != nil {
+				personnel.Name = *p.Name
+			}
+			if p.Role != nil {
+				personnel.Role = *p.Role
+			}
+			if p.Image != nil {
+				personnel.Image = *p.Image
+			}
+			if p.ProfileLink != nil {
+				personnel.ProfileLink = *p.ProfileLink
+			}
+			personnels = append(personnels, personnel)
 		}
-		if p.Name != nil {
-			personnel.Name = *p.Name
-		}
-		if p.Role != nil {
-			personnel.Role = *p.Role
-		}
-		if p.Image != nil {
-			personnel.Image = *p.Image
-		}
-		if p.ProfileLink != nil {
-			personnel.ProfileLink = *p.ProfileLink
-		}
-		personnels = append(personnels, personnel)
 	}
 
 	err := h.eventUsecase.UpdateEvent(c.Request.Context(), organizerID, eventID, eventUpdates, detailsUpdates, tickets, personnels)
@@ -591,6 +597,12 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 			"organization": orgName,
 			"role":         "Event Organizer",
 			"avatar":       user.ProfileImage,
+			"email":        user.Email,
+			"mobile":       user.Mobile,
+			"address":      "",
+		}
+		if organizerDetail != nil {
+			host["address"] = organizerDetail.Address
 		}
 	}
 
