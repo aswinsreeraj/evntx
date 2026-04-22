@@ -7,10 +7,10 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aswinsreeraj/evntx/pkg/logger"
 )
 
 type S3Uploader struct {
@@ -36,13 +36,13 @@ func Init() error {
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 
 	if accessKey != "" && secretKey != "" {
-		cfg, err = config.LoadDefaultConfig(context.Background(),
-			config.WithRegion(region),
-			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+		cfg, err = awsConfig.LoadDefaultConfig(context.Background(),
+			awsConfig.WithRegion(region),
+			awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
 		)
 	} else {
-		cfg, err = config.LoadDefaultConfig(context.Background(),
-			config.WithRegion(region),
+		cfg, err = awsConfig.LoadDefaultConfig(context.Background(),
+			awsConfig.WithRegion(region),
 		)
 	}
 
@@ -55,6 +55,8 @@ func Init() error {
 		bucket: bucket,
 		region: region,
 	}
+
+	logger.Log.Info().Str("bucket", bucket).Str("region", region).Msg("S3 storage initialized")
 	return nil
 }
 
@@ -71,12 +73,13 @@ func (u *S3Uploader) UploadFile(ctx context.Context, key string, contentType str
 		Key:         aws.String(key),
 		Body:        body,
 		ContentType: aws.String(contentType),
-		ACL:         types.ObjectCannedACLPublicRead,
 	})
 	if err != nil {
+		logger.Log.Error().Err(err).Str("bucket", u.bucket).Str("key", key).Msg("S3 upload failed")
 		return "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
 	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", u.bucket, u.region, key)
+	logger.Log.Info().Str("url", url).Msg("S3 upload successful")
 	return url, nil
 }
