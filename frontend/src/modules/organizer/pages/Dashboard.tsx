@@ -122,7 +122,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 title="Total Revenue"
@@ -160,7 +160,7 @@ export default function Dashboard() {
               />
             </div>
 
-            {}
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex justify-between items-start mb-6">
@@ -301,7 +301,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {}
+            
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-[#111827]">
@@ -361,7 +361,7 @@ export default function Dashboard() {
               </div>
               
               <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-2 text-sm text-[#8b9098]">
-                {}
+                
                 <button className="px-2 py-1 hover:text-gray-900">&lt; Prev</button>
                 <button className="w-8 h-8 rounded bg-gray-200 text-gray-900 font-medium flex items-center justify-center">1</button>
                 <button className="w-8 h-8 rounded hover:bg-gray-100 flex items-center justify-center">2</button>

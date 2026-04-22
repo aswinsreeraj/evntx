@@ -83,7 +83,7 @@ export default function Reports() {
           </h1>
         </div>
 
-        {}
+        
         <div className="flex border-b border-gray-200 mb-8 w-fit gap-8 px-2">
           <button
             className={`pb-4 text-sm font-semibold transition-colors relative ${
@@ -115,7 +115,7 @@ export default function Reports() {
 
         {activeTab === "sales" && (
           <div className="flex flex-col gap-8">
-            {}
+            
             <div className="flex flex-wrap gap-4 items-center">
               <div className="relative">
                 <select
@@ -155,10 +155,10 @@ export default function Reports() {
             ) : (
               <>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {}
+                
                 <div className="lg:col-span-5 flex flex-col gap-4">
                   <div className="flex gap-4">
-                    {}
+                    
                     <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                       <p className="text-sm font-medium text-[#8b9098] mb-4">
                         Total Revenue
@@ -183,7 +183,7 @@ export default function Reports() {
                       </div>
                     </div>
 
-                    {}
+                    
                     <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                       <p className="text-sm font-medium text-[#8b9098] mb-4">
                         Tickets Sold
@@ -226,7 +226,7 @@ export default function Reports() {
                   </button>
                 </div>
 
-                {}
+                
                 <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                   <h3 className="text-lg font-bold text-[#111827] mb-6">
                     Tickets sold per event
@@ -253,7 +253,7 @@ export default function Reports() {
                             {evt.name}
                           </div>
                           
-                          {}
+                          
                           <div className="px-4">
                             <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden flex">
                               <div
@@ -276,7 +276,7 @@ export default function Reports() {
                 </div>
               </div>
 
-              {}
+              
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mt-8">
                 <div className="mb-6">
                   <h3 className="text-lg font-bold text-[#111827]">
@@ -355,10 +355,10 @@ export default function Reports() {
             ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {}
+                  
                   <div className="lg:col-span-5 flex flex-col gap-4">
                     <div className="flex gap-4">
-                      {}
+                      
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Page Views</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -377,7 +377,7 @@ export default function Reports() {
                         </div>
                       </div>
 
-                      {}
+                      
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Conversion Rate</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -411,7 +411,7 @@ export default function Reports() {
                     </button>
                   </div>
 
-                  {}
+                  
                   <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-[#111827]">User Journey</h3>
                     <p className="text-xs text-[#8b9098] mt-1 mb-6">
@@ -432,7 +432,7 @@ export default function Reports() {
 
                         return (
                           <div key={step.label} className="flex items-center gap-3">
-                            {}
+                            
                             <div className="flex flex-col items-center w-3 shrink-0">
                               <div className={`w-2.5 h-2.5 rounded-full ${
                                 isFirst ? "bg-gray-300" : "bg-[#e53e5d]"
@@ -442,7 +442,7 @@ export default function Reports() {
                               )}
                             </div>
 
-                            {}
+                            
                             <div
                               className={`flex-1 flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-semibold ${bgColor}`}
                               style={{
@@ -454,7 +454,7 @@ export default function Reports() {
                               <span>{new Intl.NumberFormat("en-IN").format(step.count)}</span>
                             </div>
 
-                            {}
+                            
                             {!isFirst && (
                               <span className="text-sm font-semibold text-[#111827] w-12 text-right shrink-0">
                                 {step.percentage.toFixed(0)}%
@@ -473,7 +473,7 @@ export default function Reports() {
                   </div>
                 </div>
 
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                   <div className="flex items-start justify-between mb-6">
                     <div>

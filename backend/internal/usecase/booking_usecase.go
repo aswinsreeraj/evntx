@@ -67,6 +67,10 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 			return nil, apiErrors.ErrInvalidRequestBody
 		}
 
+		if req.Quantity > tt.AvailableQuantity {
+			return nil, apiErrors.ErrTicketSoldOut
+		}
+
 		baseTotal += tt.Price * float64(req.Quantity)
 
 		bookingTickets = append(bookingTickets, domain.BookingTicket{

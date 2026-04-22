@@ -152,7 +152,7 @@ export default function OrganizerProfile() {
             </div>
           ) : (
             <>
-              {}
+              
               <div className="flex flex-col items-center mb-12">
                 <div className="relative group">
                   <input
@@ -188,7 +188,7 @@ export default function OrganizerProfile() {
               </div>
 
               <div className="max-w-[700px] mx-auto">
-                {}
+                
                 <div className="mb-10">
                   <h3 className="text-base font-semibold text-gray-900 mb-4">Account Details</h3>
                   <div className="grid grid-cols-2 gap-6">
@@ -220,7 +220,7 @@ export default function OrganizerProfile() {
                   </div>
                 </div>
 
-                {}
+                
                 <div className="mb-10">
                   <h3 className="text-base font-semibold text-gray-900 mb-4">Organization Details</h3>
                   <div className="grid grid-cols-2 gap-6">
@@ -237,7 +237,7 @@ export default function OrganizerProfile() {
                   </div>
                 </div>
 
-                {}
+                
                 <div>
                   <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Details</h3>
                   <div className="grid grid-cols-2 gap-6 mb-6">
@@ -319,7 +319,7 @@ export default function OrganizerProfile() {
 
               </div>
 
-              {}
+              
               <div className="max-w-[700px] mx-auto mt-6">
                 {errors.api && (
                   <div className="w-full mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">

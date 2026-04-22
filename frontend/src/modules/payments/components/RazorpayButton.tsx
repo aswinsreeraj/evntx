@@ -121,7 +121,7 @@ const RazorpayButton: React.FC<RazorpayButtonProps> = ({
         </>
       )}
 
-      {}
+      
       <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000 group-hover:translate-x-[100%]" />
     </button>
   );

@@ -179,10 +179,10 @@ export default function SettingsPage() {
       
       <div className="flex flex-col gap-6 lg:flex-row items-start relative pb-24">
         
-        {}
+        
         <div className="flex-1 flex flex-col gap-6 w-full lg:max-w-3xl">
 
-          {}
+          
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 h-full">
             <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center">
@@ -205,7 +205,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {}
+          
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-teal-50 text-teal-500 flex items-center justify-center">
@@ -219,7 +219,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {}
+          
           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2">
@@ -322,10 +322,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {}
+        
         <div className="flex flex-col gap-6 w-full lg:w-[400px]">
 
-           {}
+           
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -367,7 +367,7 @@ export default function SettingsPage() {
             </div>
            </div>
 
-           {}
+           
            <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100">
              <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2 mb-6">
               <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
@@ -417,7 +417,7 @@ export default function SettingsPage() {
                       <span className="text-sm text-gray-800 font-medium tracking-tight">Pay using Wallet</span>
                       <Toggle isChecked={walletEnabled} onToggle={() => setWalletEnabled(!walletEnabled)} />
                    </div>
-                   {}
+                   
                 </div>
               </div>
             </div>
@@ -427,7 +427,7 @@ export default function SettingsPage() {
 
       </div>
       
-      {}
+      
       <div className="fixed bottom-0 right-0 left-[240px] bg-white/80 backdrop-blur-md border-t border-gray-200 p-4 flex justify-end gap-3 z-20 px-8 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
         <button 
           onClick={handleDiscard}

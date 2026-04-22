@@ -6,10 +6,10 @@ export function exportToCSV(data: any[], filename: string, columns?: { header: s
 
   const csvRows = [];
 
-  // Add header row
+  
   csvRows.push(headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','));
 
-  // Add data rows
+  
   for (const row of data) {
     const values = keys.map(key => {
       let val = row[key];

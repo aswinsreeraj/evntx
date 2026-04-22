@@ -173,14 +173,14 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {}
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {statCards.map((card) => (
               <StatCard key={card.title} {...card} />
             ))}
           </div>
 
-          {}
+          
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <div className="mb-6">
               <h3 className="text-lg font-bold text-[#111827]">Performance Summary</h3>
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            {}
+            
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-[#111827]">Revenue Overview</h4>
               <div className="flex bg-gray-100 rounded-lg p-1">

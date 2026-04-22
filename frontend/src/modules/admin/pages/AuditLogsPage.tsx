@@ -59,14 +59,14 @@ export default function AuditLogsPage() {
     try {
       return JSON.parse(detailsStr);
     } catch (e) {
-      return {};
+      return ;
     }
   };
 
   return (
     <AdminLayout title="Track Admin Changes">
       
-      {}
+      
       <div className="flex justify-between items-center mb-6">
         <div className="relative w-full max-w-sm">
            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -80,7 +80,7 @@ export default function AuditLogsPage() {
         </div>
       </div>
 
-      {}
+      
       <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
         {isLoading ? (
           <div className="flex-1 flex justify-center items-center">
@@ -137,7 +137,7 @@ export default function AuditLogsPage() {
               </table>
             </div>
 
-            {}
+            
             <div className="mt-auto border-t border-gray-100 px-6 py-4 flex items-center justify-between">
                
                <button 
@@ -183,7 +183,7 @@ export default function AuditLogsPage() {
         )}
       </div>
 
-      {}
+      
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">

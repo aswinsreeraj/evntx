@@ -120,7 +120,7 @@ export default function FilterSidebar({
   return (
     <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-6 w-full max-w-sm">
 
-      {}
+      
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Date Range</h4>
         <div className="bg-red-50 rounded-xl px-4 pb-3 pt-6 flex items-center gap-3 relative">
@@ -149,7 +149,7 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {}
+      
       <div>
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Price Range</h4>
 
@@ -207,7 +207,7 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {}
+      
       <div className="cat-dropdown-container relative">
         <h4 className="text-sm font-medium text-gray-800 mb-3 block">Category</h4>
         <div className="relative">

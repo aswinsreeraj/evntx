@@ -32,13 +32,13 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true)
   const [refundNotice, setRefundNotice] = useState("")
   const [bookingActionError, setBookingActionError] = useState("")
-  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord>>({})
-  const [draftFeedback, setDraftFeedback] = useState<Record<string, FeedbackRecord>>({})
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackRecord>>({});
+  const [draftFeedback, setDraftFeedback] = useState<Record<string, FeedbackRecord>>({});
   const [ticketModal, setTicketModal] = useState<TicketModalState | null>(null)
   const [cancellationModal, setCancellationModal] = useState<CancellationModalState | null>(null)
   const [loadingTickets, setLoadingTickets] = useState<string | null>(null)
   const [loadingCancellation, setLoadingCancellation] = useState<string | null>(null)
-  const [eventTickets, setEventTickets] = useState<Record<string, TicketRecord[]>>({})
+  const [eventTickets, setEventTickets] = useState<Record<string, TicketRecord[]>>({});
   const [refundWindowDays, setRefundWindowDays] = useState(3)
 
   useEffect(() => {

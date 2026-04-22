@@ -178,7 +178,7 @@ export default function EventManagementPage() {
   return (
     <AdminLayout title="Manage Events">
 
-      {}
+      
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6 mt-6">
         <div className="relative w-full sm:w-80">
           <input

@@ -275,7 +275,7 @@ export default function EventForm() {
             </div>
           )}
 
-          {}
+          
           <div>
               <label className="block text-xs font-semibold text-gray-500 tracking-wider mb-2 uppercase">Event Title</label>
               <input

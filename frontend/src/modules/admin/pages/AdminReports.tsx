@@ -91,7 +91,7 @@ export default function AdminReports() {
 
   return (
     <AdminLayout title="Reports">
-      {}
+      
       <div className="flex border-b border-gray-200 mb-8 gap-8">
         <button
           className={`pb-4 text-sm font-semibold transition-colors relative ${
@@ -125,7 +125,7 @@ export default function AdminReports() {
             </div>
           ) : (
             <div className="flex flex-col gap-8">
-              {}
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {[
                   {
@@ -188,7 +188,7 @@ export default function AdminReports() {
                 ))}
               </div>
 
-              {}
+              
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                 <div className="flex items-start justify-between mb-6">
                   <div>
@@ -249,9 +249,9 @@ export default function AdminReports() {
                 </div>
               </div>
 
-              {}
+              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827]">Revenue Breakdown</h3>
                   <p className="text-sm text-[#8b9098] mt-0.5 mb-6">
@@ -309,7 +309,7 @@ export default function AdminReports() {
                   )}
                 </div>
 
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827]">Refund Analytics</h3>
                   <p className="text-sm text-[#8b9098] mt-0.5 mb-4">Monthly refund rate</p>
@@ -357,9 +357,9 @@ export default function AdminReports() {
                 </div>
               </div>
 
-              {}
+              
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827] mb-4">Top Organizers By Revenue</h3>
 
@@ -406,7 +406,7 @@ export default function AdminReports() {
                   </button>
                 </div>
 
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827] mb-4">Top Spending Users</h3>
 
@@ -454,7 +454,7 @@ export default function AdminReports() {
 
       {activeTab === "engagement" && (
           <div className="flex flex-col gap-8">
-            {}
+            
             <div className="flex flex-wrap gap-4 items-center">
               <div className="relative">
                 <select
@@ -512,10 +512,10 @@ export default function AdminReports() {
             ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {}
+                  
                   <div className="lg:col-span-5 flex flex-col gap-4">
                     <div className="flex gap-4">
-                      {}
+                      
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Page Views</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -534,7 +534,7 @@ export default function AdminReports() {
                         </div>
                       </div>
 
-                      {}
+                      
                       <div className="flex-1 bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col">
                         <p className="text-sm font-medium text-[#8b9098] mb-4">Conversion Rate</p>
                         <h3 className="text-3xl font-bold text-[#111827] mb-2">
@@ -568,7 +568,7 @@ export default function AdminReports() {
                     </button>
                   </div>
 
-                  {}
+                  
                   <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-[#111827]">User Journey</h3>
                     <p className="text-xs text-[#8b9098] mt-1 mb-6">
@@ -629,7 +629,7 @@ export default function AdminReports() {
                   </div>
                 </div>
 
-                {}
+                
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                   <div className="flex items-start justify-between mb-6">
                     <div>
@@ -672,7 +672,7 @@ export default function AdminReports() {
                               boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
                             }}
                           />
-                          {}
+                          
                           <Bar dataKey="viewing" name="Views" fill="#e53e5d" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="bookings" name="Bookings" fill="#10b981" radius={[4, 4, 0, 0]} />
                         </BarChart>

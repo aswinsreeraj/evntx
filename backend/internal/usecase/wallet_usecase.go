@@ -245,7 +245,7 @@ func (u *WalletUsecase) RequestPayout(ctx context.Context, userID string, amount
 	normalizedAmount := normalizeWalletAmount(amount)
 
 	lockedAmount := 0.0
-	if wallet.ReserveBalance < 0 {
+	if wallet.ReserveBalance != 0 {
 		lockedAmount = math.Abs(wallet.ReserveBalance)
 	}
 
