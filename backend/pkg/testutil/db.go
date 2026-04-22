@@ -21,7 +21,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	dsn := os.Getenv("TEST_DB_DSN")
 	if dsn == "" {
 		// Use a local default test DB.
-		dsn = "host=localhost user=postgres password=postgres dbname=evntx_test port=5432 sslmode=disable TimeZone=Asia/Calcutta"
+		dsn = "host=localhost user=postgres password=postgres dbname=evntx_test port=5432 sslmode=disable TimeZone=UTC"
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
