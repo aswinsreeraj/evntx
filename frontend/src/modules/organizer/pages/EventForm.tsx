@@ -73,7 +73,8 @@ export default function EventForm() {
             }
 
             if (event.cover_image_url) {
-              setCoverImagePreview(`${import.meta.env.VITE_API_BASE_URL || ""}${event.cover_image_url}`);
+              const url = event.cover_image_url;
+              setCoverImagePreview(url.startsWith("http") ? url : `${import.meta.env.VITE_API_BASE_URL || ""}${url}`);
             }
 
             setVenueName(event.venue_name || "");
@@ -209,7 +210,11 @@ export default function EventForm() {
         start_time: new Date(startTime).toISOString(),
         end_time: endTime ? new Date(endTime).toISOString() : new Date(new Date(startTime).getTime() + 2 * 60 * 60 * 1000).toISOString(),
         tags: tags,
-        cover_image_url: finalCoverUrl || (coverImagePreview ? coverImagePreview.replace(import.meta.env.VITE_API_BASE_URL || "", "") : ""),
+        cover_image_url: finalCoverUrl || (coverImagePreview
+          ? (coverImagePreview.startsWith("http")
+              ? coverImagePreview
+              : coverImagePreview.replace(import.meta.env.VITE_API_BASE_URL || "", ""))
+          : ""),
         status: (isEditMode && status.toLowerCase() === "approved") ? "draft" : status,
         details: {
           description,
@@ -540,7 +545,7 @@ export default function EventForm() {
                                 <div className="border border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center relative bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer group/upload">
                                     {p.image ? (
                                          <div className="w-16 h-16 rounded-full overflow-hidden shadow-sm border border-gray-200 relative">
-                                            <img src={`${import.meta.env.VITE_API_BASE_URL}${p.image}`} alt={p.name} className="w-full h-full object-cover"/>
+                                            <img src={p.image.startsWith("http") ? p.image : `${import.meta.env.VITE_API_BASE_URL}${p.image}`} alt={p.name} className="w-full h-full object-cover"/>
                                          </div>
                                     ) : (
                                         <>

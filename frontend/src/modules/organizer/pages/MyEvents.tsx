@@ -267,7 +267,7 @@ export default function MyEvents() {
                         <div className="p-4 flex gap-6">
                            <div className="w-[300px] shrink-0 aspect-[16/9] rounded-xl overflow-hidden bg-gray-100 relative">
                               {event.cover_image_url ? (
-                                 <img src={`${import.meta.env.VITE_API_BASE_URL}${event.cover_image_url}`} alt={event.title} className="w-full h-full object-cover" />
+                                 <img src={event.cover_image_url.startsWith("http") ? event.cover_image_url : `${import.meta.env.VITE_API_BASE_URL}${event.cover_image_url}`} alt={event.title} className="w-full h-full object-cover" />
                               ) : (
                                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Poster Available</div>
                               )}

@@ -5,6 +5,10 @@ import { userApi } from "../../user/api";
 import OrganizerLayout from "../components/OrganizerLayout";
 import { useNavigate } from "react-router-dom";
 
+const resolveImageUrl = (url: string) =>
+  url.startsWith("http") ? url : `${import.meta.env.VITE_API_BASE_URL}${url}`;
+
+
 export default function OrganizerProfile() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -43,7 +47,7 @@ export default function OrganizerProfile() {
         }
         setAddress(data.address || "");
         if (data.profile_image) {
-          setProfileImage(`${import.meta.env.VITE_API_BASE_URL}${data.profile_image}`);
+          setProfileImage(resolveImageUrl(data.profile_image));
         }
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -119,7 +123,7 @@ export default function OrganizerProfile() {
     setErrors({ ...errors, image: "" });
     try {
       const data = await userApi.uploadProfileImage(file);
-      setProfileImage(`${import.meta.env.VITE_API_BASE_URL}${data.profile_image}`);
+      setProfileImage(resolveImageUrl(data.profile_image));
       setSuccessMsg("Profile image updated successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {

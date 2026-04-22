@@ -4,6 +4,9 @@ import { Edit2, X, ChevronDown } from "lucide-react";
 import { userApi } from "../api";
 import UserDashboardShell from "../components/UserDashboardShell";
 
+const resolveImageUrl = (url: string) =>
+  url.startsWith("http") ? url : `${import.meta.env.VITE_API_BASE_URL}${url}`;
+
 export default function ProfilePage() {
   const { user } = useAuthStore();
 
@@ -37,7 +40,7 @@ export default function ProfilePage() {
         setGender(data.gender || "Male");
         setLocations(data.locations || []);
         if (data.profile_image) {
-          setProfileImage(`${import.meta.env.VITE_API_BASE_URL}${data.profile_image}`);
+          setProfileImage(resolveImageUrl(data.profile_image));
         }
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -104,7 +107,7 @@ export default function ProfilePage() {
     setErrors({ ...errors, image: "" });
     try {
       const data = await userApi.uploadProfileImage(file);
-      setProfileImage(`${import.meta.env.VITE_API_BASE_URL}${data.profile_image}`);
+      setProfileImage(resolveImageUrl(data.profile_image));
       setSuccessMsg("Profile image updated successfully!");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {
