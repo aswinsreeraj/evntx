@@ -16,7 +16,7 @@ func NewPostgresConnection() (*gorm.DB, error) {
 	dbName := os.Getenv("DB_NAME")
 	port := os.Getenv("DB_PORT")
 
-	dsn := fmt.Sprintf("host=%s user=%s dbname=%s port=%s sslmode=verify-full sslrootcert=./global-bundle.pem TimeZone=Asia/Calcutta",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=verify-full sslrootcert=./global-bundle.pem TimeZone=Asia/Calcutta",
 		host, user, password, dbName, port)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
