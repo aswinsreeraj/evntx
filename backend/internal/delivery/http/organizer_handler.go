@@ -3,12 +3,12 @@ package http
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/aswinsreeraj/evntx/internal/cache"
+	"github.com/aswinsreeraj/evntx/internal/infrastructure/storage"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
 	"github.com/google/uuid"
 
@@ -537,21 +537,23 @@ func (h *OrganizerHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	dirPath := "assets/events/" + organizerID
-	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+	src, err := file.Open()
+	if err != nil {
 		response.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
+	defer src.Close()
 
-	fileID := uuid.NewString()
 	ext := filepath.Ext(file.Filename)
-	filename := fileID + ext
+	key := fmt.Sprintf("events/%s/%s%s", organizerID, uuid.NewString(), ext)
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg"
+	}
 
-	filePath := dirPath + "/" + filename
-	imageURL := "/" + filePath
-
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
-		response.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to save image"))
+	imageURL, err := storage.UploadFile(c.Request.Context(), key, contentType, src)
+	if err != nil {
+		response.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to upload image"))
 		return
 	}
 

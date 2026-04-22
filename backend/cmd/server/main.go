@@ -11,6 +11,7 @@ import (
 	emailImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/email"
 	paymentImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/payment"
 	repoImpl "github.com/aswinsreeraj/evntx/internal/infrastructure/repository"
+	"github.com/aswinsreeraj/evntx/internal/infrastructure/storage"
 	"github.com/aswinsreeraj/evntx/internal/middleware"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	"github.com/aswinsreeraj/evntx/pkg/logger"
@@ -27,6 +28,12 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		logger.Log.Warn().Msg("failed to load env")
 	}
+
+	// Initialize S3 storage
+	if err := storage.Init(); err != nil {
+		logger.Log.Fatal().Msgf("failed to initialize S3 storage: %v", err)
+	}
+
 	db, err := database.NewPostgresConnection()
 	if err != nil {
 		logger.Log.Fatal().Msgf("failed to connect to database: %v", err)

@@ -2,16 +2,19 @@ package http
 
 import (
 	"errors"
-	"os"
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/aswinsreeraj/evntx/internal/domain"
+	"github.com/aswinsreeraj/evntx/internal/infrastructure/storage"
 	"github.com/aswinsreeraj/evntx/internal/usecase"
 	apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
 	apiResponse "github.com/aswinsreeraj/evntx/pkg/response"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -528,17 +531,23 @@ func (h *UserHandler) UploadProfileImage(c *gin.Context) {
 		return
 	}
 
-	dirPath := "assets/images/" + userID
-	if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
+	src, err := file.Open()
+	if err != nil {
 		apiResponse.AppError(c, apiErrors.ErrInternalServerError)
 		return
 	}
+	defer src.Close()
 
-	filepath := dirPath + "/" + file.Filename
-	imageURL := "/" + filepath
+	ext := filepath.Ext(file.Filename)
+	key := fmt.Sprintf("profiles/%s/%s%s", userID, uuid.NewString(), ext)
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/jpeg"
+	}
 
-	if err := c.SaveUploadedFile(file, filepath); err != nil {
-		apiResponse.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to save image"))
+	imageURL, err := storage.UploadFile(c.Request.Context(), key, contentType, src)
+	if err != nil {
+		apiResponse.AppError(c, apiErrors.New(500, apiErrors.InternalServerError, "Failed to upload image"))
 		return
 	}
 
