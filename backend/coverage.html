@@ -1,0 +1,2949 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>usecase: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/aswinsreeraj/evntx/internal/usecase/audit_usecase.go (0.0%)</option>
+				
+				<option value="file1">github.com/aswinsreeraj/evntx/internal/usecase/auth_usecase.go (24.5%)</option>
+				
+				<option value="file2">github.com/aswinsreeraj/evntx/internal/usecase/booking_usecase.go (44.3%)</option>
+				
+				<option value="file3">github.com/aswinsreeraj/evntx/internal/usecase/engagement_usecase.go (0.0%)</option>
+				
+				<option value="file4">github.com/aswinsreeraj/evntx/internal/usecase/event_usecase.go (0.0%)</option>
+				
+				<option value="file5">github.com/aswinsreeraj/evntx/internal/usecase/notification_usecase.go (0.0%)</option>
+				
+				<option value="file6">github.com/aswinsreeraj/evntx/internal/usecase/payment_usecase.go (0.0%)</option>
+				
+				<option value="file7">github.com/aswinsreeraj/evntx/internal/usecase/user_usecase.go (0.0%)</option>
+				
+				<option value="file8">github.com/aswinsreeraj/evntx/internal/usecase/wallet_usecase.go (23.3%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package usecase
+
+import (
+        "encoding/json"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        "github.com/google/uuid"
+)
+
+type AuditUsecase struct {
+        auditRepo repository.AuditRepository
+        userRepo  repository.UserRepository
+}
+
+func NewAuditUsecase(auditRepo repository.AuditRepository, userRepo repository.UserRepository) *AuditUsecase <span class="cov0" title="0">{
+        return &amp;AuditUsecase{
+                auditRepo: auditRepo,
+                userRepo:  userRepo,
+        }
+}</span>
+
+func (u *AuditUsecase) LogAction(adminID, action string, tag domain.AuditActionTag, detailsMap map[string]interface{}, ipAddress string) error <span class="cov0" title="0">{
+        adminName := "System/Unknown"
+        
+        if adminID != "" </span><span class="cov0" title="0">{
+                admin, err := u.userRepo.FindByID(adminID)
+                if err == nil &amp;&amp; admin != nil </span><span class="cov0" title="0">{
+                        adminName = admin.Name
+                }</span>
+        }
+
+        <span class="cov0" title="0">detailsJSON := "{}"
+        if detailsMap != nil </span><span class="cov0" title="0">{
+                if b, err := json.Marshal(detailsMap); err == nil </span><span class="cov0" title="0">{
+                        detailsJSON = string(b)
+                }</span>
+        }
+
+        <span class="cov0" title="0">log := &amp;domain.AuditLog{
+                ID:        uuid.NewString(),
+                AdminID:   adminID,
+                AdminName: adminName,
+                Action:    action,
+                ActionTag: tag,
+                Details:   detailsJSON,
+                IPAddress: ipAddress,
+                Timestamp: time.Now(),
+        }
+
+        return u.auditRepo.Create(log)</span>
+}
+
+func (u *AuditUsecase) GetLogs(page, limit int) ([]domain.AuditLog, int64, error) <span class="cov0" title="0">{
+        return u.auditRepo.GetLogs(page, limit)
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package usecase
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/hash"
+        jwtutil "github.com/aswinsreeraj/evntx/pkg/jwt"
+        oauthutil "github.com/aswinsreeraj/evntx/pkg/oauth"
+        "github.com/aswinsreeraj/evntx/pkg/otp"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type AuthUsecase struct {
+        otpRepo     repository.EmailOTPRepository
+        userRepo    repository.UserRepository
+        sessionRepo repository.UserSessionRepository
+        emailSender repository.EmailSender
+        roleRepo    repository.UserRoleRepository
+        walletRepo  repository.WalletRepository
+        settingsRepo repository.SettingsRepository
+}
+
+func NewAuthUsecase(
+        otpRepo repository.EmailOTPRepository,
+        userRepo repository.UserRepository,
+        sessionRepo repository.UserSessionRepository,
+        emailSender repository.EmailSender,
+        roleRepo repository.UserRoleRepository,
+        walletRepo repository.WalletRepository,
+        settingsRepo repository.SettingsRepository,
+) *AuthUsecase <span class="cov8" title="1">{
+        return &amp;AuthUsecase{
+                otpRepo:     otpRepo,
+                userRepo:    userRepo,
+                sessionRepo: sessionRepo,
+                emailSender: emailSender,
+                roleRepo:    roleRepo,
+                walletRepo:  walletRepo,
+                settingsRepo: settingsRepo,
+        }
+}</span>
+
+func getAdminEmail() string <span class="cov8" title="1">{
+        email := os.Getenv("ADMIN_EMAIL")
+        if email == "" </span><span class="cov8" title="1">{
+                return "admin@evntx.com"
+        }</span>
+        <span class="cov0" title="0">return email</span>
+}
+
+func (u *AuthUsecase) ensureOrganizerNotPending(userID string) error <span class="cov8" title="1">{
+        detail, err := u.userRepo.GetOrganizerDetails(userID)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+        <span class="cov0" title="0">if detail != nil &amp;&amp; detail.ApprovalStatus == "pending" </span><span class="cov0" title="0">{
+                return apiErrors.New(403, apiErrors.ForbiddenAction, "Your organizer account is pending admin approval. You can log in after approval.")
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) <span class="cov8" title="1">{
+
+        isNewUser := false
+        user, err := u.userRepo.FindByEmail(email)
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov8" title="1">{
+                        isNewUser = true
+                }</span> else<span class="cov0" title="0"> {
+                        return false, err
+                }</span>
+        } else<span class="cov8" title="1"> if !user.IsActive </span><span class="cov8" title="1">{
+                return false, apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+
+        }</span>
+
+        <span class="cov8" title="1">if isNewUser &amp;&amp; u.settingsRepo != nil </span><span class="cov8" title="1">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil &amp;&amp; !settings.EnableUserRegistration </span><span class="cov0" title="0">{
+                        return false, apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+                }</span>
+        }
+
+        <span class="cov8" title="1">rawOTP, err := otp.GenerateOTP()
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">hash, err := otp.HashOTP(rawOTP)
+        if err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">if err := u.otpRepo.InvalidatePrevious(email); err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">emailOTP := &amp;domain.EmailOTP{
+                ID:        uuid.NewString(),
+                Email:     email,
+                OTPHash:   hash,
+                ExpiresAt: time.Now().Add(5 * time.Minute),
+                Consumed:  false,
+        }
+
+        if err := u.otpRepo.Create(emailOTP); err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">if err := u.emailSender.SendOTP(email, rawOTP); err != nil </span><span class="cov0" title="0">{
+                return false, err
+        }</span>
+
+        <span class="cov8" title="1">return isNewUser, nil</span>
+}
+
+func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) <span class="cov8" title="1">{
+
+        storedOTP, err := u.otpRepo.FindValidOTP(email)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed")
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil </span><span class="cov8" title="1">{
+                logger.Log.Warn().Str("email", email).Msg("OTP verification failed: invalid code")
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">if err := u.otpRepo.MarkConsumed(storedOTP.ID); err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">user, err := u.userRepo.FindByEmail(email)
+
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        user = &amp;domain.User{
+                                ID:            uuid.NewString(),
+                                Email:         email,
+                                Name:          name,
+                                IsActive:      true,
+                                EmailVerified: true,
+                        }
+
+                        if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
+                                return nil, nil, "", "", err
+                        }</span>
+
+                        <span class="cov0" title="0">wallet := &amp;domain.Wallet{
+                                ID:               uuid.NewString(),
+                                UserID:           user.ID,
+                                AvailableBalance: 0,
+                                PendingBalance:   0,
+                                TotalCredited:    0,
+                                TotalDebited:     0,
+                                UpdatedAt:        time.Now(),
+                        }
+                        if err := u.walletRepo.CreateWallet(wallet); err != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error().Err(err).Msg("failed to create wallet for user during authentication/registration")
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        return nil, nil, "", "", err
+                }</span>
+        } else<span class="cov8" title="1"> if !user.IsActive </span><span class="cov0" title="0">{
+                return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+        }</span>
+
+        <span class="cov8" title="1">if pendingErr := u.ensureOrganizerNotPending(user.ID); pendingErr != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", pendingErr
+        }</span>
+
+        <span class="cov8" title="1">accessToken, err := jwtutil.GenerateAccessToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">refreshHash := hash.HashToken(refreshToken)
+
+        session := &amp;domain.UserSession{
+                ID:               uuid.NewString(),
+                UserID:           user.ID,
+                RefreshTokenHash: refreshHash,
+                UserAgent:        userAgent,
+                IPAddress:        ip,
+                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+                Revoked:          false,
+        }
+
+        if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov8" title="1">roles, err := u.roleRepo.GetRolesByUserID(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                roles = []domain.UserRole{}
+        }</span>
+
+        <span class="cov8" title="1">return user, roles, accessToken, refreshToken, nil</span>
+}
+
+func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organizationName, userAgent, ip string) (*domain.User, []domain.UserRole, string, string, error) <span class="cov0" title="0">{
+        if u.settingsRepo != nil </span><span class="cov0" title="0">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil </span><span class="cov0" title="0">{
+                        if !settings.EnableUserRegistration </span><span class="cov0" title="0">{
+                                return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">storedOTP, err := u.otpRepo.FindValidOTP(email)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Warn().Err(err).Str("email", email).Msg("OTP lookup failed during registration")
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">if err := otp.CompareOTP(storedOTP.OTPHash, rawOTP); err != nil </span><span class="cov0" title="0">{
+                logger.Log.Warn().Str("email", email).Msg("OTP verification failed during registration")
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">if err := u.otpRepo.MarkConsumed(storedOTP.ID); err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">user, err := u.userRepo.FindByEmail(email)
+
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        user = &amp;domain.User{
+                                ID:            uuid.NewString(),
+                                Email:         email,
+                                Name:          name,
+                                Dob:           dob,
+                                Gender:        gender,
+                                IsActive:      true,
+                                EmailVerified: true,
+                        }
+
+                        if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
+                                return nil, nil, "", "", err
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        return nil, nil, "", "", err
+                }</span>
+        } else<span class="cov0" title="0"> {
+                if !user.IsActive </span><span class="cov0" title="0">{
+                        return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+                }</span>
+                <span class="cov0" title="0">user.Name = name
+                user.Dob = dob
+                user.Gender = gender
+                if err := u.userRepo.Update(user); err != nil </span><span class="cov0" title="0">{
+                        return nil, nil, "", "", err
+                }</span>
+        }
+
+        <span class="cov0" title="0">roles, err := u.roleRepo.GetRolesByUserID(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                roles = []domain.UserRole{}
+        }</span>
+
+        <span class="cov0" title="0">requiresApproval := false
+        if roleStr == "organizer" &amp;&amp; u.settingsRepo != nil </span><span class="cov0" title="0">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil </span><span class="cov0" title="0">{
+                        requiresApproval = settings.RequireAdminApprovalForOrganizers
+                }</span>
+        }
+
+        <span class="cov0" title="0">if roleStr == "organizer" </span><span class="cov0" title="0">{
+                hasOrganizer := false
+                for _, r := range roles </span><span class="cov0" title="0">{
+                        if r == domain.RoleOrganizer </span><span class="cov0" title="0">{
+                                hasOrganizer = true
+                                break</span>
+                        }
+                }
+                <span class="cov0" title="0">if !hasOrganizer &amp;&amp; !requiresApproval </span><span class="cov0" title="0">{
+                        if err := u.roleRepo.AddRole(user.ID, domain.RoleOrganizer); err == nil </span><span class="cov0" title="0">{
+                                roles = append(roles, domain.RoleOrganizer)
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">if roleStr == "organizer" &amp;&amp; organizationName != "" </span><span class="cov0" title="0">{
+                approvalStatus := "approved"
+                if requiresApproval </span><span class="cov0" title="0">{
+                        approvalStatus = "pending"
+                }</span>
+                <span class="cov0" title="0">if err := u.userRepo.UpsertOrganizerDetails(&amp;domain.OrganizerDetail{
+                        UserID:           user.ID,
+                        OrganizationName: organizationName,
+                        Address:          "",
+                        ApprovalStatus:   approvalStatus,
+                }); err != nil </span><span class="cov0" title="0">{
+                        return nil, nil, "", "", err
+                }</span>
+        }
+
+        <span class="cov0" title="0">if roleStr == "organizer" &amp;&amp; requiresApproval </span><span class="cov0" title="0">{
+                return nil, nil, "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "Organizer registration submitted and pending admin approval. You can log in once approved.")
+        }</span>
+
+        <span class="cov0" title="0">accessToken, err := jwtutil.GenerateAccessToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">refreshHash := hash.HashToken(refreshToken)
+
+        session := &amp;domain.UserSession{
+                ID:               uuid.NewString(),
+                UserID:           user.ID,
+                RefreshTokenHash: refreshHash,
+                UserAgent:        userAgent,
+                IPAddress:        ip,
+                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+                Revoked:          false,
+        }
+
+        if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
+                return nil, nil, "", "", err
+        }</span>
+
+        <span class="cov0" title="0">return user, roles, accessToken, refreshToken, nil</span>
+}
+
+func (u *AuthUsecase) RefreshToken(refreshToken string) (string, error) <span class="cov0" title="0">{
+
+        userID, err := jwtutil.ParseRefreshToken(refreshToken)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">session, err := u.sessionRepo.FindByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">if session.Revoked || session.ExpiresAt.Before(time.Now()) </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">if session.RefreshTokenHash != hash.HashToken(refreshToken) </span><span class="cov0" title="0">{
+                return "", errors.New("invalid refresh token")
+        }</span>
+
+        <span class="cov0" title="0">return jwtutil.GenerateAccessToken(userID)</span>
+}
+
+func (u *AuthUsecase) Logout(refreshToken string) error <span class="cov0" title="0">{
+
+        userID, err := jwtutil.ParseRefreshToken(refreshToken)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">session, err := u.sessionRepo.FindByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return u.sessionRepo.Revoke(session.ID)</span>
+}
+
+func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string, error) <span class="cov0" title="0">{
+        if u.settingsRepo != nil </span><span class="cov0" title="0">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil </span><span class="cov0" title="0">{
+                        if !settings.AllowGoogleLogin </span><span class="cov0" title="0">{
+                                return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "Google login is currently disabled by admin")
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">googleUser, err := oauthutil.VerifyGoogleIDToken(idToken)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">user, err := u.userRepo.FindByEmail(googleUser.Email)
+        if err != nil </span><span class="cov0" title="0">{
+                if u.settingsRepo != nil </span><span class="cov0" title="0">{
+                        if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil &amp;&amp; !settings.EnableUserRegistration </span><span class="cov0" title="0">{
+                                return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, "New registrations are currently disabled by admin")
+                        }</span>
+                }
+
+                <span class="cov0" title="0">user = &amp;domain.User{
+                        ID:            uuid.NewString(),
+                        Email:         googleUser.Email,
+                        Name:          googleUser.Name,
+                        IsActive:      true,
+                        EmailVerified: true,
+                }
+                if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
+                        return "", "", err
+                }</span>
+
+                <span class="cov0" title="0">wallet := &amp;domain.Wallet{
+                        ID:               uuid.NewString(),
+                        UserID:           user.ID,
+                        AvailableBalance: 0,
+                        PendingBalance:   0,
+                        TotalCredited:    0,
+                        TotalDebited:     0,
+                        UpdatedAt:        time.Now(),
+                }
+                if err := u.walletRepo.CreateWallet(wallet); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error().Err(err).Msg("failed to create wallet for user during Google login")
+                }</span>
+        } else<span class="cov0" title="0"> if !user.IsActive </span><span class="cov0" title="0">{
+                return "", "", apiErrors.New(403, apiErrors.ForbiddenAction, fmt.Sprintf("Account has been blocked. Please send a mail to admin at %s", getAdminEmail()))
+        }</span>
+
+        <span class="cov0" title="0">if pendingErr := u.ensureOrganizerNotPending(user.ID); pendingErr != nil </span><span class="cov0" title="0">{
+                return "", "", pendingErr
+        }</span>
+
+        <span class="cov0" title="0">accessToken, err := jwtutil.GenerateAccessToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">refreshToken, err := jwtutil.GenerateRefreshToken(user.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">refreshHash := hash.HashToken(refreshToken)
+
+        session := &amp;domain.UserSession{
+                ID:               uuid.NewString(),
+                UserID:           user.ID,
+                RefreshTokenHash: refreshHash,
+                UserAgent:        userAgent,
+                IPAddress:        ip,
+                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
+                Revoked:          false,
+        }
+
+        if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
+                return "", "", err
+        }</span>
+
+        <span class="cov0" title="0">return accessToken, refreshToken, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package usecase
+
+import (
+        "context"
+        "errors"
+        "math"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+        "github.com/google/uuid"
+)
+
+type BookingUsecase struct {
+        bookingRepo         repository.BookingRepository
+        eventRepo           repository.EventRepository
+        notificationUsecase *NotificationUsecase
+        roleRepo            repository.UserRoleRepository
+        settingsRepo        repository.SettingsRepository
+}
+
+func NewBookingUsecase(
+        bookingRepo repository.BookingRepository,
+        eventRepo repository.EventRepository,
+        roleRepo repository.UserRoleRepository,
+        notificationUsecase *NotificationUsecase,
+        settingsRepo repository.SettingsRepository,
+) *BookingUsecase <span class="cov8" title="1">{
+        return &amp;BookingUsecase{
+                bookingRepo:         bookingRepo,
+                eventRepo:           eventRepo,
+                roleRepo:            roleRepo,
+                notificationUsecase: notificationUsecase,
+                settingsRepo:        settingsRepo,
+        }
+}</span>
+
+func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, eventID string, requests []domain.TicketRequest) (*domain.Booking, error) <span class="cov8" title="1">{
+        event, err := u.eventRepo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, errors.New("event not found")
+        }</span>
+
+        <span class="cov8" title="1">if event.Status != "approved" &amp;&amp; event.Status != "live" </span><span class="cov8" title="1">{
+                return nil, errors.New("EVT_012: Event not live")
+        }</span>
+
+        <span class="cov8" title="1">ticketTypes, err := u.eventRepo.GetTicketTypesByEventID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">ticketMap := make(map[string]domain.TicketType)
+        for _, tt := range ticketTypes </span><span class="cov8" title="1">{
+                ticketMap[tt.ID] = tt
+        }</span>
+
+        <span class="cov8" title="1">var baseTotal float64
+        var bookingTickets []domain.BookingTicket
+        bookingID := uuid.New().String()
+
+        for _, req := range requests </span><span class="cov8" title="1">{
+                tt, exists := ticketMap[req.TicketTypeID]
+                if !exists </span><span class="cov0" title="0">{
+                        return nil, apiErrors.ErrInvalidRequestBody
+                }</span>
+
+                <span class="cov8" title="1">if req.Quantity &gt; tt.AvailableQuantity </span><span class="cov8" title="1">{
+                        return nil, apiErrors.ErrTicketSoldOut
+                }</span>
+
+                <span class="cov8" title="1">baseTotal += tt.Price * float64(req.Quantity)
+
+                bookingTickets = append(bookingTickets, domain.BookingTicket{
+                        BookingID:    bookingID,
+                        TicketTypeID: req.TicketTypeID,
+                        Quantity:     req.Quantity,
+                })</span>
+        }
+
+        <span class="cov8" title="1">now := time.Now()
+        expiresAt := now.Add(1 * time.Minute)
+
+        var totalTickets int
+        for _, req := range requests </span><span class="cov8" title="1">{
+                totalTickets += req.Quantity
+        }</span>
+
+        <span class="cov8" title="1">userFee := 0.0
+        if baseTotal &gt; 0 </span><span class="cov8" title="1">{
+                userFee = float64(30 * totalTickets)
+                if u.settingsRepo != nil </span><span class="cov8" title="1">{
+                        if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil </span><span class="cov8" title="1">{
+                                if settings.PlatformFeeType == domain.PlatformFeeTypePercentage </span><span class="cov0" title="0">{
+                                        userFee = math.Round((baseTotal*(settings.PlatformFeeValue/100))*100) / 100
+                                }</span> else<span class="cov8" title="1"> {
+                                        userFee = math.Round((float64(totalTickets)*settings.PlatformFeeValue)*100) / 100
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">totalAmount := baseTotal + userFee
+
+        booking := &amp;domain.Booking{
+                ID:          bookingID,
+                UserID:      userID,
+                EventID:     eventID,
+                Status:      "reserved",
+                TotalAmount: totalAmount,
+                ExpiresAt:   expiresAt,
+                CreatedAt:   now,
+        }
+
+        err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if event.Status == "approved" </span><span class="cov0" title="0">{
+                _ = u.eventRepo.UpdateEventStatus(ctx, eventID, "live")
+                logger.Log.Info().
+                        Str("event", "event_state_changed").
+                        Str("entity", "event").
+                        Str("entity_id", eventID).
+                        Str("from", "approved").
+                        Str("to", "live").
+                        Str("actor_id", userID).
+                        Msg("")
+        }</span>
+
+        <span class="cov8" title="1">logger.Log.Info().
+                Str("event", "booking_reserved").
+                Str("booking_id", booking.ID).
+                Str("user_id", booking.UserID).
+                Str("event_id", booking.EventID).
+                Interface("tickets", requests).
+                Float64("total_amount", booking.TotalAmount).
+                Time("expires_at", booking.ExpiresAt).
+                Msg("")
+
+        if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                if notifyErr := u.notificationUsecase.SendNotification(
+                        userID,
+                        domain.NotificationTypeBookingReserved,
+                        "Booking reserved",
+                        "Booking reserved. Complete payment before expiry.",
+                        map[string]interface{}{
+                                "booking_id":  booking.ID,
+                                "event_id":    booking.EventID,
+                                "event_title": event.Title,
+                                "expires_at":  booking.ExpiresAt,
+                        },
+                ); notifyErr != nil </span><span class="cov0" title="0">{
+                        logger.Log.Warn().
+                                Err(notifyErr).
+                                Str("user_id", userID).
+                                Str("booking_id", booking.ID).
+                                Msg("notification_send_failed")
+                }</span>
+        }
+
+        <span class="cov8" title="1">return booking, nil</span>
+}
+
+func (u *BookingUsecase) ProcessExpiredBookings(ctx context.Context) error <span class="cov0" title="0">{
+        expiredBookings, err := u.bookingRepo.ExpireBookings(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for _, b := range expiredBookings </span><span class="cov0" title="0">{
+                logger.Log.Info().
+                        Str("booking_id", b.ID).
+                        Str("event_id", b.EventID).
+                        Str("user_id", b.UserID).
+                        Time("expired_at", b.ExpiresAt).
+                        Time("timestamp", time.Now()).
+                        Msg("booking_expired")
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *BookingUsecase) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) <span class="cov0" title="0">{
+        bookings, total, err := u.bookingRepo.GetUserBookings(ctx, userID, page, limit, status)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        <span class="cov0" title="0">return bookings, total, nil</span>
+}
+
+func (u *BookingUsecase) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) <span class="cov0" title="0">{
+        tickets, err := u.bookingRepo.GetUserTickets(ctx, userID, eventID, bookingID, status)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return tickets, nil</span>
+}
+
+func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest) error <span class="cov0" title="0">{
+        booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">event, err := u.eventRepo.GetEventByID(booking.EventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">refundWindowDays := 1
+        settings, settingsErr := u.settingsRepo.GetPlatformSettings()
+        if settingsErr == nil &amp;&amp; settings.RefundWindowDays &gt;= 0 </span><span class="cov0" title="0">{
+                refundWindowDays = settings.RefundWindowDays
+        }</span>
+
+        <span class="cov0" title="0">refundWindowDuration := time.Duration(refundWindowDays) * 24 * time.Hour
+        timeUntilEvent := time.Until(event.StartTime)
+        isRefundable := timeUntilEvent &gt;= refundWindowDuration
+
+        err = u.bookingRepo.CancelBooking(ctx, bookingID, userID, items, isRefundable)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("booking_id", bookingID).
+                Str("user_id", userID).
+                Int("items_count", len(items)).
+                Time("timestamp", time.Now()).
+                Msg("booking_cancelled_partially")
+
+        if u.notificationUsecase != nil &amp;&amp; event.OrganizerID != "" </span><span class="cov0" title="0">{
+                if notifyErr := u.notificationUsecase.SendNotification(
+                        event.OrganizerID,
+                        domain.NotificationTypeBookingCancelled,
+                        "Booking cancelled",
+                        "A user cancelled ticket(s) for your event.",
+                        map[string]interface{}{
+                                "booking_id":            bookingID,
+                                "event_id":              booking.EventID,
+                                "event_title":           event.Title,
+                                "cancelled_by_user_id":  userID,
+                                "cancelled_items_count": len(items),
+                                "is_refundable":         isRefundable,
+                        },
+                ); notifyErr != nil </span><span class="cov0" title="0">{
+                        logger.Log.Warn().
+                                Err(notifyErr).
+                                Str("organizer_id", event.OrganizerID).
+                                Str("booking_id", bookingID).
+                                Msg("booking_cancellation_notification_failed")
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *BookingUsecase) CheckInTicket(
+        ctx context.Context,
+        eventID string,
+        actorID string,
+        ticketCode string,
+) (*domain.TicketCheckIn, error) <span class="cov8" title="1">{
+        roles, err := u.roleRepo.GetRolesByUserID(actorID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">isAdmin := false
+        isOrganizer := false
+        for _, role := range roles </span><span class="cov8" title="1">{
+                switch role </span>{
+                case domain.RoleAdmin:<span class="cov0" title="0">
+                        isAdmin = true</span>
+                case domain.RoleOrganizer:<span class="cov8" title="1">
+                        isOrganizer = true</span>
+                }
+        }
+
+        <span class="cov8" title="1">if !isAdmin </span><span class="cov8" title="1">{
+                if !isOrganizer </span><span class="cov8" title="1">{
+                        return nil, apiErrors.ErrForbiddenAction
+                }</span>
+
+                <span class="cov8" title="1">event, err := u.eventRepo.GetEventByID(eventID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov8" title="1">if event.OrganizerID != actorID </span><span class="cov0" title="0">{
+                        return nil, apiErrors.ErrForbiddenAction
+                }</span>
+        }
+
+        <span class="cov8" title="1">return u.bookingRepo.CheckInTicket(ctx, eventID, ticketCode)</span>
+}
+
+func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, userID string) error <span class="cov0" title="0">{
+        booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if booking.UserID != userID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">walletSetting, err := u.settingsRepo.GetPaymentProviderConfig("wallet")
+        if err == nil &amp;&amp; !walletSetting.IsEnabled </span><span class="cov0" title="0">{
+                return apiErrors.New(400, "PAYMENT_DISABLED", "Wallet payment is disabled by admin")
+        }</span>
+
+        <span class="cov0" title="0">if booking.Status != "reserved" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">if time.Now().After(booking.ExpiresAt) </span><span class="cov0" title="0">{
+                return apiErrors.ErrBookingExpired
+        }</span>
+
+        <span class="cov0" title="0">err = u.bookingRepo.PayWithWallet(ctx, bookingID, userID, booking.TotalAmount)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                event, _ := u.eventRepo.GetEventByID(booking.EventID)
+                _ = u.notificationUsecase.SendNotification(
+                        userID,
+                        domain.NotificationTypePaymentSuccess,
+                        "Payment successful",
+                        "Payment successful via wallet. Tickets confirmed.",
+                        map[string]interface{}{
+                                "booking_id":  booking.ID,
+                                "event_id":    booking.EventID,
+                                "event_title": event.Title,
+                                "amount":      booking.TotalAmount,
+                        },
+                )
+
+                _ = u.notificationUsecase.SendNotification(
+                        userID,
+                        domain.NotificationTypeTicketGenerated,
+                        "Your tickets are generated",
+                        "Your tickets are generated",
+                        map[string]interface{}{
+                                "booking_id":  booking.ID,
+                                "event_id":    booking.EventID,
+                                "event_title": event.Title,
+                        },
+                )
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package usecase
+
+import (
+        "context"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        "github.com/google/uuid"
+)
+
+type EngagementUsecase struct {
+        repo repository.EngagementRepository
+}
+
+func NewEngagementUsecase(repo repository.EngagementRepository) *EngagementUsecase <span class="cov0" title="0">{
+        return &amp;EngagementUsecase{repo: repo}
+}</span>
+
+func (u *EngagementUsecase) InitializeSession(ctx context.Context, userID *string, ipAddress, userAgent string) (*domain.VisitorSession, error) <span class="cov0" title="0">{
+        session := &amp;domain.VisitorSession{
+                ID:         uuid.NewString(),
+                UserID:     userID,
+                IPAddress:  ipAddress,
+                UserAgent:  userAgent,
+                CreatedAt:  time.Now(),
+                LastSeenAt: time.Now(),
+        }
+
+        err := u.repo.CreateSession(ctx, session)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return session, nil</span>
+}
+
+func (u *EngagementUsecase) TrackEvent(
+        ctx context.Context,
+        sessionID string,
+        userID *string,
+        eventType domain.EngagementEventType,
+        eventID *string,
+        metadata, ipAddress, userAgent string,
+) error <span class="cov0" title="0">{
+        
+        _ = u.repo.UpdateSessionLastSeen(ctx, sessionID, userID)
+
+        
+        if eventID != nil &amp;&amp; *eventID != "" </span><span class="cov0" title="0">{
+                if _, err := uuid.Parse(*eventID); err != nil </span><span class="cov0" title="0">{
+                        
+                        
+                        eventID = nil
+                }</span>
+        }
+
+        <span class="cov0" title="0">if metadata == "" </span><span class="cov0" title="0">{
+                metadata = "{}"
+        }</span>
+
+        <span class="cov0" title="0">evt := &amp;domain.EngagementEvent{
+                ID:        uuid.NewString(),
+                UserID:    userID,
+                SessionID: sessionID,
+                EventID:   eventID,
+                EventType: eventType,
+                Metadata:  metadata,
+                IPAddress: ipAddress,
+                UserAgent: userAgent,
+                CreatedAt: time.Now(),
+        }
+
+        return u.repo.LogEvent(ctx, evt)</span>
+}
+
+func (u *EngagementUsecase) GetDailyReport(ctx context.Context, eventID string, startDate, endDate time.Time) ([]domain.EventEngagementDaily, error) <span class="cov0" title="0">{
+        return u.repo.GetDailyAggregates(ctx, eventID, startDate, endDate)
+}</span>
+
+func (u *EngagementUsecase) GetEngagementReport(ctx context.Context, eventIDs []string, startDate, endDate time.Time) (*domain.EngagementReportStats, error) <span class="cov0" title="0">{
+        return u.repo.GetEngagementReport(ctx, eventIDs, startDate, endDate)
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package usecase
+
+import (
+        "context"
+        "errors"
+        "strings"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+        "github.com/google/uuid"
+)
+
+type EventUsecase struct {
+        repo                repository.EventRepository
+        bookingRepo         repository.BookingRepository
+        notificationUsecase *NotificationUsecase
+        settingsRepo        repository.SettingsRepository
+}
+
+func NewEventUsecase(
+        repo repository.EventRepository,
+        bookingRepo repository.BookingRepository,
+        notificationUsecase *NotificationUsecase,
+        settingsRepo repository.SettingsRepository,
+) *EventUsecase <span class="cov0" title="0">{
+        return &amp;EventUsecase{repo: repo, bookingRepo: bookingRepo, notificationUsecase: notificationUsecase, settingsRepo: settingsRepo}
+}</span>
+
+func (u *EventUsecase) ListEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate string, page int, limit int) (interface{}, int64, float64, float64, error) <span class="cov0" title="0">{
+        return u.repo.ListLiveEvents(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate, page, limit)
+}</span>
+
+func (u *EventUsecase) AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error) <span class="cov0" title="0">{
+        return u.repo.AdminSearchEvents(search, status, page, limit)
+}</span>
+
+func (u *EventUsecase) GetOrganizerDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error) <span class="cov0" title="0">{
+        return u.repo.GetDashboardStats(organizerID)
+}</span>
+
+func (u *EventUsecase) GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error) <span class="cov0" title="0">{
+        return u.repo.GetSalesReport(organizerID, eventID, startDate, endDate)
+}</span>
+
+func (u *EventUsecase) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) <span class="cov0" title="0">{
+        return u.repo.GetAdminDashboardStats()
+}</span>
+
+func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) <span class="cov0" title="0">{
+        return u.repo.GetAdminRevenueReport(startDate, endDate)
+}</span>
+
+func (u *EventUsecase) GetEventByID(id string) (*domain.Event, error) <span class="cov0" title="0">{
+        return u.repo.GetEventByID(id)
+}</span>
+
+func (u *EventUsecase) GetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) <span class="cov0" title="0">{
+
+        event, err := u.repo.GetEventBySlug(slug)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "approved" &amp;&amp; event.Status != "live" &amp;&amp; event.Status != "completed" </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">details, err := u.repo.GetEventDetails(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">personnels, err := u.repo.GetEventPersonnels(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">return event, details, personnels, tickets, nil</span>
+}
+
+func (u *EventUsecase) GetOrganizerEvent(slug string, organizerID string) (interface{}, interface{}, interface{}, interface{}, error) <span class="cov0" title="0">{
+        event, err := u.repo.GetEventBySlug(slug)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">if event.OrganizerID != organizerID </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">details, err := u.repo.GetEventDetails(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">personnels, err := u.repo.GetEventPersonnels(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">return event, details, personnels, tickets, nil</span>
+}
+
+func (u *EventUsecase) AdminGetEvent(slug string) (interface{}, interface{}, interface{}, interface{}, error) <span class="cov0" title="0">{
+        event, err := u.repo.GetEventBySlug(slug)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">details, err := u.repo.GetEventDetails(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">personnels, err := u.repo.GetEventPersonnels(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">tickets, err := u.repo.GetTicketTypesByEventID(event.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">return event, details, personnels, tickets, nil</span>
+}
+
+func generateSlug(title string) string <span class="cov0" title="0">{
+        slug := strings.ToLower(title)
+        slug = strings.ReplaceAll(slug, " ", "-")
+        slug = strings.ReplaceAll(slug, "'", "")
+        return slug
+}</span>
+
+func (u *EventUsecase) CreateEvent(
+        ctx context.Context,
+        organizerID string,
+        event *domain.Event,
+        details *domain.EventDetails,
+        tickets []domain.TicketType,
+        personnels []domain.EventPersonnel,
+) (string, error) <span class="cov0" title="0">{
+
+        if !event.EndTime.IsZero() &amp;&amp; !event.StartTime.Before(event.EndTime) </span><span class="cov0" title="0">{
+                return "", errors.New("start_time must be before end_time")
+        }</span>
+
+        <span class="cov0" title="0">totalTickets := 0
+        for _, t := range tickets </span><span class="cov0" title="0">{
+                if t.Price &lt; 0 </span><span class="cov0" title="0">{
+                        return "", errors.New("ticket price must be &gt;= 0")
+                }</span>
+                <span class="cov0" title="0">if t.TotalQuantity &lt; 0 </span><span class="cov0" title="0">{
+                        return "", errors.New("ticket quantity must be &gt;= 0")
+                }</span>
+                <span class="cov0" title="0">totalTickets += t.TotalQuantity</span>
+        }
+
+        <span class="cov0" title="0">if totalTickets &gt; details.TotalCapacity </span><span class="cov0" title="0">{
+                return "", errors.New("total ticket quantities must not exceed event capacity")
+        }</span>
+
+        <span class="cov0" title="0">eventID := uuid.NewString()
+        now := time.Now()
+
+        event.ID = eventID
+        event.OrganizerID = organizerID
+        event.Slug = generateSlug(event.Title)
+        event.Status = "draft"
+        event.CreatedAt = now
+        event.UpdatedAt = now
+
+        details.EventID = eventID
+        details.AvailableCapacity = details.TotalCapacity
+        details.CreatedAt = now
+        details.UpdatedAt = now
+
+        for i := range tickets </span><span class="cov0" title="0">{
+                tickets[i].ID = uuid.NewString()
+                tickets[i].EventID = eventID
+                tickets[i].AvailableQuantity = tickets[i].TotalQuantity
+                tickets[i].Version = 1
+                tickets[i].CreatedAt = now
+                tickets[i].UpdatedAt = now
+        }</span>
+
+        <span class="cov0" title="0">for i := range personnels </span><span class="cov0" title="0">{
+                personnels[i].ID = uuid.NewString()
+                personnels[i].EventID = eventID
+        }</span>
+
+        <span class="cov0" title="0">err := u.repo.CreateEvent(ctx, event, details, tickets, personnels)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error().Err(err).Msg("Failed to create event in database")
+                return "", err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", "").
+                Str("to", "draft").
+                Str("actor_id", organizerID).
+                Msg("")
+
+        return eventID, nil</span>
+}
+
+func (u *EventUsecase) UpdateEvent(
+        ctx context.Context,
+        organizerID string,
+        eventID string,
+        eventUpdates map[string]interface{},
+        detailsUpdates map[string]interface{},
+        ticketUpdates []domain.TicketType,
+        personnelUpdates []domain.EventPersonnel,
+) error <span class="cov0" title="0">{
+
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.OrganizerID != organizerID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "draft" &amp;&amp; event.Status != "rejected" &amp;&amp; event.Status != "approved" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">details, err := u.repo.GetEventDetails(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">capacity := details.TotalCapacity
+        if newCap, exists := detailsUpdates["total_capacity"]; exists </span><span class="cov0" title="0">{
+                if c, ok := newCap.(int); ok </span><span class="cov0" title="0">{
+                        capacity = c
+                }</span> else<span class="cov0" title="0"> if c, ok := newCap.(float64); ok </span><span class="cov0" title="0">{
+                        capacity = int(c)
+                }</span>
+        }
+
+        <span class="cov0" title="0">totalTickets := 0
+        for _, t := range ticketUpdates </span><span class="cov0" title="0">{
+                if t.Price &lt; 0 </span><span class="cov0" title="0">{
+                        return errors.New("ticket price must be &gt;= 0")
+                }</span>
+                <span class="cov0" title="0">if t.TotalQuantity &lt; 0 </span><span class="cov0" title="0">{
+                        return errors.New("ticket quantity must be &gt;= 0")
+                }</span>
+                <span class="cov0" title="0">totalTickets += t.TotalQuantity</span>
+        }
+
+        <span class="cov0" title="0">if totalTickets &gt; capacity </span><span class="cov0" title="0">{
+                return errors.New("sum of ticket quantities must not exceed total capacity")
+        }</span>
+
+        <span class="cov0" title="0">now := time.Now()
+        eventUpdates["updated_at"] = now
+        detailsUpdates["updated_at"] = now
+
+        if event.Status == "approved" </span><span class="cov0" title="0">{
+                eventUpdates["status"] = "draft"
+                logger.Log.Info().
+                        Str("event", "event_state_changed").
+                        Str("entity", "event").
+                        Str("entity_id", eventID).
+                        Str("from", "approved").
+                        Str("to", "draft").
+                        Str("actor_id", organizerID).
+                        Msg("")
+        }</span>
+
+        <span class="cov0" title="0">for i := range ticketUpdates </span><span class="cov0" title="0">{
+                if ticketUpdates[i].ID == "" </span><span class="cov0" title="0">{
+                        ticketUpdates[i].ID = uuid.NewString()
+                        ticketUpdates[i].CreatedAt = now
+                }</span>
+                <span class="cov0" title="0">ticketUpdates[i].EventID = eventID
+                ticketUpdates[i].UpdatedAt = now
+
+                ticketUpdates[i].AvailableQuantity = ticketUpdates[i].TotalQuantity</span>
+        }
+
+        <span class="cov0" title="0">for i := range personnelUpdates </span><span class="cov0" title="0">{
+                if personnelUpdates[i].ID == "" </span><span class="cov0" title="0">{
+                        personnelUpdates[i].ID = uuid.NewString()
+                }</span>
+                <span class="cov0" title="0">personnelUpdates[i].EventID = eventID</span>
+        }
+
+        <span class="cov0" title="0">err = u.repo.UpdateEvent(ctx, eventID, eventUpdates, detailsUpdates, ticketUpdates, personnelUpdates)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error().Err(err).Msg("Failed to update event in database")
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *EventUsecase) SubmitEventForApproval(ctx context.Context, organizerID string, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.OrganizerID != organizerID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "draft" &amp;&amp; event.Status != "rejected" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">nextStatus := "pending"
+        if u.settingsRepo != nil </span><span class="cov0" title="0">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil &amp;&amp; !settings.RequireAdminApprovalForEvents </span><span class="cov0" title="0">{
+                        nextStatus = "approved"
+                }</span>
+        }
+
+        <span class="cov0" title="0">err = u.repo.UpdateEventStatus(ctx, eventID, nextStatus)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", nextStatus).
+                Str("actor_id", organizerID).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) ApproveEvent(ctx context.Context, adminID string, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "pending" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">err = u.repo.ApproveEvent(ctx, eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", "approved").
+                Str("actor_id", adminID).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) RejectEvent(ctx context.Context, adminID string, eventID string, reason string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "pending" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">err = u.repo.RejectEvent(ctx, eventID, adminID, reason)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", "rejected").
+                Str("actor_id", adminID).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) SuspendLiveEvent(ctx context.Context, adminID string, eventID string, reason string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "live" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">err = u.repo.SuspendLiveEvent(ctx, eventID, adminID, reason)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                err = u.notificationUsecase.SendNotification(
+                        event.OrganizerID,
+                        "event_suspended",
+                        "Event Suspended",
+                        "Your event '"+event.Title+"' has been suspended by the admin. Reason: "+reason,
+                        nil,
+                )
+                if err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error().Err(err).Msg("Failed to send suspension notification")
+                }</span>
+        }
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", "suspended").
+                Str("actor_id", adminID).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) CompleteEvent(ctx context.Context, adminID string, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "live" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">if err := u.repo.UpdateEventStatus(ctx, eventID, "completed"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if err := u.SettleEventEarnings(ctx, eventID); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", "completed").
+                Str("actor_id", adminID).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) SettleEventEarnings(ctx context.Context, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.Status != "completed" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">if event.Settled </span><span class="cov0" title="0">{
+                return apiErrors.ErrDuplicateResource
+        }</span>
+
+        <span class="cov0" title="0">bookings, err := u.bookingRepo.GetPaidBookingsByEventID(ctx, eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">var totalAmount float64
+        for _, booking := range bookings </span><span class="cov0" title="0">{
+                totalAmount += booking.TotalAmount
+        }</span>
+
+        <span class="cov0" title="0">if err := u.repo.SettleEventEarnings(ctx, eventID, event.OrganizerID, totalAmount); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_earnings_settled").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("organizer_id", event.OrganizerID).
+                Float64("amount", totalAmount).
+                Msg("")
+
+        return nil</span>
+}
+
+func (u *EventUsecase) GetOrganizerEvents(ctx context.Context, organizerID string, status string) ([]domain.Event, error) <span class="cov0" title="0">{
+        return u.repo.GetEventsByOrganizerID(organizerID, status)
+}</span>
+
+func (u *EventUsecase) DeleteEvent(ctx context.Context, organizerID string, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+
+        <span class="cov0" title="0">if event.OrganizerID != organizerID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">if event.Status == "completed" || event.Status == "live" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "Cannot delete a completed or live event")
+        }</span>
+
+        <span class="cov0" title="0">err = u.repo.DeleteEvent(ctx, eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error().Err(err).Msg("Failed to delete event")
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *EventUsecase) RequestEventCancellation(ctx context.Context, organizerID string, eventID string, reason string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+        <span class="cov0" title="0">if event.OrganizerID != organizerID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+        <span class="cov0" title="0">if event.Status != "live" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+        <span class="cov0" title="0">if u.settingsRepo != nil </span><span class="cov0" title="0">{
+                if settings, settingsErr := u.settingsRepo.GetPlatformSettings(); settingsErr == nil &amp;&amp; !settings.AllowEventCancellation </span><span class="cov0" title="0">{
+                        return apiErrors.New(403, apiErrors.ForbiddenAction, "Event cancellation requests are currently disabled by admin")
+                }</span>
+        }
+        <span class="cov0" title="0">if err := u.repo.RequestEventCancellation(ctx, eventID, organizerID, reason); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("event", "event_state_changed").
+                Str("entity", "event").
+                Str("entity_id", eventID).
+                Str("from", event.Status).
+                Str("to", "cancellation_pending").
+                Str("actor_id", organizerID).
+                Msg("")
+        return nil</span>
+}
+
+func (u *EventUsecase) ApproveEventCancellation(ctx context.Context, adminID string, eventID string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+        <span class="cov0" title="0">if event.Status != "cancellation_pending" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+        <span class="cov0" title="0">if err := u.repo.CancelLiveEvent(ctx, eventID, event.OrganizerID); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                _ = u.notificationUsecase.SendNotification(
+                        event.OrganizerID,
+                        "event_cancellation_approved",
+                        "Event cancellation approved",
+                        "Your event cancellation request has been approved by admin.",
+                        map[string]interface{}{"event_id": eventID},
+                )
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *EventUsecase) RejectEventCancellation(ctx context.Context, adminID string, eventID string, reason string) error <span class="cov0" title="0">{
+        event, err := u.repo.GetEventByID(eventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrResourceNotFound
+        }</span>
+        <span class="cov0" title="0">if event.Status != "cancellation_pending" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+        <span class="cov0" title="0">if err := u.repo.RejectEventCancellation(ctx, eventID, adminID, reason); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                _ = u.notificationUsecase.SendNotification(
+                        event.OrganizerID,
+                        "event_cancellation_rejected",
+                        "Event cancellation rejected",
+                        "Your event cancellation request was rejected by admin. Reason: "+reason,
+                        map[string]interface{}{"event_id": eventID, "reason": reason},
+                )
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *EventUsecase) AutoProcessCompletedEvents(ctx context.Context) error <span class="cov0" title="0">{
+        now := time.Now()
+        events, err := u.repo.FindPastLiveEvents(ctx, now)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for _, event := range events </span><span class="cov0" title="0">{
+                if err := u.repo.UpdateEventStatus(ctx, event.ID, "completed"); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error().Err(err).Str("event_id", event.ID).Msg("Failed to auto-complete event status")
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">if err := u.SettleEventEarnings(ctx, event.ID); err != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error().Err(err).Str("event_id", event.ID).Msg("Failed to settle event earnings automatically")
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">logger.Log.Info().
+                        Str("event", "event_auto_completed").
+                        Str("entity_id", event.ID).
+                        Msg("Successfully auto-completed event and settled earnings")</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package usecase
+
+import (
+        "encoding/json"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/google/uuid"
+)
+
+type NotificationUsecase struct {
+        repo repository.NotificationRepository
+}
+
+func NewNotificationUsecase(repo repository.NotificationRepository) *NotificationUsecase <span class="cov0" title="0">{
+        return &amp;NotificationUsecase{repo: repo}
+}</span>
+
+func (u *NotificationUsecase) SendNotification(
+        userID string,
+        notificationType string,
+        title string,
+        message string,
+        metadata interface{},
+) error <span class="cov0" title="0">{
+        if userID == "" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "User ID is required")
+        }</span>
+
+        <span class="cov0" title="0">var rawMetadata json.RawMessage
+        if metadata != nil </span><span class="cov0" title="0">{
+                payload, err := json.Marshal(metadata)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">rawMetadata = payload</span>
+        }
+
+        <span class="cov0" title="0">notification := &amp;domain.Notification{
+                ID:        uuid.NewString(),
+                UserID:    userID,
+                Type:      notificationType,
+                Title:     title,
+                Message:   message,
+                IsRead:    false,
+                Metadata:  rawMetadata,
+                CreatedAt: time.Now(),
+        }
+
+        return u.repo.CreateNotification(notification)</span>
+}
+
+func (u *NotificationUsecase) GetNotificationsByUser(
+        userID string,
+        page int,
+        limit int,
+) ([]domain.Notification, int64, int64, error) <span class="cov0" title="0">{
+        if page &lt; 1 </span><span class="cov0" title="0">{
+                page = 1
+        }</span>
+        <span class="cov0" title="0">if limit &lt; 1 </span><span class="cov0" title="0">{
+                limit = 10
+        }</span>
+
+        <span class="cov0" title="0">return u.repo.GetNotificationsByUser(userID, page, limit)</span>
+}
+
+func (u *NotificationUsecase) MarkAsRead(userID string, notificationID string) error <span class="cov0" title="0">{
+        if notificationID == "" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Notification ID is required")
+        }</span>
+
+        <span class="cov0" title="0">return u.repo.MarkAsRead(notificationID, userID)</span>
+}
+
+func (u *NotificationUsecase) MarkAllAsRead(userID string) error <span class="cov0" title="0">{
+        return u.repo.MarkAllAsRead(userID)
+}</span>
+
+func (u *NotificationUsecase) ClearAll(userID string) error <span class="cov0" title="0">{
+        return u.repo.ClearAll(userID)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package usecase
+
+import (
+        "context"
+        "errors"
+        "math"
+        "strconv"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type PaymentUsecase struct {
+        bookingRepo         repository.BookingRepository
+        eventRepo           repository.EventRepository
+        paymentRepo         repository.PaymentRepository
+        razorpayService     repository.RazorpayService
+        notificationUsecase *NotificationUsecase
+        engagementRepo      repository.EngagementRepository
+}
+
+func NewPaymentUsecase(
+        bookingRepo repository.BookingRepository,
+        eventRepo repository.EventRepository,
+        paymentRepo repository.PaymentRepository,
+        razorpayService repository.RazorpayService,
+        notificationUsecase *NotificationUsecase,
+        engagementRepo repository.EngagementRepository,
+) *PaymentUsecase <span class="cov0" title="0">{
+        return &amp;PaymentUsecase{
+                bookingRepo:         bookingRepo,
+                eventRepo:           eventRepo,
+                paymentRepo:         paymentRepo,
+                razorpayService:     razorpayService,
+                notificationUsecase: notificationUsecase,
+                engagementRepo:      engagementRepo,
+        }
+}</span>
+
+func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID string, userID string) (*domain.PaymentOrderResponse, error) <span class="cov0" title="0">{
+        booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return nil, apiErrors.ErrResourceNotFound
+                }</span>
+
+                <span class="cov0" title="0">return nil, err</span>
+        }
+
+        <span class="cov0" title="0">if booking.UserID != userID </span><span class="cov0" title="0">{
+                return nil, apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">if booking.Status != "reserved" </span><span class="cov0" title="0">{
+                return nil, apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">if booking.TotalAmount == 0 </span><span class="cov0" title="0">{
+                payment := &amp;domain.Payment{
+                        ID:                uuid.NewString(),
+                        BookingID:         booking.ID,
+                        Provider:          "free",
+                        ProviderReference: "FREE_" + booking.ID,
+                        Amount:            0,
+                        Status:            domain.PaymentStatusSuccess,
+                        RawResponse:       []byte(`{}`),
+                        CreatedAt:         time.Now(),
+                }
+
+                if err := u.paymentRepo.CreatePayment(payment); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, booking.ID, booking.EventID, 0); err != nil </span><span class="cov0" title="0">{
+                        return nil, err
+                }</span>
+
+                <span class="cov0" title="0">if u.engagementRepo != nil </span><span class="cov0" title="0">{
+                        _ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID, booking.UserID)
+                }</span>
+
+                <span class="cov0" title="0">logger.Log.Info().
+                        Str("booking_id", booking.ID).
+                        Str("user_id", userID).
+                        Str("payment_id", payment.ID).
+                        Msg("free_payment_order_created_and_successful")
+
+                return &amp;domain.PaymentOrderResponse{
+                        OrderID:       "FREE_" + booking.ID,
+                        Amount:        0,
+                        Currency:      "INR",
+                        RazorpayKey:   "",
+                        IsFreeBooking: true,
+                }, nil</span>
+        }
+
+        <span class="cov0" title="0">amountInPaise := int64(math.Round(booking.TotalAmount * 100))
+        order, err := u.razorpayService.CreateOrder(amountInPaise, booking.ID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to create payment order")
+        }</span>
+
+        <span class="cov0" title="0">payment := &amp;domain.Payment{
+                ID:                uuid.NewString(),
+                BookingID:         booking.ID,
+                Provider:          "razorpay",
+                ProviderReference: order.ID,
+                Amount:            booking.TotalAmount,
+                Status:            domain.PaymentStatusInitiated,
+                RawResponse:       order.RawResponse,
+                CreatedAt:         time.Now(),
+        }
+
+        if err := u.paymentRepo.CreatePayment(payment); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("booking_id", booking.ID).
+                Str("user_id", userID).
+                Str("payment_id", payment.ID).
+                Str("provider_reference", order.ID).
+                Int64("amount", order.Amount).
+                Msg("payment_order_created")
+
+        return &amp;domain.PaymentOrderResponse{
+                OrderID:     order.ID,
+                Amount:      order.Amount,
+                Currency:    order.Currency,
+                RazorpayKey: u.razorpayService.GetKeyID(),
+        }, nil</span>
+}
+
+func (u *PaymentUsecase) VerifyPayment(
+        ctx context.Context,
+        razorpayOrderID string,
+        razorpayPaymentID string,
+        razorpaySignature string,
+) error <span class="cov0" title="0">{
+        payment, err := u.paymentRepo.FindByProviderReference(razorpayOrderID)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return apiErrors.ErrResourceNotFound
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">if payment.Status == domain.PaymentStatusSuccess </span><span class="cov0" title="0">{
+                return nil
+        }</span>
+
+        <span class="cov0" title="0">isValid, err := u.razorpayService.VerifySignature(razorpayOrderID, razorpayPaymentID, razorpaySignature)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to verify payment signature")
+        }</span>
+
+        <span class="cov0" title="0">if !isValid </span><span class="cov0" title="0">{
+                if updateErr := u.paymentRepo.UpdateStatus(payment.ID, domain.PaymentStatusFailed); updateErr != nil </span><span class="cov0" title="0">{
+                        return updateErr
+                }</span>
+
+                <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                        if booking, bookingErr := u.bookingRepo.FindByID(ctx, payment.BookingID); bookingErr == nil </span><span class="cov0" title="0">{
+                                if notifyErr := u.notificationUsecase.SendNotification(
+                                        booking.UserID,
+                                        domain.NotificationTypePaymentFailed,
+                                        "Payment failed",
+                                        "Payment failed. Please retry.",
+                                        map[string]interface{}{
+                                                "booking_id": payment.BookingID,
+                                                "payment_id": payment.ID,
+                                        },
+                                ); notifyErr != nil </span><span class="cov0" title="0">{
+                                        logger.Log.Warn().
+                                                Err(notifyErr).
+                                                Str("user_id", booking.UserID).
+                                                Str("payment_id", payment.ID).
+                                                Msg("notification_send_failed")
+                                }</span>
+                        }
+                }
+
+                <span class="cov0" title="0">logger.Log.Warn().
+                        Str("payment_id", payment.ID).
+                        Str("booking_id", payment.BookingID).
+                        Str("provider_reference", razorpayOrderID).
+                        Str("razorpay_payment_id", razorpayPaymentID).
+                        Msg("payment_signature_invalid")
+                return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")</span>
+        }
+
+        <span class="cov0" title="0">booking, err := u.bookingRepo.FindByID(context.Background(), payment.BookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return apiErrors.ErrResourceNotFound
+                }</span>
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">event, err := u.eventRepo.GetEventByID(booking.EventID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if err := u.paymentRepo.MarkPaymentSuccess(payment.ID, payment.BookingID, event.OrganizerID, payment.Amount); err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, apiErrors.ErrBookingExpiredPaymentSuccess) </span><span class="cov0" title="0">{
+                        amountInPaise := int64(math.Round(payment.Amount * 100))
+                        if refundErr := u.razorpayService.RefundPayment(razorpayPaymentID, amountInPaise); refundErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error().
+                                        Err(refundErr).
+                                        Str("payment_id", payment.ID).
+                                        Str("booking_id", payment.BookingID).
+                                        Str("razorpay_payment_id", razorpayPaymentID).
+                                        Msg("late_payment_auto_refund_failed")
+                                return apiErrors.Wrap(refundErr, 500, apiErrors.PaymentFailed, "Payment captured but automatic refund failed. Please contact support.")
+                        }</span>
+                        <span class="cov0" title="0">if updateErr := u.paymentRepo.UpdateStatus(payment.ID, domain.PaymentStatusRefunded); updateErr != nil </span><span class="cov0" title="0">{
+                                return updateErr
+                        }</span>
+                        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                                u.notificationUsecase.SendNotification(
+                                        booking.UserID,
+                                        domain.NotificationTypePaymentSuccess,
+                                        "Booking expired, refund initiated",
+                                        "Your payment was captured after booking expiry. We have initiated an automatic refund to your original payment source via Razorpay.",
+                                        map[string]interface{}{
+                                                "booking_id": payment.BookingID,
+                                                "payment_id": payment.ID,
+                                                "is_late_payment": true,
+                                                "is_source_refund": true,
+                                        },
+                                )
+                        }</span>
+                        <span class="cov0" title="0">logger.Log.Info().
+                                Str("payment_id", payment.ID).
+                                Str("booking_id", payment.BookingID).
+                                Str("razorpay_payment_id", razorpayPaymentID).
+                                Msg("payment_success_but_booking_expired_auto_refunded")
+                        return apiErrors.ErrBookingExpiredPaymentSuccess</span>
+                }
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">if u.engagementRepo != nil </span><span class="cov0" title="0">{
+                _ = u.engagementRepo.IncrementSuccessfulBookings(ctx, booking.EventID, booking.UserID)
+        }</span>
+
+        <span class="cov0" title="0">if u.notificationUsecase != nil </span><span class="cov0" title="0">{
+                booking, bookingErr := u.bookingRepo.FindByID(ctx, payment.BookingID)
+                if bookingErr != nil </span><span class="cov0" title="0">{
+                        logger.Log.Warn().
+                                Err(bookingErr).
+                                Str("payment_id", payment.ID).
+                                Msg("notification_context_lookup_failed")
+                }</span> else<span class="cov0" title="0"> if event, eventErr := u.eventRepo.GetEventByID(booking.EventID); eventErr != nil </span><span class="cov0" title="0">{
+                        logger.Log.Warn().
+                                Err(eventErr).
+                                Str("payment_id", payment.ID).
+                                Msg("notification_context_lookup_failed")
+                }</span> else<span class="cov0" title="0"> {
+                        if notifyErr := u.notificationUsecase.SendNotification(
+                                booking.UserID,
+                                domain.NotificationTypePaymentSuccess,
+                                "Payment successful",
+                                "Payment successful. Tickets confirmed.",
+                                map[string]interface{}{
+                                        "booking_id":  booking.ID,
+                                        "event_id":    event.ID,
+                                        "event_title": event.Title,
+                                        "amount":      payment.Amount,
+                                },
+                        ); notifyErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Warn().
+                                        Err(notifyErr).
+                                        Str("user_id", booking.UserID).
+                                        Str("payment_id", payment.ID).
+                                        Msg("notification_send_failed")
+                        }</span>
+
+                        <span class="cov0" title="0">if notifyErr := u.notificationUsecase.SendNotification(
+                                booking.UserID,
+                                domain.NotificationTypeTicketGenerated,
+                                "Your tickets are generated",
+                                "Your tickets are generated",
+                                map[string]interface{}{
+                                        "booking_id":  booking.ID,
+                                        "event_id":    event.ID,
+                                        "event_title": event.Title,
+                                },
+                        ); notifyErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Warn().
+                                        Err(notifyErr).
+                                        Str("user_id", booking.UserID).
+                                        Str("payment_id", payment.ID).
+                                        Msg("notification_send_failed")
+                        }</span>
+
+                        <span class="cov0" title="0">ticketsInBooking, _ := u.bookingRepo.GetTicketCountByBookingID(ctx, booking.ID)
+                        organizerEarnings := payment.Amount - 30*float64(ticketsInBooking)
+                        if organizerEarnings &lt; 0 </span><span class="cov0" title="0">{
+                                organizerEarnings = 0
+                        }</span>
+
+                        <span class="cov0" title="0">if notifyErr := u.notificationUsecase.SendNotification(
+                                event.OrganizerID,
+                                domain.NotificationTypePaymentSuccess,
+                                "New booking received",
+                                "New booking received. You will earn ₹"+strconv.FormatFloat(organizerEarnings, 'f', 2, 64)+" after settlement.",
+                                map[string]interface{}{
+                                        "booking_id":  booking.ID,
+                                        "event_id":    event.ID,
+                                        "event_title": event.Title,
+                                        "amount":      organizerEarnings,
+                                },
+                        ); notifyErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Warn().
+                                        Err(notifyErr).
+                                        Str("organizer_id", event.OrganizerID).
+                                        Str("payment_id", payment.ID).
+                                        Msg("notification_send_failed")
+                        }</span>
+                }
+        }
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("payment_id", payment.ID).
+                Str("booking_id", payment.BookingID).
+                Str("provider_reference", razorpayOrderID).
+                Str("razorpay_payment_id", razorpayPaymentID).
+                Msg("payment_verified")
+
+        return nil</span>
+}
+
+func (u *PaymentUsecase) RefundPaymentToWallet(ctx context.Context, bookingID string, userID string) error <span class="cov0" title="0">{
+        booking, err := u.bookingRepo.FindByID(ctx, bookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return apiErrors.ErrResourceNotFound
+                }</span>
+
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">if booking.UserID != userID </span><span class="cov0" title="0">{
+                return apiErrors.ErrForbiddenAction
+        }</span>
+
+        <span class="cov0" title="0">if booking.Status != "paid" &amp;&amp; booking.Status != "cancelled" </span><span class="cov0" title="0">{
+                return apiErrors.ErrInvalidStateTransition
+        }</span>
+
+        <span class="cov0" title="0">payment, err := u.paymentRepo.FindByBookingID(bookingID)
+        if err != nil </span><span class="cov0" title="0">{
+                if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
+                        return apiErrors.ErrResourceNotFound
+                }</span>
+
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">if payment.Status == domain.PaymentStatusRefunded </span><span class="cov0" title="0">{
+                return apiErrors.New(409, apiErrors.DuplicateResource, "Refund already processed")
+        }</span>
+
+        <span class="cov0" title="0">if payment.Status != domain.PaymentStatusSuccess </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "Payment is not eligible for refund")
+        }</span>
+
+        <span class="cov0" title="0">refundAmount := normalizeRefundAmount(payment.Amount - booking.TotalAmount)
+        if refundAmount &lt;= 0 </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "No refundable ticket amount available")
+        }</span>
+
+        <span class="cov0" title="0">platformFeeAmount := normalizeRefundAmount(payment.Amount - refundAmount)
+        if platformFeeAmount &lt; 0 </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "Invalid refund split")
+        }</span>
+
+        <span class="cov0" title="0">if err := u.paymentRepo.RefundPaymentToWallet(
+                booking.UserID,
+                payment.ID,
+                booking.ID,
+                refundAmount,
+                platformFeeAmount,
+        ); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">logger.Log.Info().
+                Str("payment_id", payment.ID).
+                Str("booking_id", booking.ID).
+                Str("user_id", booking.UserID).
+                Float64("refund_amount", refundAmount).
+                Float64("platform_fee_amount", platformFeeAmount).
+                Msg("payment_refunded_to_wallet")
+
+        return nil</span>
+}
+
+func normalizeRefundAmount(amount float64) float64 <span class="cov0" title="0">{
+        return math.Round(amount*100) / 100
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">package usecase
+
+import (
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type UserUsecase struct {
+        repo       repository.UserRepository
+        roleRepo   repository.UserRoleRepository
+        walletRepo repository.WalletRepository
+        emailSender repository.EmailSender
+}
+
+func NewUserUsecase(
+        r repository.UserRepository,
+        roleRepo repository.UserRoleRepository,
+        walletRepo repository.WalletRepository,
+        emailSender repository.EmailSender,
+) *UserUsecase <span class="cov0" title="0">{
+        return &amp;UserUsecase{repo: r, roleRepo: roleRepo, walletRepo: walletRepo, emailSender: emailSender}
+}</span>
+
+func (u *UserUsecase) Register(email string) (*domain.User, error) <span class="cov0" title="0">{
+        user := &amp;domain.User{
+                ID:            uuid.NewString(),
+                Email:         email,
+                IsActive:      true,
+                EmailVerified: false,
+        }
+
+        err := u.repo.Create(user)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+func (u *UserUsecase) GetUserProfile(userID string) (*domain.User, error) <span class="cov0" title="0">{
+        return u.repo.FindByID(userID)
+}</span>
+
+func (u *UserUsecase) GetProfile(userID string) (*domain.User, *domain.OrganizerDetail, []domain.UserRole, error) <span class="cov0" title="0">{
+        user, err := u.repo.FindByID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, nil, nil, err
+        }</span>
+
+        <span class="cov0" title="0">roles, err := u.roleRepo.GetRolesByUserID(userID)
+        if err == nil </span><span class="cov0" title="0">{
+                for _, role := range roles </span><span class="cov0" title="0">{
+                        if role == domain.RoleOrganizer </span><span class="cov0" title="0">{
+                                detail, detailErr := u.repo.GetOrganizerDetails(userID)
+                                if detailErr == nil </span><span class="cov0" title="0">{
+                                        return user, detail, roles, nil
+                                }</span> else<span class="cov0" title="0"> if detailErr != gorm.ErrRecordNotFound </span><span class="cov0" title="0">{
+                                        return nil, nil, nil, detailErr
+                                }</span>
+                                <span class="cov0" title="0">break</span>
+                        }
+                }
+                <span class="cov0" title="0">return user, nil, roles, nil</span>
+        }
+
+        <span class="cov0" title="0">return user, nil, []domain.UserRole{}, nil</span>
+}
+
+func (u *UserUsecase) GetWallet(userID string) (*domain.Wallet, error) <span class="cov0" title="0">{
+        return u.walletRepo.GetWalletByUserID(userID)
+}</span>
+
+func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizationName, address string, locations []string) error <span class="cov0" title="0">{
+        user, err := u.repo.FindByID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if name != "" </span><span class="cov0" title="0">{
+                user.Name = name
+        }</span>
+        <span class="cov0" title="0">user.Mobile = mobile
+        user.Dob = dob
+        user.Gender = gender
+        user.Locations = locations
+
+        if err := u.repo.Update(user); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">roles, err := u.roleRepo.GetRolesByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">for _, role := range roles </span><span class="cov0" title="0">{
+                if role == domain.RoleOrganizer </span><span class="cov0" title="0">{
+                        return u.repo.UpsertOrganizerDetails(&amp;domain.OrganizerDetail{
+                                UserID:           userID,
+                                OrganizationName: organizationName,
+                                Address:          address,
+                        })
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *UserUsecase) AdminSearchUsers(
+        search string,
+        status string,
+        page int,
+        limit int,
+) ([]domain.AdminUserDetails, int64, error) <span class="cov0" title="0">{
+        return u.repo.Search(search, status, page, limit)
+}</span>
+
+func (u *UserUsecase) AdminSearchOrganizers(
+        search string,
+        status string,
+        page int,
+        limit int,
+) ([]domain.OrganizerDetails, int64, error) <span class="cov0" title="0">{
+        return u.repo.SearchOrganizers(search, status, page, limit)
+}</span>
+
+func (u *UserUsecase) AdminUpdateUserStatus(userID string, isActive bool) error <span class="cov0" title="0">{
+        return u.repo.UpdateStatus(userID, isActive)
+}</span>
+
+func (u *UserUsecase) UploadProfileImage(userID string, imageURL string) error <span class="cov0" title="0">{
+        user, err := u.repo.FindByID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">user.ProfileImage = imageURL
+        return u.repo.Update(user)</span>
+}
+
+func (u *UserUsecase) AdminApproveOrganizer(userID string) error <span class="cov0" title="0">{
+        detail, err := u.repo.GetOrganizerDetails(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if detail.ApprovalStatus == "approved" </span><span class="cov0" title="0">{
+                return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already approved")
+        }</span>
+
+        <span class="cov0" title="0">if err := u.repo.UpdateOrganizerApprovalStatus(userID, "approved"); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if err := u.roleRepo.AddRole(userID, domain.RoleOrganizer); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if u.emailSender != nil </span><span class="cov0" title="0">{
+                user, err := u.repo.FindByID(userID)
+                if err == nil </span><span class="cov0" title="0">{
+                        if mailErr := u.emailSender.SendOrganizerApproval(user.Email, user.Name); mailErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Warn().Err(mailErr).Str("user_id", userID).Msg("failed to send organizer approval email")
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *UserUsecase) AdminRejectOrganizer(userID string) error <span class="cov0" title="0">{
+        detail, err := u.repo.GetOrganizerDetails(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if detail.ApprovalStatus == "rejected" </span><span class="cov0" title="0">{
+                return apiErrors.New(409, apiErrors.DuplicateResource, "Organizer is already rejected")
+        }</span>
+
+        <span class="cov0" title="0">return u.repo.UpdateOrganizerApprovalStatus(userID, "rejected")</span>
+}
+
+func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) <span class="cov0" title="0">{
+        return u.repo.FindUsersByRole(domain.RoleAdmin)
+}</span>
+
+func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) <span class="cov0" title="0">{
+        user := &amp;domain.User{
+                ID:            uuid.NewString(),
+                Name:          name,
+                Email:         email,
+                IsActive:      true,
+                EmailVerified: true,
+        }
+
+        if err := u.repo.Create(user); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">if err := u.roleRepo.AddRole(user.ID, domain.RoleAdmin); err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov0" title="0">return user, nil</span>
+}
+
+func (u *UserUsecase) DeleteAdmin(adminID string) error <span class="cov0" title="0">{
+        return u.repo.Delete(adminID)
+}</span>
+
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">package usecase
+
+import (
+        "context"
+        "math"
+        "time"
+
+        "github.com/aswinsreeraj/evntx/internal/domain"
+        "github.com/aswinsreeraj/evntx/internal/repository"
+        "github.com/aswinsreeraj/evntx/pkg/encryption"
+        apiErrors "github.com/aswinsreeraj/evntx/pkg/errors"
+        "github.com/aswinsreeraj/evntx/pkg/logger"
+        "github.com/google/uuid"
+        "gorm.io/gorm"
+)
+
+type WalletUsecase struct {
+        repo               repository.WalletRepository
+        roleRepo           repository.UserRoleRepository
+        platformWalletRepo repository.PlatformWalletRepository
+        razorpayService    repository.RazorpayService
+        bookingRepo        repository.BookingRepository
+        payoutRepo         repository.PayoutRepository
+        notificationUsecase *NotificationUsecase
+}
+
+func NewWalletUsecase(
+        repo repository.WalletRepository,
+        roleRepo repository.UserRoleRepository,
+        platformWalletRepo repository.PlatformWalletRepository,
+        razorpayService repository.RazorpayService,
+        bookingRepo repository.BookingRepository,
+        payoutRepo repository.PayoutRepository,
+        notificationUsecase *NotificationUsecase,
+) *WalletUsecase <span class="cov8" title="1">{
+        return &amp;WalletUsecase{repo: repo, roleRepo: roleRepo, platformWalletRepo: platformWalletRepo, razorpayService: razorpayService, bookingRepo: bookingRepo, payoutRepo: payoutRepo, notificationUsecase: notificationUsecase}
+}</span>
+
+func (u *WalletUsecase) GetWalletByUserID(userID string) (*domain.Wallet, error) <span class="cov0" title="0">{
+        return u.repo.GetWalletByUserID(userID)
+}</span>
+
+func (u *WalletUsecase) GetPayoutByID(ctx context.Context, id string) (*domain.PayoutRequest, error) <span class="cov0" title="0">{
+        return u.payoutRepo.GetPayoutRequestByID(ctx, id)
+}</span>
+
+func (u *WalletUsecase) ApplyTransaction(
+        walletID string,
+        txnType string,
+        amount float64,
+        referenceType string,
+        referenceID string,
+) error <span class="cov8" title="1">{
+        if txnType != domain.WalletTransactionTypeCredit &amp;&amp; txnType != domain.WalletTransactionTypeDebit </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Invalid wallet transaction type")
+        }</span>
+
+        <span class="cov8" title="1">if amount &lt;= 0 </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
+        }</span>
+
+        <span class="cov8" title="1">if referenceType == "" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Reference type is required")
+        }</span>
+
+        <span class="cov8" title="1">if referenceID == "" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Reference ID is required")
+        }</span>
+
+        <span class="cov8" title="1">normalizedAmount := normalizeWalletAmount(amount)
+        now := time.Now()
+
+        return u.repo.WithTransaction(func(repo repository.WalletRepository) error </span><span class="cov8" title="1">{
+                wallet, err := repo.GetWalletByID(walletID)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">if txnType == domain.WalletTransactionTypeDebit &amp;&amp; wallet.AvailableBalance &lt; normalizedAmount </span><span class="cov8" title="1">{
+                        return apiErrors.ErrInsufficientBalance
+                }</span>
+
+                <span class="cov8" title="1">txn := &amp;domain.WalletTransaction{
+                        ID:            uuid.NewString(),
+                        WalletID:      wallet.ID,
+                        Type:          txnType,
+                        Amount:        normalizedAmount,
+                        ReferenceType: referenceType,
+                        ReferenceID:   referenceID,
+                        Status:        domain.WalletTransactionStatusCompleted,
+                        CreatedAt:     now,
+                }
+
+                if err := repo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">switch txnType </span>{
+                case domain.WalletTransactionTypeCredit:<span class="cov8" title="1">
+                        if referenceType == domain.WalletReferenceTypeEarning </span><span class="cov0" title="0">{
+                                wallet.PendingBalance = normalizeWalletAmount(wallet.PendingBalance + normalizedAmount)
+                                wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
+                        }</span> else<span class="cov8" title="1"> if referenceType == domain.WalletReferenceTypeSettlement </span><span class="cov0" title="0">{
+                                if wallet.PendingBalance &lt; normalizedAmount </span><span class="cov0" title="0">{
+                                        return apiErrors.ErrInsufficientBalance
+                                }</span>
+                                <span class="cov0" title="0">wallet.PendingBalance = normalizeWalletAmount(wallet.PendingBalance - normalizedAmount)
+                                wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)</span>
+                        } else<span class="cov8" title="1"> {
+                                wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance + normalizedAmount)
+                                wallet.TotalCredited = normalizeWalletAmount(wallet.TotalCredited + normalizedAmount)
+                        }</span>
+                case domain.WalletTransactionTypeDebit:<span class="cov0" title="0">
+                        wallet.AvailableBalance = normalizeWalletAmount(wallet.AvailableBalance - normalizedAmount)
+                        wallet.TotalDebited = normalizeWalletAmount(wallet.TotalDebited + normalizedAmount)</span>
+                }
+
+                <span class="cov8" title="1">if wallet.AvailableBalance &lt; 0 </span><span class="cov0" title="0">{
+                        return apiErrors.ErrInsufficientBalance
+                }</span>
+
+                <span class="cov8" title="1">wallet.UpdatedAt = now
+
+                return repo.UpdateWallet(wallet)</span>
+        })
+}
+
+func (u *WalletUsecase) GetTransactionsByUserID(
+        userID string,
+        filters domain.WalletTransactionFilter,
+        page int,
+        limit int,
+) ([]domain.WalletTransaction, int64, error) <span class="cov0" title="0">{
+        wallet, err := u.repo.GetWalletByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        <span class="cov0" title="0">txns, total, err := u.repo.GetTransactionsByWalletID(wallet.ID, filters, page, limit)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, 0, err
+        }</span>
+
+        <span class="cov0" title="0">var bookingIDs []string
+        for _, txn := range txns </span><span class="cov0" title="0">{
+                if txn.ReferenceType == domain.WalletReferenceTypePurchase ||
+                        txn.ReferenceType == domain.WalletReferenceTypeUserCancellation ||
+                        txn.ReferenceType == domain.WalletReferenceTypeOrganizerCancellation ||
+                        txn.ReferenceType == domain.WalletReferenceTypeEarning ||
+                        txn.ReferenceType == domain.WalletReferenceTypeRefund </span><span class="cov0" title="0">{
+                        bookingIDs = append(bookingIDs, txn.ReferenceID)
+                }</span>
+        }
+
+        <span class="cov0" title="0">var contexts map[string]domain.BookingContextDetails
+        if len(bookingIDs) &gt; 0 &amp;&amp; u.bookingRepo != nil </span><span class="cov0" title="0">{
+                contexts, _ = u.bookingRepo.GetBookingContextsByIDs(context.Background(), bookingIDs)
+        }</span>
+
+        <span class="cov0" title="0">for i, txn := range txns </span><span class="cov0" title="0">{
+                txnCtx := &amp;domain.WalletTransactionContext{
+                        Type: txn.ReferenceType,
+                }
+
+                if (txn.ReferenceType == domain.WalletReferenceTypePurchase ||
+                        txn.ReferenceType == domain.WalletReferenceTypeUserCancellation ||
+                        txn.ReferenceType == domain.WalletReferenceTypeOrganizerCancellation ||
+                        txn.ReferenceType == domain.WalletReferenceTypeEarning ||
+                        txn.ReferenceType == domain.WalletReferenceTypeRefund) &amp;&amp;
+                        contexts != nil </span><span class="cov0" title="0">{
+
+                        if bDetail, ok := contexts[txn.ReferenceID]; ok </span><span class="cov0" title="0">{
+                                txnCtx.Details = bDetail
+                        }</span>
+                } else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypePayout </span><span class="cov0" title="0">{
+                        txnCtx.Details = domain.PayoutContextDetails{
+                                Amount:      txn.Amount,
+                                Status:      txn.Status,
+                                ProcessedAt: txn.CreatedAt,
+                        }
+                }</span> else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypeFundAddition </span><span class="cov0" title="0">{
+                        txnCtx.Details = map[string]interface{}{
+                                "method": "razorpay",
+                                "id":     txn.ReferenceID,
+                        }
+                }</span>
+
+                <span class="cov0" title="0">txns[i].Context = txnCtx</span>
+        }
+
+        <span class="cov0" title="0">return txns, total, nil</span>
+}
+
+func (u *WalletUsecase) AddPayoutCredentials(ctx context.Context, userID, holderName, accNumber, ifsc, upi string) error <span class="cov0" title="0">{
+        if holderName == "" || accNumber == "" || ifsc == "" </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Account Name, Number and IFSC are required")
+        }</span>
+
+        <span class="cov0" title="0">encAcc, err := encryption.EncryptAES(accNumber)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrInternalServerError
+        }</span>
+        <span class="cov0" title="0">encIFSC, err := encryption.EncryptAES(ifsc)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.ErrInternalServerError
+        }</span>
+        <span class="cov0" title="0">var encUPI *string
+        if upi != "" </span><span class="cov0" title="0">{
+                e, err := encryption.EncryptAES(upi)
+                if err != nil </span><span class="cov0" title="0">{
+                        return apiErrors.ErrInternalServerError
+                }</span>
+                <span class="cov0" title="0">encUPI = &amp;e</span>
+        }
+
+        <span class="cov0" title="0">cred := &amp;domain.PayoutCredential{
+                ID:                     uuid.NewString(),
+                UserID:                 userID,
+                AccountHolderName:      holderName,
+                AccountNumberEncrypted: encAcc,
+                IFSCCodeEncrypted:      encIFSC,
+                UPIIDEncrypted:         encUPI,
+                CreatedAt:              time.Now(),
+                UpdatedAt:              time.Now(),
+        }
+
+        return u.payoutRepo.UpsertCredential(ctx, cred)</span>
+}
+
+func (u *WalletUsecase) RequestPayout(ctx context.Context, userID string, amount float64) error <span class="cov8" title="1">{
+        if amount &lt;= 0 </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
+        }</span>
+
+        <span class="cov8" title="1">_, err := u.payoutRepo.GetCredentialByUserID(ctx, userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidRequestBody, "Payout credentials not found. Please set them up first.")
+        }</span>
+
+        <span class="cov8" title="1">wallet, err := u.repo.GetWalletByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov8" title="1">normalizedAmount := normalizeWalletAmount(amount)
+
+        lockedAmount := 0.0
+        if wallet.ReserveBalance != 0 </span><span class="cov8" title="1">{
+                lockedAmount = math.Abs(wallet.ReserveBalance)
+        }</span>
+
+        <span class="cov8" title="1">withdrawableBalance := wallet.AvailableBalance - lockedAmount
+        if withdrawableBalance &lt; normalizedAmount </span><span class="cov8" title="1">{
+                return apiErrors.New(400, apiErrors.InsufficientBalance, "Insufficient withdrawable balance. Please note any reserve deficits.")
+        }</span>
+
+        <span class="cov8" title="1">return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error </span><span class="cov8" title="1">{
+                wallet.AvailableBalance -= normalizedAmount
+                wallet.PendingBalance += normalizedAmount
+                wallet.UpdatedAt = time.Now()
+
+                if err := txRepo.UpdateWallet(wallet); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">payoutReq := &amp;domain.PayoutRequest{
+                        ID:          uuid.NewString(),
+                        UserID:      userID,
+                        Amount:      normalizedAmount,
+                        Status:      domain.PayoutStatusPending,
+                        RequestedAt: time.Now(),
+                        CreatedAt:   time.Now(),
+                }
+
+                if err := u.payoutRepo.CreatePayoutRequest(ctx, payoutReq); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">txn := &amp;domain.WalletTransaction{
+                        ID:            uuid.NewString(),
+                        WalletID:      wallet.ID,
+                        Type:          domain.WalletTransactionTypeDebit,
+                        Amount:        normalizedAmount,
+                        ReferenceType: domain.WalletReferenceTypePayout,
+                        ReferenceID:   payoutReq.ID,
+                        Status:        "pending",
+                        CreatedAt:     time.Now(),
+                }
+
+                if err := txRepo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov8" title="1">return nil</span>
+        })
+}
+
+func normalizeWalletAmount(amount float64) float64 <span class="cov8" title="1">{
+        return math.Round(amount*100) / 100
+}</span>
+
+func (u *WalletUsecase) CreateAddFundOrder(userID string, amount float64) (*domain.PaymentOrderResponse, error) <span class="cov0" title="0">{
+        if amount &lt;= 0 </span><span class="cov0" title="0">{
+                return nil, apiErrors.New(400, apiErrors.InvalidRequestBody, "Amount must be greater than zero")
+        }</span>
+
+        <span class="cov0" title="0">wallet, err := u.repo.GetWalletByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                if err == gorm.ErrRecordNotFound </span><span class="cov0" title="0">{
+
+                        wallet = &amp;domain.Wallet{
+                                ID:               uuid.NewString(),
+                                UserID:           userID,
+                                AvailableBalance: 0,
+                                PendingBalance:   0,
+                                UpdatedAt:        time.Now(),
+                        }
+                        if createErr := u.repo.CreateWallet(wallet); createErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error().Err(createErr).Str("user_id", userID).Msg("failed to create missing wallet during add-fund")
+                                return nil, apiErrors.Wrap(createErr, 500, apiErrors.InternalServerError, "Failed to initialize wallet")
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        return nil, err
+                }</span>
+        }
+
+        <span class="cov0" title="0">amountPaise := int64(amount * 100)
+        receipt := "fund_" + wallet.ID[:8]
+
+        order, err := u.razorpayService.CreateOrder(amountPaise, receipt)
+        if err != nil </span><span class="cov0" title="0">{
+                logger.Log.Error().
+                        Err(err).
+                        Str("user_id", userID).
+                        Float64("amount", amount).
+                        Msg("failed to create razorpay order in usecase")
+                return nil, apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to create payment order")
+        }</span>
+
+        <span class="cov0" title="0">return &amp;domain.PaymentOrderResponse{
+                OrderID:     order.ID,
+                Amount:      order.Amount,
+                Currency:    order.Currency,
+                RazorpayKey: u.razorpayService.GetKeyID(),
+        }, nil</span>
+}
+
+func (u *WalletUsecase) VerifyAddFundPayment(userID string, razorpayOrderID, razorpayPaymentID, razorpaySignature string) error <span class="cov0" title="0">{
+        wallet, err := u.repo.GetWalletByUserID(userID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">isValid, err := u.razorpayService.VerifySignature(razorpayOrderID, razorpayPaymentID, razorpaySignature)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to verify payment signature")
+        }</span>
+
+        <span class="cov0" title="0">if !isValid </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.PaymentFailed, "Invalid payment signature")
+        }</span>
+
+        <span class="cov0" title="0">orderData, err := u.razorpayService.FetchOrder(razorpayOrderID)
+        if err != nil </span><span class="cov0" title="0">{
+                return apiErrors.Wrap(err, 500, apiErrors.PaymentFailed, "Failed to fetch order details")
+        }</span>
+
+        <span class="cov0" title="0">amount := float64(orderData.Amount) / 100
+
+        err = u.ApplyTransaction(
+                wallet.ID,
+                domain.WalletTransactionTypeCredit,
+                amount,
+                domain.WalletReferenceTypeFundAddition,
+                razorpayOrderID,
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if u.platformWalletRepo != nil </span><span class="cov0" title="0">{
+                if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
+                        domain.WalletTransactionTypeCredit,
+                        amount,
+                        domain.PlatformRefTypeFundAddition,
+                        userID,
+                ); notifyErr != nil </span><span class="cov0" title="0">{
+                        logger.Log.Error().Err(notifyErr).Msg("Failed to apply platform transaction for fund addition")
+                }</span>
+        }
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *WalletUsecase) AdminApprovePayout(ctx context.Context, adminID, payoutID string) error <span class="cov0" title="0">{
+        p, err := u.payoutRepo.GetPayoutRequestByID(ctx, payoutID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if p.Status != domain.PayoutStatusPending </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "Only pending payouts can be approved")
+        }</span>
+
+        <span class="cov0" title="0">wallet, err := u.repo.GetWalletByUserID(p.UserID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error </span><span class="cov0" title="0">{
+                wallet.PendingBalance -= p.Amount
+                wallet.TotalDebited += p.Amount
+                wallet.UpdatedAt = time.Now()
+
+                if err := txRepo.UpdateWallet(wallet); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">if err := txRepo.UpdateTransactionStatusByReference(string(domain.WalletReferenceTypePayout), payoutID, "completed"); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &amp;adminID, nil)</span>
+        })
+}
+
+func (u *WalletUsecase) AdminRejectPayout(ctx context.Context, adminID, payoutID, reason string) error <span class="cov0" title="0">{
+        p, err := u.payoutRepo.GetPayoutRequestByID(ctx, payoutID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov0" title="0">if p.Status != domain.PayoutStatusPending </span><span class="cov0" title="0">{
+                return apiErrors.New(400, apiErrors.InvalidStateTransition, "Only pending payouts can be rejected")
+        }</span>
+
+        <span class="cov0" title="0">wallet, err := u.repo.GetWalletByUserID(p.UserID)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">return u.repo.WithTransaction(func(txRepo repository.WalletRepository) error </span><span class="cov0" title="0">{
+                wallet.PendingBalance -= p.Amount
+                wallet.AvailableBalance += p.Amount
+                wallet.UpdatedAt = time.Now()
+
+                if err := txRepo.UpdateWallet(wallet); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">txn := &amp;domain.WalletTransaction{
+                        ID:            uuid.NewString(),
+                        WalletID:      wallet.ID,
+                        Type:          domain.WalletTransactionTypeCredit,
+                        Amount:        p.Amount,
+                        ReferenceType: "payout_refund",
+                        ReferenceID:   payoutID,
+                        Status:        "completed",
+                        CreatedAt:     time.Now(),
+                }
+
+                if err := txRepo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+
+                <span class="cov0" title="0">return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusRejected, &amp;adminID, &amp;reason)</span>
+        })
+}
+
+func (u *WalletUsecase) AdminBulkApprovePayouts(ctx context.Context, adminID string, payoutIDs []string) error <span class="cov0" title="0">{
+        for _, id := range payoutIDs </span><span class="cov0" title="0">{
+                _ = u.AdminApprovePayout(ctx, adminID, id)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (u *WalletUsecase) GetPayoutRequestsByUser(ctx context.Context, userID string, page, limit int) ([]domain.PayoutRequest, int64, error) <span class="cov0" title="0">{
+        return u.payoutRepo.GetPayoutRequestsByUserID(ctx, userID, page, limit)
+}</span>
+
+func (u *WalletUsecase) AdminGetPayoutRequests(ctx context.Context, status string, page, limit int) ([]domain.AdminPayoutDetail, int64, error) <span class="cov0" title="0">{
+        return u.payoutRepo.AdminGetPayoutRequests(ctx, status, page, limit)
+}</span>
+
+func (u *WalletUsecase) AutoProcessApprovedPayouts(ctx context.Context) error <span class="cov0" title="0">{
+        payouts, _, err := u.AdminGetPayoutRequests(ctx, string(domain.PayoutStatusApproved), 1, 1000)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">systemReason := "Automated processing success"
+        for _, p := range payouts </span><span class="cov0" title="0">{
+                if p.Status == domain.PayoutStatusApproved </span><span class="cov0" title="0">{
+                        logger.Log.Info().Str("payout_id", p.ID).Msg("Auto-processing approved payout via Cron")
+                        u.payoutRepo.UpdatePayoutRequestStatus(ctx, p.ID, domain.PayoutStatusCompleted, nil, &amp;systemReason)
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

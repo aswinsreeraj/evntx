@@ -12,15 +12,12 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-
-
 func SetupTestDB(t *testing.T) *gorm.DB {
-	
+
 	_ = godotenv.Load("../../.env")
 
 	dsn := os.Getenv("TEST_DB_DSN")
 	if dsn == "" {
-		// Use a local default test DB.
 		dsn = "host=localhost user=postgres password=postgres dbname=evntx_test port=5432 sslmode=disable TimeZone=UTC"
 	}
 
@@ -31,7 +28,6 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
 
-	
 	err = db.AutoMigrate(
 		&repoImpl.UserModel{},
 		&repoImpl.WalletModel{},
@@ -69,9 +65,8 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-
 func ClearDatabase(db *gorm.DB) {
-	
+
 	db.Exec("SET session_replication_role = 'replica';")
 
 	tables := []string{
