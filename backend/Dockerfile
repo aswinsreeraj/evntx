@@ -16,6 +16,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/server .
+COPY global-bundle.pem .
 
 EXPOSE 8080
 
