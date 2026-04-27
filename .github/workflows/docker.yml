@@ -38,6 +38,5 @@ jobs:
               --name evntx_api \
               --restart always \
               -p 8080:8080 \
-              --env-file /home/ec2-user/.env \
-              -v /home/ec2-user/uploads:/app/uploads \
+              --env-file /home/ec2-user/deploy/.env \
               ${{ secrets.DOCKER_USERNAME }}/evntx_api:latest
