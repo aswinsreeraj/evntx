@@ -175,6 +175,7 @@ export default function PayoutsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [approveTarget, setApproveTarget] = useState<AdminPayoutDetail | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: payoutsQueryKey(statusFilter),
@@ -186,7 +187,10 @@ export default function PayoutsPage() {
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => adminApi.approvePayout(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: payoutsQueryKey(statusFilter) }),
+    onSuccess: () => {
+      setApproveTarget(null);
+      queryClient.invalidateQueries({ queryKey: payoutsQueryKey(statusFilter) });
+    },
   });
 
   const rejectMutation = useMutation({
@@ -309,7 +313,7 @@ export default function PayoutsPage() {
                   payout={payout}
                   selected={selectedIds.has(payout.id)}
                   onToggleSelect={() => handleToggleSelect(payout.id)}
-                  onApprove={() => approveMutation.mutate(payout.id)}
+                  onApprove={() => setApproveTarget(payout)}
                   onReject={(reason) => rejectMutation.mutate({ id: payout.id, reason })}
                   isApproving={approveMutation.isPending && approveMutation.variables === payout.id}
                   isRejecting={rejectMutation.isPending && rejectMutation.variables?.id === payout.id}
@@ -319,6 +323,68 @@ export default function PayoutsPage() {
           )}
         </div>
       </div>
+
+      {/* Approve Confirmation Modal */}
+      {approveTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !approveMutation.isPending && setApproveTarget(null)}
+          />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <h2 className="text-base font-bold text-[#111827]">Confirm Approval</h2>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-1">
+              You are about to approve the payout request from:
+            </p>
+            <p className="text-sm font-semibold text-[#111827] mb-1">
+              {approveTarget.user_name || "Unknown"}{" "}
+              <span className="font-normal text-gray-400">({approveTarget.user_email})</span>
+            </p>
+            <p className="text-2xl font-bold text-green-600 mt-3 mb-5">
+              {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(approveTarget.amount)}
+            </p>
+
+            <p className="text-xs text-gray-400 mb-5">
+              This action will mark the payout as approved and process the transfer. This cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setApproveTarget(null)}
+                disabled={approveMutation.isPending}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => approveMutation.mutate(approveTarget.id)}
+                disabled={approveMutation.isPending}
+                className="flex-1 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {approveMutation.isPending ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Approving…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Confirm Approve
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

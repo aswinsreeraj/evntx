@@ -107,6 +107,13 @@ export function usePlatformWallet() {
   });
 }
 
+export function usePlatformTransactions(page: number, limit: number) {
+  return useQuery({
+    queryKey: ["admin-platform-transactions", page, limit],
+    queryFn: () => adminApi.getPlatformTransactions(page, limit),
+  });
+}
+
 export function useSettings() {
   return useQuery({
     queryKey: ["admin-settings"],

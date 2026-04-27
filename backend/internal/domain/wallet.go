@@ -14,6 +14,7 @@ const (
 	WalletReferenceTypeEarning               = "earning"
 	WalletReferenceTypeSettlement            = "settlement"
 	WalletReferenceTypePayout                = "payout"
+	WalletReferenceTypePayoutRefund          = "payout_refund"
 	WalletReferenceTypeFundAddition          = "fund_addition"
 	WalletReferenceTypePlatformFee           = "platform_fee"
 	WalletReferenceTypePurchase              = "purchase"
@@ -79,6 +80,7 @@ type PayoutContextDetails struct {
 	Amount      float64   `json:"amount"`
 	Status      string    `json:"status"`
 	ProcessedAt time.Time `json:"processed_at"`
+	Reason      string    `json:"reason,omitempty"`
 }
 
 type WalletTransactionFilter struct {

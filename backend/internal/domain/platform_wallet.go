@@ -24,6 +24,15 @@ type PlatformWallet struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
+type PlatformWalletStats struct {
+	AvailableBalance float64   `json:"available_balance"`
+	TotalRevenue     float64   `json:"total_revenue"`
+	TotalFees        float64   `json:"total_fees"`
+	TotalPayouts     float64   `json:"total_payouts"`
+	TotalRefunds     float64   `json:"total_refunds"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 type PlatformWalletTransaction struct {
 	ID            string    `json:"id"`
 	WalletID      string    `json:"wallet_id"`

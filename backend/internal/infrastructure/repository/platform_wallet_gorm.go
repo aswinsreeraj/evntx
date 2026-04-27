@@ -68,6 +68,104 @@ func (r *platformWalletGormRepository) GetPlatformWallet() (*domain.PlatformWall
 	}, nil
 }
 
+func (r *platformWalletGormRepository) GetPlatformWalletStats() (*domain.PlatformWalletStats, error) {
+	var wallet PlatformWalletModel
+	if err := r.db.Where("id = ?", domain.PlatformWalletID).First(&wallet).Error; err != nil {
+		return nil, err
+	}
+
+	type aggRow struct {
+		ReferenceType string
+		Total         float64
+	}
+	var rows []aggRow
+	if err := r.db.Raw(`
+		SELECT reference_type, COALESCE(SUM(amount), 0) AS total
+		FROM platform_wallet_transaction_models
+		WHERE wallet_id = ?
+		GROUP BY reference_type
+	`, domain.PlatformWalletID).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	agg := make(map[string]float64)
+	for _, row := range rows {
+		agg[row.ReferenceType] = row.Total
+	}
+
+	// Platform fees = only the fees collected per booking
+	totalFees := math.Round((agg[domain.PlatformRefTypePayment]+agg[domain.PlatformRefTypeEarning])*100) / 100
+
+	// Total revenue = total gross ticket sales (pure base ticket revenue distributed to organizers)
+	var grossTicketRevenue float64
+	r.db.Table("wallet_transaction_models").
+		Where("reference_type = ?", domain.WalletReferenceTypeEarning).
+		Select("COALESCE(SUM(amount), 0)").Scan(&grossTicketRevenue)
+	totalRevenue := math.Round(grossTicketRevenue*100) / 100
+
+	// Total Payouts = sum of all approved or completed payout requests
+	var totalPayouts float64
+	r.db.Table("payout_requests").
+		Where("status IN ?", []string{string(domain.PayoutStatusApproved), string(domain.PayoutStatusCompleted)}).
+		Select("COALESCE(SUM(amount), 0)").Scan(&totalPayouts)
+	totalPayouts = math.Round(totalPayouts*100) / 100
+
+	// Total Refunds = sum of all user refunds across wallets
+	var userRefunds float64
+	r.db.Table("wallet_transaction_models").
+		Where("reference_type IN ? AND type = ?", []string{
+			domain.WalletReferenceTypeUserCancellation,
+			domain.WalletReferenceTypeOrganizerCancellation,
+			domain.WalletReferenceTypeRefund,
+		}, domain.WalletTransactionTypeCredit).
+		Select("COALESCE(SUM(amount), 0)").Scan(&userRefunds)
+	totalRefunds := math.Round(userRefunds*100) / 100
+
+	availableBalance := math.Round((totalFees)*100) / 100
+
+	return &domain.PlatformWalletStats{
+		AvailableBalance: availableBalance,
+		TotalRevenue:     totalRevenue,
+		TotalFees:        totalFees,
+		TotalPayouts:     totalPayouts,
+		TotalRefunds:     totalRefunds,
+		UpdatedAt:        wallet.UpdatedAt,
+	}, nil
+}
+
+func (r *platformWalletGormRepository) GetPlatformTransactions(page, limit int) ([]domain.PlatformWalletTransaction, int64, error) {
+	var models []PlatformWalletTransactionModel
+	var total int64
+
+	offset := (page - 1) * limit
+	if err := r.db.Model(&PlatformWalletTransactionModel{}).
+		Where("wallet_id = ? AND reference_type != ?", domain.PlatformWalletID, domain.PlatformRefTypeFundAddition).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := r.db.Where("wallet_id = ? AND reference_type != ?", domain.PlatformWalletID, domain.PlatformRefTypeFundAddition).
+		Order("created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&models).Error; err != nil {
+		return nil, 0, err
+	}
+
+	txns := make([]domain.PlatformWalletTransaction, 0, len(models))
+	for _, m := range models {
+		txns = append(txns, domain.PlatformWalletTransaction{
+			ID:            m.ID,
+			WalletID:      m.WalletID,
+			Type:          m.Type,
+			Amount:        m.Amount,
+			ReferenceType: m.ReferenceType,
+			ReferenceID:   m.ReferenceID,
+			CreatedAt:     m.CreatedAt,
+		})
+	}
+	return txns, total, nil
+}
+
+
 func (r *platformWalletGormRepository) ApplyPlatformTransaction(
 	txnType string,
 	amount float64,

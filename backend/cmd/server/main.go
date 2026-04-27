@@ -147,6 +147,7 @@ func main() {
 	router.Use(gin.Recovery())
 
 	router.Static("/assets", "./assets")
+	router.Static("/uploads", "./uploads")
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -266,6 +267,7 @@ func main() {
 	adminGroup.POST("/events/:event_id/complete", adminHandler.CompleteEventHandler)
 	adminGroup.POST("/events/:event_id/settle", adminHandler.SettleEventHandler)
 	adminGroup.GET("/platform-wallet", adminHandler.GetPlatformWallet)
+	adminGroup.GET("/platform-wallet/transactions", adminHandler.GetPlatformTransactions)
 
 	adminGroup.GET("/payouts", adminHandler.AdminGetPayouts)
 	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)

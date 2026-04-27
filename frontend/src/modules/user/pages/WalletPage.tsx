@@ -149,6 +149,29 @@ const TransactionRow = ({ transaction }: { transaction: any }) => {
                      }) : "Pending"}
                    </div>
                 </div>
+              ) : transaction.context.type === "payout_refund" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="font-semibold text-gray-900 mb-1">Status</div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-600 border border-red-100">
+                      Rejected
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 mb-1">Refunded At</div>
+                    {transaction.context.details?.processed_at ? new Date(transaction.context.details.processed_at).toLocaleString("en-IN", {
+                      day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit"
+                    }) : "—"}
+                  </div>
+                  {transaction.context.details?.reason && (
+                    <div className="md:col-span-2">
+                      <div className="font-semibold text-gray-900 mb-1">Rejection Reason</div>
+                      <p className="rounded-xl bg-red-50 border border-red-100 px-4 py-2.5 text-sm text-red-700">
+                        {transaction.context.details.reason}
+                      </p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="text-gray-500 italic">Contextual details formatted layout not available for type: {transaction.context.type}.</div>
               )}

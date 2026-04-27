@@ -405,19 +405,49 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 	})
 }
 func (h *AdminHandler) GetPlatformWallet(c *gin.Context) {
-	wallet, err := h.platformWalletRepo.GetPlatformWallet()
+	stats, err := h.platformWalletRepo.GetPlatformWalletStats()
 	if err != nil {
 		response.AppError(c, pkgErrors.ErrInternalServerError)
 		return
 	}
 
 	response.Success(c, "Platform wallet retrieved successfully", gin.H{
-		"available_balance": wallet.AvailableBalance,
-		"pending_balance":   wallet.PendingBalance,
-		"refund_reserve":    wallet.RefundReserve,
-		"total_credited":    wallet.TotalCredited,
-		"total_debited":     wallet.TotalDebited,
-		"updated_at":        wallet.UpdatedAt,
+		"available_balance": stats.AvailableBalance,
+		"total_revenue":     stats.TotalRevenue,
+		"total_fees":        stats.TotalFees,
+		"total_payouts":     stats.TotalPayouts,
+		"total_refunds":     stats.TotalRefunds,
+		"updated_at":        stats.UpdatedAt,
+	})
+}
+
+func (h *AdminHandler) GetPlatformTransactions(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "20")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 20
+	}
+
+	txns, total, err := h.platformWalletRepo.GetPlatformTransactions(page, limit)
+	if err != nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "Platform transactions retrieved successfully", gin.H{
+		"transactions": txns,
+		"pagination": gin.H{
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		},
 	})
 }
 

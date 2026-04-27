@@ -178,6 +178,19 @@ func (u *WalletUsecase) GetTransactionsByUserID(
 				Status:      txn.Status,
 				ProcessedAt: txn.CreatedAt,
 			}
+		} else if txn.ReferenceType == domain.WalletReferenceTypePayoutRefund {
+			reason := ""
+			if p, err := u.payoutRepo.GetPayoutRequestByID(context.Background(), txn.ReferenceID); err == nil {
+				if p.FailureReason != nil {
+					reason = *p.FailureReason
+				}
+			}
+			txnCtx.Details = domain.PayoutContextDetails{
+				Amount:      txn.Amount,
+				Status:      "rejected",
+				ProcessedAt: txn.CreatedAt,
+				Reason:      reason,
+			}
 		} else if txn.ReferenceType == domain.WalletReferenceTypeFundAddition {
 			txnCtx.Details = map[string]interface{}{
 				"method": "razorpay",
@@ -418,6 +431,18 @@ func (u *WalletUsecase) AdminApprovePayout(ctx context.Context, adminID, payoutI
 		if err := txRepo.UpdateTransactionStatusByReference(string(domain.WalletReferenceTypePayout), payoutID, "completed"); err != nil {
 			return err
 		}
+
+		if u.platformWalletRepo != nil {
+			if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
+				domain.WalletTransactionTypeDebit,
+				p.Amount,
+				domain.PlatformRefTypePayout,
+				payoutID,
+			); notifyErr != nil {
+				logger.Log.Error().Err(notifyErr).Msg("Failed to apply platform transaction for payout")
+			}
+		}
+
 
 		return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &adminID, nil)
 	})

@@ -11,6 +11,25 @@ export interface AdminPayoutsResponse {
   total: number;
 }
 
+export interface PlatformWalletStats {
+  available_balance: number;
+  total_revenue: number;
+  total_fees: number;
+  total_payouts: number;
+  total_refunds: number;
+  updated_at: string;
+}
+
+export interface PlatformWalletTransaction {
+  id: string;
+  wallet_id: string;
+  type: "cr" | "dr";
+  amount: number;
+  reference_type: string;
+  reference_id: string;
+  created_at: string;
+}
+
 export interface PlatformSettings {
   id: string;
   enable_user_registration: boolean;
@@ -221,8 +240,18 @@ export const adminApi = {
     return response.data;
   },
 
-  async getPlatformWallet() {
+  async getPlatformWallet(): Promise<PlatformWalletStats> {
     const response = await api.get("/admin/platform-wallet");
+    return response.data.data;
+  },
+
+  async getPlatformTransactions(page: number = 1, limit: number = 20): Promise<{
+    transactions: PlatformWalletTransaction[];
+    pagination: { total: number; page: number; limit: number };
+  }> {
+    const response = await api.get("/admin/platform-wallet/transactions", {
+      params: { page, limit },
+    });
     return response.data.data;
   },
 

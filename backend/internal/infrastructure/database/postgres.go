@@ -15,9 +15,21 @@ func NewPostgresConnection() (*gorm.DB, error) {
 	password := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	port := os.Getenv("DB_PORT")
+	sslMode := os.Getenv("DB_SSL_MODE")
+	if sslMode == "" {
+		sslMode = "disable"
+	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=verify-full sslrootcert=./global-bundle.pem TimeZone=Asia/Calcutta",
-		host, user, password, dbName, port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Calcutta",
+		host, user, password, dbName, port, sslMode)
+
+	if sslMode == "verify-full" {
+		sslRootCert := os.Getenv("DB_SSL_ROOT_CERT")
+		if sslRootCert == "" {
+			sslRootCert = "./global-bundle.pem"
+		}
+		dsn += fmt.Sprintf(" sslrootcert=%s", sslRootCert)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		PrepareStmt: true,
