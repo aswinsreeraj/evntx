@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: evntx_db
+    restart: always
+    environment:
+      POSTGRES_USER: evntx_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: evntx_db
+      TZ: Asia/Calcutta
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: evntx_api
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=evntx_user
+      - DB_PASSWORD=password
+      - DB_NAME=evntx_db
+      - DB_SSL_MODE=disable
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  pgdata:

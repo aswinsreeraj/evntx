@@ -1,9 +1,13 @@
 name: Deploy Backend
 
+
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch: 
+  
+#on:
+#  push:
+#    branches:
+#      - main
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

@@ -1,0 +1,10 @@
+.git
+.env
+coverage.html
+coverage.out
+uploads/
+admin
+cmd/seeder
+cmd/wallet_seeder
+Dockerfile
+.dockerignore
