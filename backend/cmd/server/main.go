@@ -135,7 +135,7 @@ func main() {
 	pprof.Register(router)
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://evntx-self.vercel.app", "http://localhost:5173"},
+		AllowOrigins:     []string{"https://evntx-self.vercel.app", "http://localhost:5173", "https://evntx.aswinsreeraj.online"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
