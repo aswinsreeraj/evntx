@@ -45,12 +45,12 @@ func (u *EventUsecase) GetSalesReport(organizerID string, eventID string, startD
 	return u.repo.GetSalesReport(organizerID, eventID, startDate, endDate)
 }
 
-func (u *EventUsecase) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
-	return u.repo.GetAdminDashboardStats()
+func (u *EventUsecase) GetAdminDashboardStats(span string, groupBy string) (*domain.AdminDashboardStats, error) {
+	return u.repo.GetAdminDashboardStats(span, groupBy)
 }
 
-func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) {
-	return u.repo.GetAdminRevenueReport(startDate, endDate)
+func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time, groupBy string) (*domain.AdminRevenueReport, error) {
+	return u.repo.GetAdminRevenueReport(startDate, endDate, groupBy)
 }
 
 func (u *EventUsecase) GetEventByID(id string) (*domain.Event, error) {

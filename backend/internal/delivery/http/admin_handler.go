@@ -48,7 +48,9 @@ func NewAdminHandler(
 }
 
 func (h *AdminHandler) GetAdminDashboard(c *gin.Context) {
-	stats, err := h.eventUsecase.GetAdminDashboardStats()
+	span := c.Query("span")
+	groupBy := c.Query("group_by")
+	stats, err := h.eventUsecase.GetAdminDashboardStats(span, groupBy)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve dashboard stats"})
 		return
@@ -64,8 +66,9 @@ func (h *AdminHandler) GetAdminRevenueReport(c *gin.Context) {
 	if e := c.Query("end_date"); e != "" {
 		endDate, _ = time.Parse(time.RFC3339, e)
 	}
+	groupBy := c.Query("group_by")
 
-	report, err := h.eventUsecase.GetAdminRevenueReport(startDate, endDate)
+	report, err := h.eventUsecase.GetAdminRevenueReport(startDate, endDate, groupBy)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve revenue report"})
 		return

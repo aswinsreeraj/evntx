@@ -135,15 +135,16 @@ export interface AdminRevenueReport {
 }
 
 export const adminApi = {
-  async getDashboardStats(): Promise<AdminDashboardStats> {
-    const response = await api.get("/admin/dashboard");
+  async getDashboardStats(params?: { span?: string; group_by?: string }): Promise<AdminDashboardStats> {
+    const response = await api.get("/admin/dashboard", { params });
     return response.data.data;
   },
 
-  async getRevenueReport(startDate?: string, endDate?: string): Promise<AdminRevenueReport> {
+  async getRevenueReport(startDate?: string, endDate?: string, groupBy?: string): Promise<AdminRevenueReport> {
     const params: Record<string, string> = {};
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
+    if (groupBy) params.group_by = groupBy;
     const response = await api.get("/admin/reports/revenue", { params });
     return response.data.data;
   },

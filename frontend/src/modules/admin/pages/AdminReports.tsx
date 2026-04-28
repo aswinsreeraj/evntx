@@ -21,10 +21,11 @@ import { ChevronDown, Loader2, Download } from "lucide-react";
 import { exportToCSV } from "../../../shared/utils/csv";
 
 const DATE_RANGES = [
-  { label: "Last 30 Days", value: "30D" },
-  { label: "Last 90 Days", value: "90D" },
-  { label: "Last Year", value: "1Y" },
-  { label: "All Time", value: "ALL" },
+  { label: "7D", value: "7D" },
+  { label: "30D", value: "30D" },
+  { label: "90D", value: "90D" },
+  { label: "1Y", value: "1Y" },
+  { label: "ALL", value: "ALL" },
 ];
 
 const CATEGORY_COLORS = [
@@ -34,7 +35,8 @@ const CATEGORY_COLORS = [
 function getDatesForRange(range: string) {
   const end = new Date();
   const start = new Date();
-  if (range === "30D") start.setDate(end.getDate() - 30);
+  if (range === "7D") start.setDate(end.getDate() - 7);
+  else if (range === "30D") start.setDate(end.getDate() - 30);
   else if (range === "90D") start.setDate(end.getDate() - 90);
   else if (range === "1Y") start.setFullYear(end.getFullYear() - 1);
   else start.setFullYear(2020);
@@ -197,19 +199,20 @@ export default function AdminReports() {
                       Tracks gross revenue across selected date range
                     </p>
                   </div>
-                  <div className="relative">
-                    <select
-                      value={dateRange}
-                      onChange={(e) => setDateRange(e.target.value)}
-                      className="appearance-none bg-white border border-gray-200 text-sm font-medium text-[#111827] rounded-lg px-4 py-2 pr-8 focus:outline-none cursor-pointer"
-                    >
-                      {DATE_RANGES.map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b9098] pointer-events-none" />
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    {DATE_RANGES.map((r) => (
+                      <button
+                        key={r.value}
+                        onClick={() => setDateRange(r.value)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                          dateRange === r.value
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-[#8b9098] hover:text-gray-900"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -316,8 +319,13 @@ export default function AdminReports() {
 
                   <div className="mb-4">
                     <div className="text-2xl font-bold text-[#111827]">
-                      {formatCurrency(report?.refund_total?.value ?? 0)}
+                      {(report?.refund_total?.value ?? 0).toFixed(1)}%
                     </div>
+                    {report?.refund_total?.subtitle && (
+                      <div className="text-sm text-[#8b9098] mt-0.5">
+                        {report.refund_total.subtitle}
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 mt-1">
                       <span
                         className={`text-xs font-semibold ${
@@ -347,7 +355,7 @@ export default function AdminReports() {
                         />
                         <YAxis hide />
                         <RechartsTooltip
-                          formatter={(val: any) => formatCurrency(Number(val))}
+                          formatter={(val: any) => [`${val} tickets`, "Cancelled"]}
                           contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)" }}
                         />
                         <Bar dataKey="amount" fill="#e53e5d" radius={[4, 4, 0, 0]} />

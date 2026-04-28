@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -1391,7 +1392,7 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 	return &stats, nil
 }
 
-func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
+func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string) (*domain.AdminDashboardStats, error) {
 	now := time.Now()
 	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 	firstDayPrevMonth := firstDayThisMonth.AddDate(0, -1, 0)
@@ -1456,32 +1457,52 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.TotalEvents = domain.AdminStatCard{Value: float64(totalEvents), Percentage: eventsPct}
 
-	var totalBookings, refundedBookings int64
-	r.db.Table("booking_models").Count(&totalBookings)
-	r.db.Table("booking_models").Where("status = ?", "refunded").Count(&refundedBookings)
+	var totalTickets, refundedTickets int64
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Where("booking_models.status IN ?", []string{"paid", "completed", "cancelled"}).
+		Count(&totalTickets)
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Where("ticket_models.status = ?", "cancelled").
+		Count(&refundedTickets)
+
 	refundRate := 0.0
-	if totalBookings > 0 {
-		refundRate = float64(refundedBookings) / float64(totalBookings) * 100
+	if totalTickets > 0 {
+		refundRate = float64(refundedTickets) / float64(totalTickets) * 100
 	}
 
-	var prevTotal, prevRefunded int64
-	r.db.Table("booking_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevTotal)
-	r.db.Table("booking_models").Where("status = ? AND created_at >= ? AND created_at < ?", "refunded", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).Count(&prevRefunded)
+	var prevTotalTickets, prevRefundedTickets int64
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Where("booking_models.status IN ? AND booking_models.created_at >= ? AND booking_models.created_at < ?", []string{"paid", "completed", "cancelled"}, firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
+		Count(&prevTotalTickets)
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Where("ticket_models.status = ? AND booking_models.created_at >= ? AND booking_models.created_at < ?", "cancelled", firstDayPrevMonth.Unix(), firstDayThisMonth.Unix()).
+		Count(&prevRefundedTickets)
+
 	prevRefundRate := 0.0
-	if prevTotal > 0 {
-		prevRefundRate = float64(prevRefunded) / float64(prevTotal) * 100
+	if prevTotalTickets > 0 {
+		prevRefundRate = float64(prevRefundedTickets) / float64(prevTotalTickets) * 100
 	}
 	refundRatePct := 0.0
 	if prevRefundRate > 0 {
 		refundRatePct = (refundRate - prevRefundRate) / prevRefundRate * 100
+	} else if refundRate > 0 {
+		refundRatePct = 100
 	}
-	stats.RefundRate = domain.AdminStatCard{Value: refundRate, Percentage: refundRatePct}
+	stats.RefundRate = domain.AdminStatCard{
+		Value:      refundRate,
+		Percentage: refundRatePct,
+		Subtitle:   fmt.Sprintf("%d out of %d tickets", refundedTickets, totalTickets),
+	}
 
-	var prevGrowth int64
-	r.db.Table("user_models").Where("created_at >= ? AND created_at < ?", firstDayPrevMonth.AddDate(0, -1, 0).Unix(), firstDayPrevMonth.Unix()).Count(&prevGrowth)
 	growthPct := 0.0
-	if prevGrowth > 0 {
-		growthPct = float64(thisMonthUsers-prevGrowth) / float64(prevGrowth) * 100
+	if prevMonthUsers > 0 {
+		growthPct = float64(thisMonthUsers-prevMonthUsers) / float64(prevMonthUsers) * 100
+	} else if thisMonthUsers > 0 {
+		growthPct = 100
 	}
 	stats.UserGrowth = domain.AdminStatCard{Value: float64(thisMonthUsers), Percentage: growthPct}
 
@@ -1498,38 +1519,125 @@ func (r *eventGormRepository) GetAdminDashboardStats() (*domain.AdminDashboardSt
 	}
 	stats.ActiveEvents = domain.AdminStatCard{Value: float64(activeEvents), Percentage: activePct}
 
+	var startDate time.Time
+	if span == "7D" {
+		startDate = now.AddDate(0, 0, -7)
+	} else if span == "30D" {
+		startDate = now.AddDate(0, 0, -30)
+	} else if span == "90D" {
+		startDate = now.AddDate(0, 0, -90)
+	} else if span == "1Y" {
+		startDate = now.AddDate(-1, 0, 0)
+	} else if span == "ALL" {
+		startDate = time.Date(2020, 1, 1, 0, 0, 0, 0, now.Location())
+	} else {
+		startDate = now.AddDate(-1, 0, 0)
+	}
+
+	durationHours := now.Sub(startDate).Hours()
+	var useDays, useWeeks bool
+	if groupBy == "daily" {
+		useDays = true
+	} else if groupBy == "weekly" {
+		useWeeks = true
+	} else if groupBy == "monthly" {
+		useDays = false
+	} else {
+		// Auto-aggregation heuristics
+		if durationHours <= 31*24 {
+			useDays = true
+		} else if durationHours <= 120*24 {
+			useWeeks = true
+		} else {
+			useDays = false
+		}
+	}
+
 	var bookingRows []struct {
 		TotalAmount float64
 		CreatedAt   int64 `gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
-		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, now.AddDate(-1, 0, 0).Unix()).
+		Where("status IN ? AND created_at >= ?", []string{"paid", "completed"}, startDate.Unix()).
 		Find(&bookingRows)
 
-	revenueByMonth := make(map[string]float64)
-	for i := 11; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan 2006")
-		revenueByMonth[m] = 0
-	}
-	for _, b := range bookingRows {
-		key := time.Unix(b.CreatedAt, 0).Format("Jan 2006")
-		if _, ok := revenueByMonth[key]; ok {
-			revenueByMonth[key] += b.TotalAmount
+	revenueMap := make(map[string]float64)
+
+	if useDays {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i++ {
+			d := startDate.AddDate(0, 0, i)
+			revenueMap[d.Format("Jan 02")] = 0
+		}
+	} else if useWeeks {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i += 7 {
+			d := startDate.AddDate(0, 0, i)
+			_, week := d.ISOWeek()
+			key := fmt.Sprintf("Week %d, %d", week, d.Year())
+			revenueMap[key] = 0
+		}
+	} else {
+		cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+		for !cur.After(now) {
+			revenueMap[cur.Format("Jan 2006")] = 0
+			cur = cur.AddDate(0, 1, 0)
 		}
 	}
-	for i := 11; i >= 0; i-- {
-		m := now.AddDate(0, -i, 0).Format("Jan 2006")
-		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
-			Date:   m,
-			Amount: revenueByMonth[m],
-		})
+
+	for _, b := range bookingRows {
+		bTime := time.Unix(b.CreatedAt, 0)
+		var key string
+		if useDays {
+			key = bTime.Format("Jan 02")
+		} else if useWeeks {
+			_, week := bTime.ISOWeek()
+			key = fmt.Sprintf("Week %d, %d", week, bTime.Year())
+		} else {
+			key = bTime.Format("Jan 2006")
+		}
+		if _, ok := revenueMap[key]; ok {
+			revenueMap[key] += b.TotalAmount
+		}
+	}
+
+	if useDays {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i++ {
+			d := startDate.AddDate(0, 0, i).Format("Jan 02")
+			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
+				Date:   d,
+				Amount: revenueMap[d],
+			})
+		}
+	} else if useWeeks {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i += 7 {
+			d := startDate.AddDate(0, 0, i)
+			_, week := d.ISOWeek()
+			key := fmt.Sprintf("Week %d, %d", week, d.Year())
+			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
+				Date:   key,
+				Amount: revenueMap[key],
+			})
+		}
+	} else {
+		cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+		for !cur.After(now) {
+			key := cur.Format("Jan 2006")
+			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
+				Date:   key,
+				Amount: revenueMap[key],
+			})
+			cur = cur.AddDate(0, 1, 0)
+		}
 	}
 
 	return &stats, nil
 }
 
-func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) {
+func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time, groupBy string) (*domain.AdminRevenueReport, error) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	firstDayThisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
@@ -1611,42 +1719,88 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		Where("status IN ? AND created_at >= ? AND created_at <= ?", []string{"paid", "completed"}, startDate.Unix(), endDate.Unix()).
 		Find(&bookingRows)
 
-	revenueByMonth := make(map[string]float64)
-	months := int(endDate.Sub(startDate).Hours() / (24 * 30))
-	if months < 1 {
-		months = 1
-	}
-	for i := months; i >= 0; i-- {
-		m := startDate.AddDate(0, i, 0)
-		if m.After(endDate) {
-			continue
-		}
-		key := startDate.AddDate(0, months-i, 0).Format("Jan 2006")
-		revenueByMonth[key] = 0
+	durationHours := endDate.Sub(startDate).Hours()
+	var useDays, useWeeks bool
+	if groupBy == "daily" {
+		useDays = true
+	} else if groupBy == "weekly" {
+		useWeeks = true
+	} else if groupBy == "monthly" {
+		useDays = false
+	} else {
+		useDays = durationHours <= 90*24
 	}
 
-	revenueByMonth = make(map[string]float64)
-	cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
-	for !cur.After(endDate) {
-		revenueByMonth[cur.Format("Jan 2006")] = 0
-		cur = cur.AddDate(0, 1, 0)
+	revenueMap := make(map[string]float64)
+
+	if useDays {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i++ {
+			d := startDate.AddDate(0, 0, i)
+			revenueMap[d.Format("Jan 02")] = 0
+		}
+	} else if useWeeks {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i += 7 {
+			d := startDate.AddDate(0, 0, i)
+			_, week := d.ISOWeek()
+			key := fmt.Sprintf("Week %d, %d", week, d.Year())
+			revenueMap[key] = 0
+		}
+	} else {
+		cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+		for !cur.After(endDate) {
+			revenueMap[cur.Format("Jan 2006")] = 0
+			cur = cur.AddDate(0, 1, 0)
+		}
 	}
 
 	for _, b := range bookingRows {
-		key := time.Unix(b.CreatedAt, 0).Format("Jan 2006")
-		if _, ok := revenueByMonth[key]; ok {
-			revenueByMonth[key] += b.TotalAmount
+		bTime := time.Unix(b.CreatedAt, 0)
+		var key string
+		if useDays {
+			key = bTime.Format("Jan 02")
+		} else if useWeeks {
+			_, week := bTime.ISOWeek()
+			key = fmt.Sprintf("Week %d, %d", week, bTime.Year())
+		} else {
+			key = bTime.Format("Jan 2006")
+		}
+		if _, ok := revenueMap[key]; ok {
+			revenueMap[key] += b.TotalAmount
 		}
 	}
 
-	cur = time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
-	for !cur.After(endDate) {
-		key := cur.Format("Jan 2006")
-		report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
-			Date:   key,
-			Amount: revenueByMonth[key],
-		})
-		cur = cur.AddDate(0, 1, 0)
+	if useDays {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i++ {
+			d := startDate.AddDate(0, 0, i).Format("Jan 02")
+			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
+				Date:   d,
+				Amount: revenueMap[d],
+			})
+		}
+	} else if useWeeks {
+		days := int(durationHours / 24)
+		for i := 0; i <= days; i += 7 {
+			d := startDate.AddDate(0, 0, i)
+			_, week := d.ISOWeek()
+			key := fmt.Sprintf("Week %d, %d", week, d.Year())
+			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
+				Date:   key,
+				Amount: revenueMap[key],
+			})
+		}
+	} else {
+		cur := time.Date(startDate.Year(), startDate.Month(), 1, 0, 0, 0, 0, startDate.Location())
+		for !cur.After(endDate) {
+			key := cur.Format("Jan 2006")
+			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
+				Date:   key,
+				Amount: revenueMap[key],
+			})
+			cur = cur.AddDate(0, 1, 0)
+		}
 	}
 
 	var catRows []struct {
@@ -1672,24 +1826,30 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		})
 	}
 
-	var refundRows []struct {
-		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"`
+	var totalTickets int64
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Where("booking_models.status IN ? AND booking_models.created_at >= ?", []string{"paid", "completed", "cancelled"}, now.AddDate(0, -6, 0).Unix()).
+		Count(&totalTickets)
+
+	var refundTickets []struct {
+		CreatedAt int64 `gorm:"column:created_at"`
 	}
-	r.db.Table("booking_models").
-		Select("total_amount, created_at").
-		Where("status = ? AND created_at >= ?", "refunded", now.AddDate(0, -6, 0).Unix()).
-		Find(&refundRows)
+	r.db.Table("ticket_models").
+		Joins("JOIN booking_models ON booking_models.id::uuid = ticket_models.booking_id::uuid").
+		Select("booking_models.created_at").
+		Where("ticket_models.status = ? AND booking_models.created_at >= ?", "cancelled", now.AddDate(0, -6, 0).Unix()).
+		Find(&refundTickets)
 
 	refundByMonth := make(map[string]float64)
 	for i := 5; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		refundByMonth[m] = 0
 	}
-	for _, r2 := range refundRows {
-		key := time.Unix(r2.CreatedAt, 0).Format("Jan 2006")
+	for _, t := range refundTickets {
+		key := time.Unix(t.CreatedAt, 0).Format("Jan 2006")
 		if _, ok := refundByMonth[key]; ok {
-			refundByMonth[key] += r2.TotalAmount
+			refundByMonth[key]++
 		}
 	}
 
@@ -1703,13 +1863,25 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	refundPct := 0.0
 	if prevRefundTotal > 0 {
 		refundPct = (thisMonthRefund - prevRefundTotal) / prevRefundTotal * 100
+	} else if thisMonthRefund > 0 {
+		refundPct = 100
 	}
 
 	var totalRefundAmount float64
 	for _, v := range refundByMonth {
 		totalRefundAmount += v
 	}
-	report.RefundTotal = domain.AdminStatCard{Value: totalRefundAmount, Percentage: refundPct}
+    
+    overallRate := 0.0
+    if totalTickets > 0 {
+        overallRate = float64(totalRefundAmount) / float64(totalTickets) * 100
+    }
+
+	report.RefundTotal = domain.AdminStatCard{
+        Value: overallRate, 
+        Percentage: refundPct,
+        Subtitle: fmt.Sprintf("%d out of %d tickets", int64(totalRefundAmount), totalTickets),
+    }
 
 	for i := 5; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0)

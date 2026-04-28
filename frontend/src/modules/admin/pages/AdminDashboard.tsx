@@ -64,8 +64,8 @@ export default function AdminDashboard() {
   const [revenueSpan, setRevenueSpan] = useState("1Y");
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["admin-dashboard-stats"],
-    queryFn: () => adminApi.getDashboardStats(),
+    queryKey: ["admin-dashboard-stats", revenueSpan],
+    queryFn: () => adminApi.getDashboardStats({ span: revenueSpan }),
   });
 
   const formatCurrency = (val: number) =>
@@ -120,7 +120,7 @@ export default function AdminDashboard() {
           title: "Refund Rate",
           value: `${stats.refund_rate.value.toFixed(1)}%`,
           percentage: stats.refund_rate.percentage,
-          subtitle: "this month",
+          subtitle: stats.refund_rate.subtitle || "this month",
           icon: RotateCcw,
           iconBg: "bg-rose-50",
           iconColor: "text-rose-500",
@@ -155,15 +155,6 @@ export default function AdminDashboard() {
       ]
     : [];
 
-  
-  const getChartData = () => {
-    if (!stats?.revenue_overview) return [];
-    const all = stats.revenue_overview;
-    if (revenueSpan === "7D") return all.slice(-1); 
-    if (revenueSpan === "30D") return all.slice(-1);
-    if (revenueSpan === "90D") return all.slice(-3);
-    return all; 
-  };
 
   return (
     <AdminLayout title="Dashboard">
@@ -196,32 +187,34 @@ export default function AdminDashboard() {
             
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-[#111827]">Revenue Overview</h4>
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                {["7D", "30D", "90D", "1Y"].map((span) => (
-                  <button
-                    key={span}
-                    onClick={() => setRevenueSpan(span)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                      revenueSpan === span
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-[#8b9098] hover:text-gray-900"
-                    }`}
-                  >
-                    {span}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2">
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  {["7D", "30D", "90D", "1Y", "ALL"].map((span) => (
+                    <button
+                      key={span}
+                      onClick={() => setRevenueSpan(span)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        revenueSpan === span
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-[#8b9098] hover:text-gray-900"
+                      }`}
+                    >
+                      {span}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="h-80 w-full">
-              {(getChartData().length === 0) ? (
+              {(!stats?.revenue_overview || stats.revenue_overview.length === 0) ? (
                 <div className="h-full flex items-center justify-center text-[#8b9098] text-sm">
                   No revenue data available.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={getChartData()}
+                    data={stats.revenue_overview}
                     margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
