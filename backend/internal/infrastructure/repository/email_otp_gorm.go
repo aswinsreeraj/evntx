@@ -8,12 +8,12 @@ import (
 )
 
 type EmailOTPModel struct {
-	ID        string `gorm:"type:uuid;primaryKey"`
-	Email     string `gorm:"index"`
-	OTPHash   string
-	ExpiresAt time.Time
-	Consumed  bool
-	CreatedAt time.Time
+	ID		string	`gorm:"type:uuid;primaryKey"`
+	Email		string	`gorm:"index"`
+	OTPHash		string
+	ExpiresAt	time.Time
+	Consumed	bool
+	CreatedAt	time.Time
 }
 
 type emailOTPGormRepository struct {
@@ -26,11 +26,11 @@ func NewEmailOTPGormRepository(db *gorm.DB) *emailOTPGormRepository {
 
 func (r *emailOTPGormRepository) Create(otp *domain.EmailOTP) error {
 	model := EmailOTPModel{
-		ID:        otp.ID,
-		Email:     otp.Email,
-		OTPHash:   otp.OTPHash,
-		ExpiresAt: otp.ExpiresAt,
-		Consumed:  otp.Consumed,
+		ID:		otp.ID,
+		Email:		otp.Email,
+		OTPHash:	otp.OTPHash,
+		ExpiresAt:	otp.ExpiresAt,
+		Consumed:	otp.Consumed,
 	}
 
 	return r.db.Create(&model).Error
@@ -55,12 +55,12 @@ func (r *emailOTPGormRepository) FindValidOTP(email string) (*domain.EmailOTP, e
 	}
 
 	return &domain.EmailOTP{
-		ID:        model.ID,
-		Email:     model.Email,
-		OTPHash:   model.OTPHash,
-		ExpiresAt: model.ExpiresAt,
-		Consumed:  model.Consumed,
-		CreatedAt: model.CreatedAt,
+		ID:		model.ID,
+		Email:		model.Email,
+		OTPHash:	model.OTPHash,
+		ExpiresAt:	model.ExpiresAt,
+		Consumed:	model.Consumed,
+		CreatedAt:	model.CreatedAt,
 	}, nil
 }
 

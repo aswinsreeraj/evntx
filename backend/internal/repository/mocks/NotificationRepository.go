@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type NotificationRepository struct {
 	mock.Mock
 }
-
 
 func (_m *NotificationRepository) ClearAll(userID string) error {
 	ret := _m.Called(userID)
@@ -30,7 +26,6 @@ func (_m *NotificationRepository) ClearAll(userID string) error {
 	return r0
 }
 
-
 func (_m *NotificationRepository) CreateNotification(notification *domain.Notification) error {
 	ret := _m.Called(notification)
 
@@ -47,7 +42,6 @@ func (_m *NotificationRepository) CreateNotification(notification *domain.Notifi
 
 	return r0
 }
-
 
 func (_m *NotificationRepository) GetNotificationsByUser(userID string, page int, limit int) ([]domain.Notification, int64, int64, error) {
 	ret := _m.Called(userID, page, limit)
@@ -92,7 +86,6 @@ func (_m *NotificationRepository) GetNotificationsByUser(userID string, page int
 	return r0, r1, r2, r3
 }
 
-
 func (_m *NotificationRepository) MarkAllAsRead(userID string) error {
 	ret := _m.Called(userID)
 
@@ -110,7 +103,6 @@ func (_m *NotificationRepository) MarkAllAsRead(userID string) error {
 	return r0
 }
 
-
 func (_m *NotificationRepository) MarkAsRead(notificationID string, userID string) error {
 	ret := _m.Called(notificationID, userID)
 
@@ -127,8 +119,6 @@ func (_m *NotificationRepository) MarkAsRead(notificationID string, userID strin
 
 	return r0
 }
-
-
 
 func NewNotificationRepository(t interface {
 	mock.TestingT

@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type AuditRepository struct {
 	mock.Mock
 }
-
 
 func (_m *AuditRepository) Create(log *domain.AuditLog) error {
 	ret := _m.Called(log)
@@ -29,7 +25,6 @@ func (_m *AuditRepository) Create(log *domain.AuditLog) error {
 
 	return r0
 }
-
 
 func (_m *AuditRepository) GetLogs(page int, limit int) ([]domain.AuditLog, int64, error) {
 	ret := _m.Called(page, limit)
@@ -66,8 +61,6 @@ func (_m *AuditRepository) GetLogs(page int, limit int) ([]domain.AuditLog, int6
 
 	return r0, r1, r2
 }
-
-
 
 func NewAuditRepository(t interface {
 	mock.TestingT

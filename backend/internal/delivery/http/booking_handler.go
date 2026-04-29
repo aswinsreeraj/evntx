@@ -11,14 +11,14 @@ import (
 )
 
 type BookingHandler struct {
-	bookingUsecase *usecase.BookingUsecase
-	paymentUsecase *usecase.PaymentUsecase
+	bookingUsecase	*usecase.BookingUsecase
+	paymentUsecase	*usecase.PaymentUsecase
 }
 
 func NewBookingHandler(bookingUsecase *usecase.BookingUsecase, paymentUsecase *usecase.PaymentUsecase) *BookingHandler {
 	return &BookingHandler{
-		bookingUsecase: bookingUsecase,
-		paymentUsecase: paymentUsecase,
+		bookingUsecase:	bookingUsecase,
+		paymentUsecase:	paymentUsecase,
 	}
 }
 
@@ -26,8 +26,8 @@ func (h *BookingHandler) ReserveTickets(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		EventID string                 `json:"event_id" binding:"required"`
-		Tickets []domain.TicketRequest `json:"tickets" binding:"required,dive"`
+		EventID	string			`json:"event_id" binding:"required"`
+		Tickets	[]domain.TicketRequest	`json:"tickets" binding:"required,dive"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -52,12 +52,12 @@ func (h *BookingHandler) ReserveTickets(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "Booking reserved",
+		"success":	true,
+		"message":	"Booking reserved",
 		"data": gin.H{
-			"booking_id":   booking.ID,
-			"expires_at":   booking.ExpiresAt,
-			"total_amount": booking.TotalAmount,
+			"booking_id":	booking.ID,
+			"expires_at":	booking.ExpiresAt,
+			"total_amount":	booking.TotalAmount,
 		},
 	})
 }
@@ -91,8 +91,8 @@ func (h *BookingHandler) CancelBooking(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Booking cancelled successfully",
+		"success":	true,
+		"message":	"Booking cancelled successfully",
 	})
 }
 

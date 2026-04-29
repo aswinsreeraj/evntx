@@ -14,11 +14,11 @@ import (
 )
 
 type BookingUsecase struct {
-	bookingRepo         repository.BookingRepository
-	eventRepo           repository.EventRepository
-	notificationUsecase *NotificationUsecase
-	roleRepo            repository.UserRoleRepository
-	settingsRepo        repository.SettingsRepository
+	bookingRepo		repository.BookingRepository
+	eventRepo		repository.EventRepository
+	notificationUsecase	*NotificationUsecase
+	roleRepo		repository.UserRoleRepository
+	settingsRepo		repository.SettingsRepository
 }
 
 func NewBookingUsecase(
@@ -29,11 +29,11 @@ func NewBookingUsecase(
 	settingsRepo repository.SettingsRepository,
 ) *BookingUsecase {
 	return &BookingUsecase{
-		bookingRepo:         bookingRepo,
-		eventRepo:           eventRepo,
-		roleRepo:            roleRepo,
-		notificationUsecase: notificationUsecase,
-		settingsRepo:        settingsRepo,
+		bookingRepo:		bookingRepo,
+		eventRepo:		eventRepo,
+		roleRepo:		roleRepo,
+		notificationUsecase:	notificationUsecase,
+		settingsRepo:		settingsRepo,
 	}
 }
 
@@ -74,9 +74,9 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 		baseTotal += tt.Price * float64(req.Quantity)
 
 		bookingTickets = append(bookingTickets, domain.BookingTicket{
-			BookingID:    bookingID,
-			TicketTypeID: req.TicketTypeID,
-			Quantity:     req.Quantity,
+			BookingID:	bookingID,
+			TicketTypeID:	req.TicketTypeID,
+			Quantity:	req.Quantity,
 		})
 	}
 
@@ -104,13 +104,13 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 	totalAmount := baseTotal + userFee
 
 	booking := &domain.Booking{
-		ID:          bookingID,
-		UserID:      userID,
-		EventID:     eventID,
-		Status:      "reserved",
-		TotalAmount: totalAmount,
-		ExpiresAt:   expiresAt,
-		CreatedAt:   now,
+		ID:		bookingID,
+		UserID:		userID,
+		EventID:	eventID,
+		Status:		"reserved",
+		TotalAmount:	totalAmount,
+		ExpiresAt:	expiresAt,
+		CreatedAt:	now,
 	}
 
 	err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
@@ -147,10 +147,10 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
 			"Booking reserved",
 			"Booking reserved. Complete payment before expiry.",
 			map[string]interface{}{
-				"booking_id":  booking.ID,
-				"event_id":    booking.EventID,
-				"event_title": event.Title,
-				"expires_at":  booking.ExpiresAt,
+				"booking_id":	booking.ID,
+				"event_id":	booking.EventID,
+				"event_title":	event.Title,
+				"expires_at":	booking.ExpiresAt,
 			},
 		); notifyErr != nil {
 			logger.Log.Warn().
@@ -241,12 +241,12 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
 			"Booking cancelled",
 			"A user cancelled ticket(s) for your event.",
 			map[string]interface{}{
-				"booking_id":            bookingID,
-				"event_id":              booking.EventID,
-				"event_title":           event.Title,
-				"cancelled_by_user_id":  userID,
-				"cancelled_items_count": len(items),
-				"is_refundable":         isRefundable,
+				"booking_id":			bookingID,
+				"event_id":			booking.EventID,
+				"event_title":			event.Title,
+				"cancelled_by_user_id":		userID,
+				"cancelled_items_count":	len(items),
+				"is_refundable":		isRefundable,
 			},
 		); notifyErr != nil {
 			logger.Log.Warn().
@@ -336,10 +336,10 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
 			"Payment successful",
 			"Payment successful via wallet. Tickets confirmed.",
 			map[string]interface{}{
-				"booking_id":  booking.ID,
-				"event_id":    booking.EventID,
-				"event_title": event.Title,
-				"amount":      booking.TotalAmount,
+				"booking_id":	booking.ID,
+				"event_id":	booking.EventID,
+				"event_title":	event.Title,
+				"amount":	booking.TotalAmount,
 			},
 		)
 
@@ -349,9 +349,9 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
 			"Your tickets are generated",
 			"Your tickets are generated",
 			map[string]interface{}{
-				"booking_id":  booking.ID,
-				"event_id":    booking.EventID,
-				"event_title": event.Title,
+				"booking_id":	booking.ID,
+				"event_id":	booking.EventID,
+				"event_title":	event.Title,
 			},
 		)
 	}

@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -11,11 +9,9 @@ import (
 	time "time"
 )
 
-
 type EventRepository struct {
 	mock.Mock
 }
-
 
 func (_m *EventRepository) AdminSearchEvents(search string, status string, page int, limit int) ([]domain.AdminEventDetails, int64, error) {
 	ret := _m.Called(search, status, page, limit)
@@ -53,7 +49,6 @@ func (_m *EventRepository) AdminSearchEvents(search string, status string, page 
 	return r0, r1, r2
 }
 
-
 func (_m *EventRepository) ApproveEvent(ctx context.Context, eventID string) error {
 	ret := _m.Called(ctx, eventID)
 
@@ -70,7 +65,6 @@ func (_m *EventRepository) ApproveEvent(ctx context.Context, eventID string) err
 
 	return r0
 }
-
 
 func (_m *EventRepository) CancelLiveEvent(ctx context.Context, eventID string, organizerID string) error {
 	ret := _m.Called(ctx, eventID, organizerID)
@@ -89,7 +83,6 @@ func (_m *EventRepository) CancelLiveEvent(ctx context.Context, eventID string, 
 	return r0
 }
 
-
 func (_m *EventRepository) CreateEvent(ctx context.Context, event *domain.Event, details *domain.EventDetails, tickets []domain.TicketType, personnels []domain.EventPersonnel) error {
 	ret := _m.Called(ctx, event, details, tickets, personnels)
 
@@ -107,7 +100,6 @@ func (_m *EventRepository) CreateEvent(ctx context.Context, event *domain.Event,
 	return r0
 }
 
-
 func (_m *EventRepository) DeleteEvent(ctx context.Context, eventID string) error {
 	ret := _m.Called(ctx, eventID)
 
@@ -124,7 +116,6 @@ func (_m *EventRepository) DeleteEvent(ctx context.Context, eventID string) erro
 
 	return r0
 }
-
 
 func (_m *EventRepository) FindPastLiveEvents(ctx context.Context, now time.Time) ([]domain.Event, error) {
 	ret := _m.Called(ctx, now)
@@ -155,9 +146,8 @@ func (_m *EventRepository) FindPastLiveEvents(ctx context.Context, now time.Time
 	return r0, r1
 }
 
-
-func (_m *EventRepository) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) {
-	ret := _m.Called()
+func (_m *EventRepository) GetAdminDashboardStats(span string, groupBy string) (*domain.AdminDashboardStats, error) {
+	ret := _m.Called(span, groupBy)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAdminDashboardStats")
@@ -165,19 +155,19 @@ func (_m *EventRepository) GetAdminDashboardStats() (*domain.AdminDashboardStats
 
 	var r0 *domain.AdminDashboardStats
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (*domain.AdminDashboardStats, error)); ok {
-		return rf()
+	if rf, ok := ret.Get(0).(func(string, string) (*domain.AdminDashboardStats, error)); ok {
+		return rf(span, groupBy)
 	}
-	if rf, ok := ret.Get(0).(func() *domain.AdminDashboardStats); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string, string) *domain.AdminDashboardStats); ok {
+		r0 = rf(span, groupBy)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.AdminDashboardStats)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(span, groupBy)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -185,9 +175,8 @@ func (_m *EventRepository) GetAdminDashboardStats() (*domain.AdminDashboardStats
 	return r0, r1
 }
 
-
-func (_m *EventRepository) GetAdminRevenueReport(startDate time.Time, endDate time.Time) (*domain.AdminRevenueReport, error) {
-	ret := _m.Called(startDate, endDate)
+func (_m *EventRepository) GetAdminRevenueReport(startDate time.Time, endDate time.Time, groupBy string) (*domain.AdminRevenueReport, error) {
+	ret := _m.Called(startDate, endDate, groupBy)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAdminRevenueReport")
@@ -195,26 +184,25 @@ func (_m *EventRepository) GetAdminRevenueReport(startDate time.Time, endDate ti
 
 	var r0 *domain.AdminRevenueReport
 	var r1 error
-	if rf, ok := ret.Get(0).(func(time.Time, time.Time) (*domain.AdminRevenueReport, error)); ok {
-		return rf(startDate, endDate)
+	if rf, ok := ret.Get(0).(func(time.Time, time.Time, string) (*domain.AdminRevenueReport, error)); ok {
+		return rf(startDate, endDate, groupBy)
 	}
-	if rf, ok := ret.Get(0).(func(time.Time, time.Time) *domain.AdminRevenueReport); ok {
-		r0 = rf(startDate, endDate)
+	if rf, ok := ret.Get(0).(func(time.Time, time.Time, string) *domain.AdminRevenueReport); ok {
+		r0 = rf(startDate, endDate, groupBy)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.AdminRevenueReport)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(time.Time, time.Time) error); ok {
-		r1 = rf(startDate, endDate)
+	if rf, ok := ret.Get(1).(func(time.Time, time.Time, string) error); ok {
+		r1 = rf(startDate, endDate, groupBy)
 	} else {
 		r1 = ret.Error(1)
 	}
 
 	return r0, r1
 }
-
 
 func (_m *EventRepository) GetDashboardStats(organizerID string) (*domain.OrganizerDashboardStats, error) {
 	ret := _m.Called(organizerID)
@@ -245,7 +233,6 @@ func (_m *EventRepository) GetDashboardStats(organizerID string) (*domain.Organi
 	return r0, r1
 }
 
-
 func (_m *EventRepository) GetEventByID(eventID string) (*domain.Event, error) {
 	ret := _m.Called(eventID)
 
@@ -274,7 +261,6 @@ func (_m *EventRepository) GetEventByID(eventID string) (*domain.Event, error) {
 
 	return r0, r1
 }
-
 
 func (_m *EventRepository) GetEventBySlug(slug string) (*domain.Event, error) {
 	ret := _m.Called(slug)
@@ -305,7 +291,6 @@ func (_m *EventRepository) GetEventBySlug(slug string) (*domain.Event, error) {
 	return r0, r1
 }
 
-
 func (_m *EventRepository) GetEventDetails(eventID string) (*domain.EventDetails, error) {
 	ret := _m.Called(eventID)
 
@@ -334,7 +319,6 @@ func (_m *EventRepository) GetEventDetails(eventID string) (*domain.EventDetails
 
 	return r0, r1
 }
-
 
 func (_m *EventRepository) GetEventPersonnels(eventID string) ([]domain.EventPersonnel, error) {
 	ret := _m.Called(eventID)
@@ -365,7 +349,6 @@ func (_m *EventRepository) GetEventPersonnels(eventID string) ([]domain.EventPer
 	return r0, r1
 }
 
-
 func (_m *EventRepository) GetEventsByOrganizerID(organizerID string, status string) ([]domain.Event, error) {
 	ret := _m.Called(organizerID, status)
 
@@ -394,7 +377,6 @@ func (_m *EventRepository) GetEventsByOrganizerID(organizerID string, status str
 
 	return r0, r1
 }
-
 
 func (_m *EventRepository) GetSalesReport(organizerID string, eventID string, startDate string, endDate string) (*domain.SalesReportStats, error) {
 	ret := _m.Called(organizerID, eventID, startDate, endDate)
@@ -425,7 +407,6 @@ func (_m *EventRepository) GetSalesReport(organizerID string, eventID string, st
 	return r0, r1
 }
 
-
 func (_m *EventRepository) GetTicketTypesByEventID(eventID string) ([]domain.TicketType, error) {
 	ret := _m.Called(eventID)
 
@@ -454,7 +435,6 @@ func (_m *EventRepository) GetTicketTypesByEventID(eventID string) ([]domain.Tic
 
 	return r0, r1
 }
-
 
 func (_m *EventRepository) ListLiveEvents(city string, category string, search string, sortBy string, minPrice string, maxPrice string, startDate string, endDate string, page int, limit int) ([]domain.Event, int64, float64, float64, error) {
 	ret := _m.Called(city, category, search, sortBy, minPrice, maxPrice, startDate, endDate, page, limit)
@@ -506,7 +486,6 @@ func (_m *EventRepository) ListLiveEvents(city string, category string, search s
 	return r0, r1, r2, r3, r4
 }
 
-
 func (_m *EventRepository) RejectEvent(ctx context.Context, eventID string, adminID string, reason string) error {
 	ret := _m.Called(ctx, eventID, adminID, reason)
 
@@ -523,7 +502,6 @@ func (_m *EventRepository) RejectEvent(ctx context.Context, eventID string, admi
 
 	return r0
 }
-
 
 func (_m *EventRepository) RejectEventCancellation(ctx context.Context, eventID string, adminID string, reason string) error {
 	ret := _m.Called(ctx, eventID, adminID, reason)
@@ -542,7 +520,6 @@ func (_m *EventRepository) RejectEventCancellation(ctx context.Context, eventID 
 	return r0
 }
 
-
 func (_m *EventRepository) RequestEventCancellation(ctx context.Context, eventID string, organizerID string, reason string) error {
 	ret := _m.Called(ctx, eventID, organizerID, reason)
 
@@ -559,7 +536,6 @@ func (_m *EventRepository) RequestEventCancellation(ctx context.Context, eventID
 
 	return r0
 }
-
 
 func (_m *EventRepository) SettleEventEarnings(ctx context.Context, eventID string, organizerID string, totalAmount float64) error {
 	ret := _m.Called(ctx, eventID, organizerID, totalAmount)
@@ -578,7 +554,6 @@ func (_m *EventRepository) SettleEventEarnings(ctx context.Context, eventID stri
 	return r0
 }
 
-
 func (_m *EventRepository) SuspendLiveEvent(ctx context.Context, eventID string, adminID string, reason string) error {
 	ret := _m.Called(ctx, eventID, adminID, reason)
 
@@ -595,7 +570,6 @@ func (_m *EventRepository) SuspendLiveEvent(ctx context.Context, eventID string,
 
 	return r0
 }
-
 
 func (_m *EventRepository) UpdateEvent(ctx context.Context, eventID string, eventUpdates map[string]interface{}, detailUpdates map[string]interface{}, ticketUpdates []domain.TicketType, personnelUpdates []domain.EventPersonnel) error {
 	ret := _m.Called(ctx, eventID, eventUpdates, detailUpdates, ticketUpdates, personnelUpdates)
@@ -614,7 +588,6 @@ func (_m *EventRepository) UpdateEvent(ctx context.Context, eventID string, even
 	return r0
 }
 
-
 func (_m *EventRepository) UpdateEventStatus(ctx context.Context, eventID string, status string) error {
 	ret := _m.Called(ctx, eventID, status)
 
@@ -631,8 +604,6 @@ func (_m *EventRepository) UpdateEventStatus(ctx context.Context, eventID string
 
 	return r0
 }
-
-
 
 func NewEventRepository(t interface {
 	mock.TestingT

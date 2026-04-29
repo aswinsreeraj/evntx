@@ -1,14 +1,10 @@
-
-
 package mocks
 
 import mock "github.com/stretchr/testify/mock"
 
-
 type EmailSender struct {
 	mock.Mock
 }
-
 
 func (_m *EmailSender) SendOTP(email string, otp string) error {
 	ret := _m.Called(email, otp)
@@ -27,7 +23,6 @@ func (_m *EmailSender) SendOTP(email string, otp string) error {
 	return r0
 }
 
-
 func (_m *EmailSender) SendOrganizerApproval(email string, name string) error {
 	ret := _m.Called(email, name)
 
@@ -44,8 +39,6 @@ func (_m *EmailSender) SendOrganizerApproval(email string, name string) error {
 
 	return r0
 }
-
-
 
 func NewEmailSender(t interface {
 	mock.TestingT

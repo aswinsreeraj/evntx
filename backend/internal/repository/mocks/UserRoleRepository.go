@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type UserRoleRepository struct {
 	mock.Mock
 }
-
 
 func (_m *UserRoleRepository) AddRole(userID string, role domain.UserRole) error {
 	ret := _m.Called(userID, role)
@@ -29,7 +25,6 @@ func (_m *UserRoleRepository) AddRole(userID string, role domain.UserRole) error
 
 	return r0
 }
-
 
 func (_m *UserRoleRepository) GetRolesByUserID(userID string) ([]domain.UserRole, error) {
 	ret := _m.Called(userID)
@@ -60,7 +55,6 @@ func (_m *UserRoleRepository) GetRolesByUserID(userID string) ([]domain.UserRole
 	return r0, r1
 }
 
-
 func (_m *UserRoleRepository) RemoveRole(userID string, role domain.UserRole) error {
 	ret := _m.Called(userID, role)
 
@@ -77,8 +71,6 @@ func (_m *UserRoleRepository) RemoveRole(userID string, role domain.UserRole) er
 
 	return r0
 }
-
-
 
 func NewUserRoleRepository(t interface {
 	mock.TestingT

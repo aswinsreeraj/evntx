@@ -11,8 +11,8 @@ import (
 )
 
 type client struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
+	limiter		*rate.Limiter
+	lastSeen	time.Time
 }
 
 var clients = make(map[string]*client)

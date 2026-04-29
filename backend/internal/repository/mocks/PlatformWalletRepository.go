@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type PlatformWalletRepository struct {
 	mock.Mock
 }
-
 
 func (_m *PlatformWalletRepository) ApplyPlatformTransaction(txnType string, amount float64, referenceType string, referenceID string) error {
 	ret := _m.Called(txnType, amount, referenceType, referenceID)
@@ -30,7 +26,6 @@ func (_m *PlatformWalletRepository) ApplyPlatformTransaction(txnType string, amo
 	return r0
 }
 
-
 func (_m *PlatformWalletRepository) EnsureExists() error {
 	ret := _m.Called()
 
@@ -47,7 +42,6 @@ func (_m *PlatformWalletRepository) EnsureExists() error {
 
 	return r0
 }
-
 
 func (_m *PlatformWalletRepository) GetPlatformWallet() (*domain.PlatformWallet, error) {
 	ret := _m.Called()
@@ -137,7 +131,6 @@ func (_m *PlatformWalletRepository) GetPlatformTransactions(page int, limit int)
 	}
 	return r0, r1, r2
 }
-
 
 func NewPlatformWalletRepository(t interface {
 	mock.TestingT

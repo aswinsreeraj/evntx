@@ -12,23 +12,23 @@ import (
 )
 
 type PlatformWalletModel struct {
-	ID               string    `gorm:"type:uuid;primaryKey"`
-	AvailableBalance float64   `gorm:"type:numeric(18,2);default:0;not null"`
-	PendingBalance   float64   `gorm:"type:numeric(18,2);default:0;not null"`
-	RefundReserve    float64   `gorm:"type:numeric(18,2);default:0;not null"`
-	TotalCredited    float64   `gorm:"type:numeric(18,2);default:0;not null"`
-	TotalDebited     float64   `gorm:"type:numeric(18,2);default:0;not null"`
-	UpdatedAt        time.Time `gorm:"not null"`
+	ID			string		`gorm:"type:uuid;primaryKey"`
+	AvailableBalance	float64		`gorm:"type:numeric(18,2);default:0;not null"`
+	PendingBalance		float64		`gorm:"type:numeric(18,2);default:0;not null"`
+	RefundReserve		float64		`gorm:"type:numeric(18,2);default:0;not null"`
+	TotalCredited		float64		`gorm:"type:numeric(18,2);default:0;not null"`
+	TotalDebited		float64		`gorm:"type:numeric(18,2);default:0;not null"`
+	UpdatedAt		time.Time	`gorm:"not null"`
 }
 
 type PlatformWalletTransactionModel struct {
-	ID            string    `gorm:"type:uuid;primaryKey"`
-	WalletID      string    `gorm:"type:uuid;index;not null"`
-	Type          string    `gorm:"size:2;not null"`
-	Amount        float64   `gorm:"type:numeric(18,2);not null"`
-	ReferenceType string    `gorm:"not null"`
-	ReferenceID   string    `gorm:"not null"`
-	CreatedAt     time.Time `gorm:"not null"`
+	ID		string		`gorm:"type:uuid;primaryKey"`
+	WalletID	string		`gorm:"type:uuid;index;not null"`
+	Type		string		`gorm:"size:2;not null"`
+	Amount		float64		`gorm:"type:numeric(18,2);not null"`
+	ReferenceType	string		`gorm:"not null"`
+	ReferenceID	string		`gorm:"not null"`
+	CreatedAt	time.Time	`gorm:"not null"`
 }
 
 type platformWalletGormRepository struct {
@@ -41,13 +41,13 @@ func NewPlatformWalletGormRepository(db *gorm.DB) *platformWalletGormRepository 
 
 func (r *platformWalletGormRepository) EnsureExists() error {
 	wallet := PlatformWalletModel{
-		ID:               domain.PlatformWalletID,
-		AvailableBalance: 0,
-		PendingBalance:   0,
-		RefundReserve:    0,
-		TotalCredited:    0,
-		TotalDebited:     0,
-		UpdatedAt:        time.Now(),
+		ID:			domain.PlatformWalletID,
+		AvailableBalance:	0,
+		PendingBalance:		0,
+		RefundReserve:		0,
+		TotalCredited:		0,
+		TotalDebited:		0,
+		UpdatedAt:		time.Now(),
 	}
 	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&wallet).Error
 }
@@ -58,13 +58,13 @@ func (r *platformWalletGormRepository) GetPlatformWallet() (*domain.PlatformWall
 		return nil, err
 	}
 	return &domain.PlatformWallet{
-		ID:               model.ID,
-		AvailableBalance: model.AvailableBalance,
-		PendingBalance:   model.PendingBalance,
-		RefundReserve:    model.RefundReserve,
-		TotalCredited:    model.TotalCredited,
-		TotalDebited:     model.TotalDebited,
-		UpdatedAt:        model.UpdatedAt,
+		ID:			model.ID,
+		AvailableBalance:	model.AvailableBalance,
+		PendingBalance:		model.PendingBalance,
+		RefundReserve:		model.RefundReserve,
+		TotalCredited:		model.TotalCredited,
+		TotalDebited:		model.TotalDebited,
+		UpdatedAt:		model.UpdatedAt,
 	}, nil
 }
 
@@ -75,8 +75,8 @@ func (r *platformWalletGormRepository) GetPlatformWalletStats() (*domain.Platfor
 	}
 
 	type aggRow struct {
-		ReferenceType string
-		Total         float64
+		ReferenceType	string
+		Total		float64
 	}
 	var rows []aggRow
 	if err := r.db.Raw(`
@@ -93,24 +93,20 @@ func (r *platformWalletGormRepository) GetPlatformWalletStats() (*domain.Platfor
 		agg[row.ReferenceType] = row.Total
 	}
 
-	// Platform fees = only the fees collected per booking
 	totalFees := math.Round((agg[domain.PlatformRefTypePayment]+agg[domain.PlatformRefTypeEarning])*100) / 100
 
-	// Total revenue = total gross ticket sales (pure base ticket revenue distributed to organizers)
 	var grossTicketRevenue float64
 	r.db.Table("wallet_transaction_models").
 		Where("reference_type = ?", domain.WalletReferenceTypeEarning).
 		Select("COALESCE(SUM(amount), 0)").Scan(&grossTicketRevenue)
 	totalRevenue := math.Round(grossTicketRevenue*100) / 100
 
-	// Total Payouts = sum of all approved or completed payout requests
 	var totalPayouts float64
 	r.db.Table("payout_requests").
 		Where("status IN ?", []string{string(domain.PayoutStatusApproved), string(domain.PayoutStatusCompleted)}).
 		Select("COALESCE(SUM(amount), 0)").Scan(&totalPayouts)
 	totalPayouts = math.Round(totalPayouts*100) / 100
 
-	// Total Refunds = sum of all user refunds across wallets
 	var userRefunds float64
 	r.db.Table("wallet_transaction_models").
 		Where("reference_type IN ? AND type = ?", []string{
@@ -124,12 +120,12 @@ func (r *platformWalletGormRepository) GetPlatformWalletStats() (*domain.Platfor
 	availableBalance := math.Round((totalFees)*100) / 100
 
 	return &domain.PlatformWalletStats{
-		AvailableBalance: availableBalance,
-		TotalRevenue:     totalRevenue,
-		TotalFees:        totalFees,
-		TotalPayouts:     totalPayouts,
-		TotalRefunds:     totalRefunds,
-		UpdatedAt:        wallet.UpdatedAt,
+		AvailableBalance:	availableBalance,
+		TotalRevenue:		totalRevenue,
+		TotalFees:		totalFees,
+		TotalPayouts:		totalPayouts,
+		TotalRefunds:		totalRefunds,
+		UpdatedAt:		wallet.UpdatedAt,
 	}, nil
 }
 
@@ -153,18 +149,17 @@ func (r *platformWalletGormRepository) GetPlatformTransactions(page, limit int) 
 	txns := make([]domain.PlatformWalletTransaction, 0, len(models))
 	for _, m := range models {
 		txns = append(txns, domain.PlatformWalletTransaction{
-			ID:            m.ID,
-			WalletID:      m.WalletID,
-			Type:          m.Type,
-			Amount:        m.Amount,
-			ReferenceType: m.ReferenceType,
-			ReferenceID:   m.ReferenceID,
-			CreatedAt:     m.CreatedAt,
+			ID:		m.ID,
+			WalletID:	m.WalletID,
+			Type:		m.Type,
+			Amount:		m.Amount,
+			ReferenceType:	m.ReferenceType,
+			ReferenceID:	m.ReferenceID,
+			CreatedAt:	m.CreatedAt,
 		})
 	}
 	return txns, total, nil
 }
-
 
 func (r *platformWalletGormRepository) ApplyPlatformTransaction(
 	txnType string,
@@ -188,13 +183,13 @@ func (r *platformWalletGormRepository) ApplyPlatformTransaction(
 		}
 
 		if err := tx.Create(&PlatformWalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      domain.PlatformWalletID,
-			Type:          txnType,
-			Amount:        normalized,
-			ReferenceType: referenceType,
-			ReferenceID:   referenceID,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	domain.PlatformWalletID,
+			Type:		txnType,
+			Amount:		normalized,
+			ReferenceType:	referenceType,
+			ReferenceID:	referenceID,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -216,12 +211,12 @@ func (r *platformWalletGormRepository) ApplyPlatformTransaction(
 			Where("id = ?", domain.PlatformWalletID).
 			Select("available_balance", "pending_balance", "refund_reserve", "total_credited", "total_debited", "updated_at").
 			Updates(PlatformWalletModel{
-				AvailableBalance: wallet.AvailableBalance,
-				PendingBalance:   wallet.PendingBalance,
-				RefundReserve:    wallet.RefundReserve,
-				TotalCredited:    wallet.TotalCredited,
-				TotalDebited:     wallet.TotalDebited,
-				UpdatedAt:        wallet.UpdatedAt,
+				AvailableBalance:	wallet.AvailableBalance,
+				PendingBalance:		wallet.PendingBalance,
+				RefundReserve:		wallet.RefundReserve,
+				TotalCredited:		wallet.TotalCredited,
+				TotalDebited:		wallet.TotalDebited,
+				UpdatedAt:		wallet.UpdatedAt,
 			}).Error
 	})
 }

@@ -12,19 +12,19 @@ import (
 )
 
 type PaymentModel struct {
-	ID                string          `gorm:"type:uuid;primaryKey" json:"id"`
-	BookingID         string          `gorm:"type:uuid;index;not null" json:"booking_id"`
-	Provider          string          `gorm:"not null" json:"provider"`
-	ProviderReference string          `gorm:"uniqueIndex;not null" json:"provider_reference"`
-	Amount            float64         `gorm:"type:numeric(12,2);not null" json:"amount"`
-	Status            string          `gorm:"not null" json:"status"`
-	RawResponse       json.RawMessage `gorm:"type:jsonb" json:"raw_response"`
-	CreatedAt         time.Time       `json:"created_at"`
+	ID			string		`gorm:"type:uuid;primaryKey" json:"id"`
+	BookingID		string		`gorm:"type:uuid;index;not null" json:"booking_id"`
+	Provider		string		`gorm:"not null" json:"provider"`
+	ProviderReference	string		`gorm:"uniqueIndex;not null" json:"provider_reference"`
+	Amount			float64		`gorm:"type:numeric(12,2);not null" json:"amount"`
+	Status			string		`gorm:"not null" json:"status"`
+	RawResponse		json.RawMessage	`gorm:"type:jsonb" json:"raw_response"`
+	CreatedAt		time.Time	`json:"created_at"`
 }
 
 type paymentGormRepository struct {
-	db           *gorm.DB
-	settingsRepo *settingsGormRepository
+	db		*gorm.DB
+	settingsRepo	*settingsGormRepository
 }
 
 func NewPaymentGormRepository(db *gorm.DB, settingsRepo *settingsGormRepository) *paymentGormRepository {
@@ -33,14 +33,14 @@ func NewPaymentGormRepository(db *gorm.DB, settingsRepo *settingsGormRepository)
 
 func (r *paymentGormRepository) CreatePayment(payment *domain.Payment) error {
 	model := PaymentModel{
-		ID:                payment.ID,
-		BookingID:         payment.BookingID,
-		Provider:          payment.Provider,
-		ProviderReference: payment.ProviderReference,
-		Amount:            payment.Amount,
-		Status:            payment.Status,
-		RawResponse:       payment.RawResponse,
-		CreatedAt:         payment.CreatedAt,
+		ID:			payment.ID,
+		BookingID:		payment.BookingID,
+		Provider:		payment.Provider,
+		ProviderReference:	payment.ProviderReference,
+		Amount:			payment.Amount,
+		Status:			payment.Status,
+		RawResponse:		payment.RawResponse,
+		CreatedAt:		payment.CreatedAt,
 	}
 
 	return r.db.Create(&model).Error
@@ -54,14 +54,14 @@ func (r *paymentGormRepository) FindByProviderReference(orderID string) (*domain
 	}
 
 	return &domain.Payment{
-		ID:                model.ID,
-		BookingID:         model.BookingID,
-		Provider:          model.Provider,
-		ProviderReference: model.ProviderReference,
-		Amount:            model.Amount,
-		Status:            model.Status,
-		RawResponse:       model.RawResponse,
-		CreatedAt:         model.CreatedAt,
+		ID:			model.ID,
+		BookingID:		model.BookingID,
+		Provider:		model.Provider,
+		ProviderReference:	model.ProviderReference,
+		Amount:			model.Amount,
+		Status:			model.Status,
+		RawResponse:		model.RawResponse,
+		CreatedAt:		model.CreatedAt,
 	}, nil
 }
 
@@ -73,14 +73,14 @@ func (r *paymentGormRepository) FindByBookingID(bookingID string) (*domain.Payme
 	}
 
 	return &domain.Payment{
-		ID:                model.ID,
-		BookingID:         model.BookingID,
-		Provider:          model.Provider,
-		ProviderReference: model.ProviderReference,
-		Amount:            model.Amount,
-		Status:            model.Status,
-		RawResponse:       model.RawResponse,
-		CreatedAt:         model.CreatedAt,
+		ID:			model.ID,
+		BookingID:		model.BookingID,
+		Provider:		model.Provider,
+		ProviderReference:	model.ProviderReference,
+		Amount:			model.Amount,
+		Status:			model.Status,
+		RawResponse:		model.RawResponse,
+		CreatedAt:		model.CreatedAt,
 	}, nil
 }
 
@@ -154,22 +154,22 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return err
 		}
 		if err := tx.Create(&PlatformWalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      domain.PlatformWalletID,
-			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        userPlatformFee,
-			ReferenceType: domain.PlatformRefTypePayment,
-			ReferenceID:   bookingID,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	domain.PlatformWalletID,
+			Type:		domain.WalletTransactionTypeCredit,
+			Amount:		userPlatformFee,
+			ReferenceType:	domain.PlatformRefTypePayment,
+			ReferenceID:	bookingID,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
 		platformWallet.AvailableBalance = math.Round((platformWallet.AvailableBalance+userPlatformFee)*100) / 100
 		platformWallet.TotalCredited = math.Round((platformWallet.TotalCredited+userPlatformFee)*100) / 100
 		if err := tx.Model(&PlatformWalletModel{}).Where("id = ?", domain.PlatformWalletID).Updates(map[string]interface{}{
-			"available_balance": platformWallet.AvailableBalance,
-			"total_credited":    platformWallet.TotalCredited,
-			"updated_at":        now,
+			"available_balance":	platformWallet.AvailableBalance,
+			"total_credited":	platformWallet.TotalCredited,
+			"updated_at":		now,
 		}).Error; err != nil {
 			return err
 		}
@@ -182,14 +182,14 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 			return err
 		}
 		if err := tx.Create(&WalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      wallet.ID,
-			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        baseTicketRevenue,
-			ReferenceType: domain.WalletReferenceTypeEarning,
-			ReferenceID:   bookingID,
-			Status:        domain.WalletTransactionStatusCompleted,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	wallet.ID,
+			Type:		domain.WalletTransactionTypeCredit,
+			Amount:		baseTicketRevenue,
+			ReferenceType:	domain.WalletReferenceTypeEarning,
+			ReferenceID:	bookingID,
+			Status:		domain.WalletTransactionStatusCompleted,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -197,10 +197,10 @@ func (r *paymentGormRepository) MarkPaymentSuccess(paymentID string, bookingID s
 		wallet.ReserveBalance = math.Round((wallet.ReserveBalance-userPlatformFee)*100) / 100
 		wallet.TotalCredited = math.Round((wallet.TotalCredited+baseTicketRevenue)*100) / 100
 		if err := tx.Model(&WalletModel{}).Where("id = ?", wallet.ID).Updates(map[string]interface{}{
-			"pending_balance": wallet.PendingBalance,
-			"reserve_balance": wallet.ReserveBalance,
-			"total_credited":  wallet.TotalCredited,
-			"updated_at":      now,
+			"pending_balance":	wallet.PendingBalance,
+			"reserve_balance":	wallet.ReserveBalance,
+			"total_credited":	wallet.TotalCredited,
+			"updated_at":		now,
 		}).Error; err != nil {
 			return err
 		}
@@ -239,13 +239,13 @@ func (r *paymentGormRepository) RefundPaymentToWallet(
 			return apiErrors.ErrInsufficientBalance
 		}
 		if err := tx.Create(&PlatformWalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      domain.PlatformWalletID,
-			Type:          domain.WalletTransactionTypeDebit,
-			Amount:        totalDebited,
-			ReferenceType: domain.PlatformRefTypeRefund,
-			ReferenceID:   bookingID,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	domain.PlatformWalletID,
+			Type:		domain.WalletTransactionTypeDebit,
+			Amount:		totalDebited,
+			ReferenceType:	domain.PlatformRefTypeRefund,
+			ReferenceID:	bookingID,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -256,9 +256,9 @@ func (r *paymentGormRepository) RefundPaymentToWallet(
 			Where("id = ?", domain.PlatformWalletID).
 			Select("available_balance", "total_debited", "updated_at").
 			Updates(PlatformWalletModel{
-				AvailableBalance: platformWallet.AvailableBalance,
-				TotalDebited:     platformWallet.TotalDebited,
-				UpdatedAt:        platformWallet.UpdatedAt,
+				AvailableBalance:	platformWallet.AvailableBalance,
+				TotalDebited:		platformWallet.TotalDebited,
+				UpdatedAt:		platformWallet.UpdatedAt,
 			}).Error; err != nil {
 			return err
 		}
@@ -275,14 +275,14 @@ func (r *paymentGormRepository) RefundPaymentToWallet(
 			return err
 		}
 		if err := tx.Create(&WalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      wallet.ID,
-			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        normalizedRefundAmount,
-			ReferenceType: domain.WalletReferenceTypeRefund,
-			ReferenceID:   bookingID,
-			Status:        domain.WalletTransactionStatusCompleted,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	wallet.ID,
+			Type:		domain.WalletTransactionTypeCredit,
+			Amount:		normalizedRefundAmount,
+			ReferenceType:	domain.WalletReferenceTypeRefund,
+			ReferenceID:	bookingID,
+			Status:		domain.WalletTransactionStatusCompleted,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -293,10 +293,9 @@ func (r *paymentGormRepository) RefundPaymentToWallet(
 			Where("id = ?", wallet.ID).
 			Select("available_balance", "total_credited", "updated_at").
 			Updates(WalletModel{
-				AvailableBalance: wallet.AvailableBalance,
-				TotalCredited:    wallet.TotalCredited,
-				UpdatedAt:        wallet.UpdatedAt,
+				AvailableBalance:	wallet.AvailableBalance,
+				TotalCredited:		wallet.TotalCredited,
+				UpdatedAt:		wallet.UpdatedAt,
 			}).Error
 	})
 }
-

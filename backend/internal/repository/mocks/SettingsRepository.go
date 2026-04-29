@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type SettingsRepository struct {
 	mock.Mock
 }
-
 
 func (_m *SettingsRepository) GetPaymentProviderConfig(provider string) (*domain.PaymentSettings, error) {
 	ret := _m.Called(provider)
@@ -42,7 +38,6 @@ func (_m *SettingsRepository) GetPaymentProviderConfig(provider string) (*domain
 	return r0, r1
 }
 
-
 func (_m *SettingsRepository) GetPaymentSettings() ([]domain.PaymentSettings, error) {
 	ret := _m.Called()
 
@@ -71,7 +66,6 @@ func (_m *SettingsRepository) GetPaymentSettings() ([]domain.PaymentSettings, er
 
 	return r0, r1
 }
-
 
 func (_m *SettingsRepository) GetPlatformSettings() (*domain.PlatformSettings, error) {
 	ret := _m.Called()
@@ -102,7 +96,6 @@ func (_m *SettingsRepository) GetPlatformSettings() (*domain.PlatformSettings, e
 	return r0, r1
 }
 
-
 func (_m *SettingsRepository) UpdatePaymentProvider(provider string, isEnabled bool, config map[string]interface{}) error {
 	ret := _m.Called(provider, isEnabled, config)
 
@@ -120,7 +113,6 @@ func (_m *SettingsRepository) UpdatePaymentProvider(provider string, isEnabled b
 	return r0
 }
 
-
 func (_m *SettingsRepository) UpdatePlatformSettings(s *domain.PlatformSettings) error {
 	ret := _m.Called(s)
 
@@ -137,8 +129,6 @@ func (_m *SettingsRepository) UpdatePlatformSettings(s *domain.PlatformSettings)
 
 	return r0
 }
-
-
 
 func NewSettingsRepository(t interface {
 	mock.TestingT

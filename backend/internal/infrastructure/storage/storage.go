@@ -24,7 +24,7 @@ var defaultUploader Uploader
 func Init() error {
 	driver := os.Getenv("STORAGE_DRIVER")
 	if driver == "" {
-		driver = "local" // Default to local for dev
+		driver = "local"
 	}
 
 	if driver == "s3" {
@@ -57,14 +57,14 @@ func Init() error {
 		}
 
 		defaultUploader = &S3Uploader{
-			client: s3.NewFromConfig(cfg),
-			bucket: bucket,
-			region: region,
+			client:	s3.NewFromConfig(cfg),
+			bucket:	bucket,
+			region:	region,
 		}
 		logger.Log.Info().Str("bucket", bucket).Str("region", region).Msg("S3 storage initialized")
 
 	} else {
-		// Initialize local storage
+
 		baseURL := os.Getenv("API_BASE_URL")
 		if baseURL == "" {
 			baseURL = "http://localhost:8080"
@@ -77,8 +77,8 @@ func Init() error {
 		}
 
 		defaultUploader = &LocalUploader{
-			baseURL:   baseURL,
-			uploadDir: uploadDir,
+			baseURL:	baseURL,
+			uploadDir:	uploadDir,
 		}
 		logger.Log.Info().Str("dir", uploadDir).Str("baseURL", baseURL).Msg("Local storage initialized")
 	}
@@ -93,19 +93,18 @@ func UploadFile(ctx context.Context, key string, contentType string, body io.Rea
 	return defaultUploader.UploadFile(ctx, key, contentType, body)
 }
 
-// S3Uploader implementation
 type S3Uploader struct {
-	client *s3.Client
-	bucket string
-	region string
+	client	*s3.Client
+	bucket	string
+	region	string
 }
 
 func (u *S3Uploader) UploadFile(ctx context.Context, key string, contentType string, body io.Reader) (string, error) {
 	_, err := u.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(u.bucket),
-		Key:         aws.String(key),
-		Body:        body,
-		ContentType: aws.String(contentType),
+		Bucket:		aws.String(u.bucket),
+		Key:		aws.String(key),
+		Body:		body,
+		ContentType:	aws.String(contentType),
 	})
 	if err != nil {
 		logger.Log.Error().Err(err).Str("bucket", u.bucket).Str("key", key).Msg("S3 upload failed")
@@ -117,15 +116,14 @@ func (u *S3Uploader) UploadFile(ctx context.Context, key string, contentType str
 	return url, nil
 }
 
-// LocalUploader implementation
 type LocalUploader struct {
-	baseURL   string
-	uploadDir string
+	baseURL		string
+	uploadDir	string
 }
 
 func (u *LocalUploader) UploadFile(ctx context.Context, key string, contentType string, body io.Reader) (string, error) {
 	fullPath := filepath.Join(u.uploadDir, key)
-	
+
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		logger.Log.Error().Err(err).Str("dir", dir).Msg("Failed to create local directory for upload")

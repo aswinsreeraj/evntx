@@ -39,14 +39,14 @@ func (u *NotificationUsecase) SendNotification(
 	}
 
 	notification := &domain.Notification{
-		ID:        uuid.NewString(),
-		UserID:    userID,
-		Type:      notificationType,
-		Title:     title,
-		Message:   message,
-		IsRead:    false,
-		Metadata:  rawMetadata,
-		CreatedAt: time.Now(),
+		ID:		uuid.NewString(),
+		UserID:		userID,
+		Type:		notificationType,
+		Title:		title,
+		Message:	message,
+		IsRead:		false,
+		Metadata:	rawMetadata,
+		CreatedAt:	time.Now(),
 	}
 
 	return u.repo.CreateNotification(notification)

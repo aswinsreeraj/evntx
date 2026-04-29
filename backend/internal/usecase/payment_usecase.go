@@ -16,12 +16,12 @@ import (
 )
 
 type PaymentUsecase struct {
-	bookingRepo         repository.BookingRepository
-	eventRepo           repository.EventRepository
-	paymentRepo         repository.PaymentRepository
-	razorpayService     repository.RazorpayService
-	notificationUsecase *NotificationUsecase
-	engagementRepo      repository.EngagementRepository
+	bookingRepo		repository.BookingRepository
+	eventRepo		repository.EventRepository
+	paymentRepo		repository.PaymentRepository
+	razorpayService		repository.RazorpayService
+	notificationUsecase	*NotificationUsecase
+	engagementRepo		repository.EngagementRepository
 }
 
 func NewPaymentUsecase(
@@ -33,12 +33,12 @@ func NewPaymentUsecase(
 	engagementRepo repository.EngagementRepository,
 ) *PaymentUsecase {
 	return &PaymentUsecase{
-		bookingRepo:         bookingRepo,
-		eventRepo:           eventRepo,
-		paymentRepo:         paymentRepo,
-		razorpayService:     razorpayService,
-		notificationUsecase: notificationUsecase,
-		engagementRepo:      engagementRepo,
+		bookingRepo:		bookingRepo,
+		eventRepo:		eventRepo,
+		paymentRepo:		paymentRepo,
+		razorpayService:	razorpayService,
+		notificationUsecase:	notificationUsecase,
+		engagementRepo:		engagementRepo,
 	}
 }
 
@@ -62,14 +62,14 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 
 	if booking.TotalAmount == 0 {
 		payment := &domain.Payment{
-			ID:                uuid.NewString(),
-			BookingID:         booking.ID,
-			Provider:          "free",
-			ProviderReference: "FREE_" + booking.ID,
-			Amount:            0,
-			Status:            domain.PaymentStatusSuccess,
-			RawResponse:       []byte(`{}`),
-			CreatedAt:         time.Now(),
+			ID:			uuid.NewString(),
+			BookingID:		booking.ID,
+			Provider:		"free",
+			ProviderReference:	"FREE_" + booking.ID,
+			Amount:			0,
+			Status:			domain.PaymentStatusSuccess,
+			RawResponse:		[]byte(`{}`),
+			CreatedAt:		time.Now(),
 		}
 
 		if err := u.paymentRepo.CreatePayment(payment); err != nil {
@@ -91,11 +91,11 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 			Msg("free_payment_order_created_and_successful")
 
 		return &domain.PaymentOrderResponse{
-			OrderID:       "FREE_" + booking.ID,
-			Amount:        0,
-			Currency:      "INR",
-			RazorpayKey:   "",
-			IsFreeBooking: true,
+			OrderID:	"FREE_" + booking.ID,
+			Amount:		0,
+			Currency:	"INR",
+			RazorpayKey:	"",
+			IsFreeBooking:	true,
 		}, nil
 	}
 
@@ -106,14 +106,14 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 	}
 
 	payment := &domain.Payment{
-		ID:                uuid.NewString(),
-		BookingID:         booking.ID,
-		Provider:          "razorpay",
-		ProviderReference: order.ID,
-		Amount:            booking.TotalAmount,
-		Status:            domain.PaymentStatusInitiated,
-		RawResponse:       order.RawResponse,
-		CreatedAt:         time.Now(),
+		ID:			uuid.NewString(),
+		BookingID:		booking.ID,
+		Provider:		"razorpay",
+		ProviderReference:	order.ID,
+		Amount:			booking.TotalAmount,
+		Status:			domain.PaymentStatusInitiated,
+		RawResponse:		order.RawResponse,
+		CreatedAt:		time.Now(),
 	}
 
 	if err := u.paymentRepo.CreatePayment(payment); err != nil {
@@ -129,10 +129,10 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 		Msg("payment_order_created")
 
 	return &domain.PaymentOrderResponse{
-		OrderID:     order.ID,
-		Amount:      order.Amount,
-		Currency:    order.Currency,
-		RazorpayKey: u.razorpayService.GetKeyID(),
+		OrderID:	order.ID,
+		Amount:		order.Amount,
+		Currency:	order.Currency,
+		RazorpayKey:	u.razorpayService.GetKeyID(),
 	}, nil
 }
 
@@ -172,8 +172,8 @@ func (u *PaymentUsecase) VerifyPayment(
 					"Payment failed",
 					"Payment failed. Please retry.",
 					map[string]interface{}{
-						"booking_id": payment.BookingID,
-						"payment_id": payment.ID,
+						"booking_id":	payment.BookingID,
+						"payment_id":	payment.ID,
 					},
 				); notifyErr != nil {
 					logger.Log.Warn().
@@ -229,10 +229,10 @@ func (u *PaymentUsecase) VerifyPayment(
 					"Booking expired, refund initiated",
 					"Your payment was captured after booking expiry. We have initiated an automatic refund to your original payment source via Razorpay.",
 					map[string]interface{}{
-						"booking_id": payment.BookingID,
-						"payment_id": payment.ID,
-						"is_late_payment": true,
-						"is_source_refund": true,
+						"booking_id":		payment.BookingID,
+						"payment_id":		payment.ID,
+						"is_late_payment":	true,
+						"is_source_refund":	true,
 					},
 				)
 			}
@@ -269,10 +269,10 @@ func (u *PaymentUsecase) VerifyPayment(
 				"Payment successful",
 				"Payment successful. Tickets confirmed.",
 				map[string]interface{}{
-					"booking_id":  booking.ID,
-					"event_id":    event.ID,
-					"event_title": event.Title,
-					"amount":      payment.Amount,
+					"booking_id":	booking.ID,
+					"event_id":	event.ID,
+					"event_title":	event.Title,
+					"amount":	payment.Amount,
 				},
 			); notifyErr != nil {
 				logger.Log.Warn().
@@ -288,9 +288,9 @@ func (u *PaymentUsecase) VerifyPayment(
 				"Your tickets are generated",
 				"Your tickets are generated",
 				map[string]interface{}{
-					"booking_id":  booking.ID,
-					"event_id":    event.ID,
-					"event_title": event.Title,
+					"booking_id":	booking.ID,
+					"event_id":	event.ID,
+					"event_title":	event.Title,
 				},
 			); notifyErr != nil {
 				logger.Log.Warn().
@@ -312,10 +312,10 @@ func (u *PaymentUsecase) VerifyPayment(
 				"New booking received",
 				"New booking received. You will earn ₹"+strconv.FormatFloat(organizerEarnings, 'f', 2, 64)+" after settlement.",
 				map[string]interface{}{
-					"booking_id":  booking.ID,
-					"event_id":    event.ID,
-					"event_title": event.Title,
-					"amount":      organizerEarnings,
+					"booking_id":	booking.ID,
+					"event_id":	event.ID,
+					"event_title":	event.Title,
+					"amount":	organizerEarnings,
 				},
 			); notifyErr != nil {
 				logger.Log.Warn().

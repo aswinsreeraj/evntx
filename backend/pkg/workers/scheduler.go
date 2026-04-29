@@ -14,14 +14,14 @@ import (
 type JobFunc func(ctx context.Context) error
 
 type CronScheduler struct {
-	cron *cron.Cron
-	repo repository.JobRepository
+	cron	*cron.Cron
+	repo	repository.JobRepository
 }
 
 func NewCronScheduler(repo repository.JobRepository) *CronScheduler {
 	return &CronScheduler{
-		cron: cron.New(),
-		repo: repo,
+		cron:	cron.New(),
+		repo:	repo,
 	}
 }
 
@@ -55,7 +55,7 @@ func (s *CronScheduler) executeJobWithRetries(name string, job JobFunc, maxAttem
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		attempts = attempt
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		
+
 		err := job(ctx)
 		cancel()
 
@@ -66,9 +66,9 @@ func (s *CronScheduler) executeJobWithRetries(name string, job JobFunc, maxAttem
 
 		finalErr = err
 		logger.Log.Warn().Err(err).Str("job", name).Int("attempt", attempt).Msg("Job failed")
-		
+
 		if attempt < maxAttempts {
-			
+
 			time.Sleep(60 * time.Second)
 		}
 	}
@@ -84,13 +84,13 @@ func (s *CronScheduler) executeJobWithRetries(name string, job JobFunc, maxAttem
 	}
 
 	jobLog := &domain.JobLog{
-		ID:           uuid.NewString(),
-		JobName:      name,
-		Status:       status,
-		Attempts:     attempts,
-		ErrorMessage: errMsg,
-		StartedAt:    startedAt,
-		EndedAt:      time.Now(),
+		ID:		uuid.NewString(),
+		JobName:	name,
+		Status:		status,
+		Attempts:	attempts,
+		ErrorMessage:	errMsg,
+		StartedAt:	startedAt,
+		EndedAt:	time.Now(),
 	}
 
 	if s.repo != nil {

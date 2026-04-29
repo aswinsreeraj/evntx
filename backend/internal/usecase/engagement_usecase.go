@@ -19,12 +19,12 @@ func NewEngagementUsecase(repo repository.EngagementRepository) *EngagementUseca
 
 func (u *EngagementUsecase) InitializeSession(ctx context.Context, userID *string, ipAddress, userAgent string) (*domain.VisitorSession, error) {
 	session := &domain.VisitorSession{
-		ID:         uuid.NewString(),
-		UserID:     userID,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
-		CreatedAt:  time.Now(),
-		LastSeenAt: time.Now(),
+		ID:		uuid.NewString(),
+		UserID:		userID,
+		IPAddress:	ipAddress,
+		UserAgent:	userAgent,
+		CreatedAt:	time.Now(),
+		LastSeenAt:	time.Now(),
 	}
 
 	err := u.repo.CreateSession(ctx, session)
@@ -43,14 +43,12 @@ func (u *EngagementUsecase) TrackEvent(
 	eventID *string,
 	metadata, ipAddress, userAgent string,
 ) error {
-	
+
 	_ = u.repo.UpdateSessionLastSeen(ctx, sessionID, userID)
 
-	
 	if eventID != nil && *eventID != "" {
 		if _, err := uuid.Parse(*eventID); err != nil {
-			
-			
+
 			eventID = nil
 		}
 	}
@@ -60,15 +58,15 @@ func (u *EngagementUsecase) TrackEvent(
 	}
 
 	evt := &domain.EngagementEvent{
-		ID:        uuid.NewString(),
-		UserID:    userID,
-		SessionID: sessionID,
-		EventID:   eventID,
-		EventType: eventType,
-		Metadata:  metadata,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		CreatedAt: time.Now(),
+		ID:		uuid.NewString(),
+		UserID:		userID,
+		SessionID:	sessionID,
+		EventID:	eventID,
+		EventType:	eventType,
+		Metadata:	metadata,
+		IPAddress:	ipAddress,
+		UserAgent:	userAgent,
+		CreatedAt:	time.Now(),
 	}
 
 	return u.repo.LogEvent(ctx, evt)

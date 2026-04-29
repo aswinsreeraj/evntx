@@ -20,11 +20,11 @@ import (
 )
 
 type OrganizerHandler struct {
-	eventUsecase      *usecase.EventUsecase
-	userUsecase       *usecase.UserUsecase
-	walletUsecase     *usecase.WalletUsecase
-	engagementUsecase *usecase.EngagementUsecase
-	cache             *cache.Cache
+	eventUsecase		*usecase.EventUsecase
+	userUsecase		*usecase.UserUsecase
+	walletUsecase		*usecase.WalletUsecase
+	engagementUsecase	*usecase.EngagementUsecase
+	cache			*cache.Cache
 }
 
 func NewOrganizerHandler(eu *usecase.EventUsecase, uu *usecase.UserUsecase, wu *usecase.WalletUsecase, engUsecase *usecase.EngagementUsecase, c *cache.Cache) *OrganizerHandler {
@@ -48,16 +48,16 @@ func (h *OrganizerHandler) GetProfile(c *gin.Context) {
 	}
 
 	response.Success(c, "Organizer profile retrieved successfully", gin.H{
-		"id":                user.ID,
-		"name":              user.Name,
-		"email":             user.Email,
-		"mobile":            user.Mobile,
-		"dob":               user.Dob,
-		"gender":            user.Gender,
-		"profile_image":     user.ProfileImage,
-		"locations":         user.Locations,
-		"organization_name": orgName,
-		"address":           address,
+		"id":			user.ID,
+		"name":			user.Name,
+		"email":		user.Email,
+		"mobile":		user.Mobile,
+		"dob":			user.Dob,
+		"gender":		user.Gender,
+		"profile_image":	user.ProfileImage,
+		"locations":		user.Locations,
+		"organization_name":	orgName,
+		"address":		address,
 	})
 }
 
@@ -108,7 +108,6 @@ func (h *OrganizerHandler) GetEngagementReport(c *gin.Context) {
 	startDateStr := c.Query("start_date")
 	endDateStr := c.Query("end_date")
 
-	
 	events, err := h.eventUsecase.GetOrganizerEvents(c.Request.Context(), userID, "")
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to retrieve organizer events"})
@@ -154,11 +153,11 @@ func (h *OrganizerHandler) GetWallet(c *gin.Context) {
 	}
 
 	response.Success(c, "Organizer wallet retrieved successfully", gin.H{
-		"available_balance": wallet.AvailableBalance,
-		"pending_balance":   wallet.PendingBalance,
-		"reserve_balance":   wallet.ReserveBalance,
-		"total_credited":    wallet.TotalCredited,
-		"total_debited":     wallet.TotalDebited,
+		"available_balance":	wallet.AvailableBalance,
+		"pending_balance":	wallet.PendingBalance,
+		"reserve_balance":	wallet.ReserveBalance,
+		"total_credited":	wallet.TotalCredited,
+		"total_debited":	wallet.TotalDebited,
 	})
 }
 
@@ -166,10 +165,10 @@ func (h *OrganizerHandler) AddPayoutCredentials(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		AccountHolderName string `json:"account_holder_name" binding:"required"`
-		AccountNumber     string `json:"account_number" binding:"required"`
-		IFSCCode          string `json:"ifsc_code" binding:"required"`
-		UPIID             string `json:"upi_id"`
+		AccountHolderName	string	`json:"account_holder_name" binding:"required"`
+		AccountNumber		string	`json:"account_number" binding:"required"`
+		IFSCCode		string	`json:"ifsc_code" binding:"required"`
+		UPIID			string	`json:"upi_id"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -203,8 +202,8 @@ func (h *OrganizerHandler) RequestPayout(c *gin.Context) {
 	}
 
 	response.Success(c, "Payout request submitted", gin.H{
-		"amount": req.Amount,
-		"status": "pending",
+		"amount":	req.Amount,
+		"status":	"pending",
 	})
 }
 
@@ -218,44 +217,44 @@ func (h *OrganizerHandler) GetPayouts(c *gin.Context) {
 	}
 
 	response.Success(c, "Payouts retrieved successfully", gin.H{
-		"payouts": payouts,
-		"total":   total,
+		"payouts":	payouts,
+		"total":	total,
 	})
 }
 
 type detailsInput struct {
-	Description        string `json:"description" binding:"required"`
-	VenueAddress       string `json:"venue_address" binding:"required"`
-	MapURL             string `json:"map_url"`
-	TotalCapacity      int    `json:"total_capacity" binding:"required,gt=0"`
-	TermsAndConditions string `json:"terms_and_conditions"`
+	Description		string	`json:"description" binding:"required"`
+	VenueAddress		string	`json:"venue_address" binding:"required"`
+	MapURL			string	`json:"map_url"`
+	TotalCapacity		int	`json:"total_capacity" binding:"required,gt=0"`
+	TermsAndConditions	string	`json:"terms_and_conditions"`
 }
 
 type ticketInput struct {
-	Name          string  `json:"name" binding:"required"`
-	Price         float64 `json:"price" binding:"gte=0"`
-	TotalQuantity int     `json:"total_quantity" binding:"required,gt=0"`
+	Name		string	`json:"name" binding:"required"`
+	Price		float64	`json:"price" binding:"gte=0"`
+	TotalQuantity	int	`json:"total_quantity" binding:"required,gt=0"`
 }
 
 type personnelInput struct {
-	Name        string `json:"name" binding:"required"`
-	Role        string `json:"role" binding:"required"`
-	Image       string `json:"image"`
-	ProfileLink string `json:"profile_link"`
+	Name		string	`json:"name" binding:"required"`
+	Role		string	`json:"role" binding:"required"`
+	Image		string	`json:"image"`
+	ProfileLink	string	`json:"profile_link"`
 }
 
 type createEventRequest struct {
-	Title         string           `json:"title" binding:"required"`
-	City          string           `json:"city" binding:"required"`
-	VenueName     string           `json:"venue_name" binding:"required"`
-	Category      string           `json:"category"`
-	StartTime     time.Time        `json:"start_time" binding:"required"`
-	EndTime       time.Time        `json:"end_time"`
-	Tags          []string         `json:"tags"`
-	CoverImageURL string           `json:"cover_image_url"`
-	Details       detailsInput     `json:"details" binding:"required"`
-	TicketTypes   []ticketInput    `json:"ticket_types" binding:"required,min=1,dive"`
-	KeyPersonnel  []personnelInput `json:"key_personnel" binding:"omitempty,dive"`
+	Title		string			`json:"title" binding:"required"`
+	City		string			`json:"city" binding:"required"`
+	VenueName	string			`json:"venue_name" binding:"required"`
+	Category	string			`json:"category"`
+	StartTime	time.Time		`json:"start_time" binding:"required"`
+	EndTime		time.Time		`json:"end_time"`
+	Tags		[]string		`json:"tags"`
+	CoverImageURL	string			`json:"cover_image_url"`
+	Details		detailsInput		`json:"details" binding:"required"`
+	TicketTypes	[]ticketInput		`json:"ticket_types" binding:"required,min=1,dive"`
+	KeyPersonnel	[]personnelInput	`json:"key_personnel" binding:"omitempty,dive"`
 }
 
 func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
@@ -277,40 +276,40 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 	}
 
 	event := &domain.Event{
-		Title:         req.Title,
-		City:          req.City,
-		VenueName:     req.VenueName,
-		Category:      req.Category,
-		StartTime:     req.StartTime,
-		EndTime:       req.EndTime,
-		Tags:          tagsStr,
-		CoverImageURL: req.CoverImageURL,
+		Title:		req.Title,
+		City:		req.City,
+		VenueName:	req.VenueName,
+		Category:	req.Category,
+		StartTime:	req.StartTime,
+		EndTime:	req.EndTime,
+		Tags:		tagsStr,
+		CoverImageURL:	req.CoverImageURL,
 	}
 
 	details := &domain.EventDetails{
-		Description:        req.Details.Description,
-		VenueAddress:       req.Details.VenueAddress,
-		MapURL:             req.Details.MapURL,
-		TotalCapacity:      req.Details.TotalCapacity,
-		TermsAndConditions: req.Details.TermsAndConditions,
+		Description:		req.Details.Description,
+		VenueAddress:		req.Details.VenueAddress,
+		MapURL:			req.Details.MapURL,
+		TotalCapacity:		req.Details.TotalCapacity,
+		TermsAndConditions:	req.Details.TermsAndConditions,
 	}
 
 	var tickets []domain.TicketType
 	for _, t := range req.TicketTypes {
 		tickets = append(tickets, domain.TicketType{
-			Name:          t.Name,
-			Price:         t.Price,
-			TotalQuantity: t.TotalQuantity,
+			Name:		t.Name,
+			Price:		t.Price,
+			TotalQuantity:	t.TotalQuantity,
 		})
 	}
 
 	var personnels []domain.EventPersonnel
 	for _, p := range req.KeyPersonnel {
 		personnels = append(personnels, domain.EventPersonnel{
-			Name:        p.Name,
-			Role:        p.Role,
-			Image:       p.Image,
-			ProfileLink: p.ProfileLink,
+			Name:		p.Name,
+			Role:		p.Role,
+			Image:		p.Image,
+			ProfileLink:	p.ProfileLink,
 		})
 	}
 
@@ -322,50 +321,50 @@ func (h *OrganizerHandler) CreateEvent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "Event created successfully",
+		"success":	true,
+		"message":	"Event created successfully",
 		"data": gin.H{
-			"event_id": eventID,
-			"status":   "draft",
+			"event_id":	eventID,
+			"status":	"draft",
 		},
 	})
 }
 
 type detailsUpdateInput struct {
-	Description        *string `json:"description"`
-	VenueAddress       *string `json:"venue_address"`
-	MapURL             *string `json:"map_url"`
-	TotalCapacity      *int    `json:"total_capacity" binding:"omitempty,gt=0"`
-	TermsAndConditions *string `json:"terms_and_conditions"`
+	Description		*string	`json:"description"`
+	VenueAddress		*string	`json:"venue_address"`
+	MapURL			*string	`json:"map_url"`
+	TotalCapacity		*int	`json:"total_capacity" binding:"omitempty,gt=0"`
+	TermsAndConditions	*string	`json:"terms_and_conditions"`
 }
 
 type ticketUpdateInput struct {
-	ID            *string  `json:"id"`
-	Name          *string  `json:"name"`
-	Price         *float64 `json:"price" binding:"omitempty,gte=0"`
-	TotalQuantity *int     `json:"total_quantity" binding:"omitempty,gt=0"`
+	ID		*string		`json:"id"`
+	Name		*string		`json:"name"`
+	Price		*float64	`json:"price" binding:"omitempty,gte=0"`
+	TotalQuantity	*int		`json:"total_quantity" binding:"omitempty,gt=0"`
 }
 
 type personnelUpdateInput struct {
-	ID          *string `json:"id"`
-	Name        *string `json:"name"`
-	Role        *string `json:"role"`
-	Image       *string `json:"image"`
-	ProfileLink *string `json:"profile_link"`
+	ID		*string	`json:"id"`
+	Name		*string	`json:"name"`
+	Role		*string	`json:"role"`
+	Image		*string	`json:"image"`
+	ProfileLink	*string	`json:"profile_link"`
 }
 
 type updateEventRequest struct {
-	Title         *string                `json:"title"`
-	City          *string                `json:"city"`
-	VenueName     *string                `json:"venue_name"`
-	Category      *string                `json:"category"`
-	StartTime     *time.Time             `json:"start_time"`
-	EndTime       *time.Time             `json:"end_time"`
-	Tags          []string               `json:"tags"`
-	CoverImageURL *string                `json:"cover_image_url"`
-	Details       *detailsUpdateInput    `json:"details"`
-	TicketTypes   []ticketUpdateInput    `json:"ticket_types" binding:"omitempty,dive"`
-	KeyPersonnel  []personnelUpdateInput `json:"key_personnel" binding:"omitempty,dive"`
+	Title		*string			`json:"title"`
+	City		*string			`json:"city"`
+	VenueName	*string			`json:"venue_name"`
+	Category	*string			`json:"category"`
+	StartTime	*time.Time		`json:"start_time"`
+	EndTime		*time.Time		`json:"end_time"`
+	Tags		[]string		`json:"tags"`
+	CoverImageURL	*string			`json:"cover_image_url"`
+	Details		*detailsUpdateInput	`json:"details"`
+	TicketTypes	[]ticketUpdateInput	`json:"ticket_types" binding:"omitempty,dive"`
+	KeyPersonnel	[]personnelUpdateInput	`json:"key_personnel" binding:"omitempty,dive"`
 }
 
 func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
@@ -499,8 +498,8 @@ func (h *OrganizerHandler) UpdateEvent(c *gin.Context) {
 	}
 
 	response.Success(c, "Event updated successfully", gin.H{
-		"event_id": eventID,
-		"status":   "draft",
+		"event_id":	eventID,
+		"status":	"draft",
 	})
 }
 
@@ -523,8 +522,8 @@ func (h *OrganizerHandler) SubmitEventHandler(c *gin.Context) {
 	}
 
 	response.Success(c, "Event submitted for approval", gin.H{
-		"event_id": eventID,
-		"status":   "pending",
+		"event_id":	eventID,
+		"status":	"pending",
 	})
 }
 
@@ -595,13 +594,13 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 			orgName = organizerDetail.OrganizationName
 		}
 		host = gin.H{
-			"name":         user.Name,
-			"organization": orgName,
-			"role":         "Event Organizer",
-			"avatar":       user.ProfileImage,
-			"email":        user.Email,
-			"mobile":       user.Mobile,
-			"address":      "",
+			"name":		user.Name,
+			"organization":	orgName,
+			"role":		"Event Organizer",
+			"avatar":	user.ProfileImage,
+			"email":	user.Email,
+			"mobile":	user.Mobile,
+			"address":	"",
 		}
 		if organizerDetail != nil {
 			host["address"] = organizerDetail.Address
@@ -609,11 +608,11 @@ func (h *OrganizerHandler) GetEvent(c *gin.Context) {
 	}
 
 	response.Success(c, "Event fetched successfully", gin.H{
-		"event":        event,
-		"details":      details,
-		"personnels":   personnels,
-		"ticket_types": tickets,
-		"host":         host,
+		"event":	event,
+		"details":	details,
+		"personnels":	personnels,
+		"ticket_types":	tickets,
+		"host":		host,
 	})
 }
 

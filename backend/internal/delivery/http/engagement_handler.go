@@ -17,12 +17,6 @@ func NewEngagementHandler(u *usecase.EngagementUsecase) *EngagementHandler {
 	return &EngagementHandler{usecase: u}
 }
 
-
-
-
-
-
-
 func (h *EngagementHandler) InitializeSession(c *gin.Context) {
 	var userID *string
 	authHeader := c.GetHeader("Authorization")
@@ -46,18 +40,11 @@ func (h *EngagementHandler) InitializeSession(c *gin.Context) {
 }
 
 type trackEventRequest struct {
-	SessionID string                     `json:"session_id" binding:"required"`
-	EventType domain.EngagementEventType `json:"event_type" binding:"required"`
-	EventID   *string                    `json:"event_id,omitempty"`
-	Metadata  string                     `json:"metadata,omitempty"`
+	SessionID	string				`json:"session_id" binding:"required"`
+	EventType	domain.EngagementEventType	`json:"event_type" binding:"required"`
+	EventID		*string				`json:"event_id,omitempty"`
+	Metadata	string				`json:"metadata,omitempty"`
 }
-
-
-
-
-
-
-
 
 func (h *EngagementHandler) TrackEvent(c *gin.Context) {
 	var req trackEventRequest

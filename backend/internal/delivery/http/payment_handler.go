@@ -37,17 +37,17 @@ func (h *PaymentHandler) CreateRazorpayOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, response.APIResponse{
-		Success: true,
-		Message: "Payment order created successfully",
-		Data:    paymentOrder,
+		Success:	true,
+		Message:	"Payment order created successfully",
+		Data:		paymentOrder,
 	})
 }
 
 func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
 	var req struct {
-		RazorpayOrderID   string `json:"razorpay_order_id" binding:"required"`
-		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
-		RazorpaySignature string `json:"razorpay_signature" binding:"required"`
+		RazorpayOrderID		string	`json:"razorpay_order_id" binding:"required"`
+		RazorpayPaymentID	string	`json:"razorpay_payment_id" binding:"required"`
+		RazorpaySignature	string	`json:"razorpay_signature" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,11 +58,11 @@ func (h *PaymentHandler) VerifyRazorpayPayment(c *gin.Context) {
 	if err := h.paymentUsecase.VerifyPayment(c.Request.Context(), req.RazorpayOrderID, req.RazorpayPaymentID, req.RazorpaySignature); err != nil {
 		if err == apiErrors.ErrBookingExpiredPaymentSuccess {
 			c.JSON(http.StatusOK, response.APIResponse{
-				Success: true,
-				Message: "Payment captured after booking expiry; refund initiated to source",
+				Success:	true,
+				Message:	"Payment captured after booking expiry; refund initiated to source",
 				Data: map[string]interface{}{
-					"is_late_payment":  true,
-					"is_source_refund": true,
+					"is_late_payment":	true,
+					"is_source_refund":	true,
 				},
 			})
 			return

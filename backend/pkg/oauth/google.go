@@ -10,9 +10,9 @@ import (
 )
 
 type GoogleUser struct {
-	Email         string
-	EmailVerified bool
-	Name          string
+	Email		string
+	EmailVerified	bool
+	Name		string
 }
 
 func VerifyGoogleIDToken(idToken string) (*GoogleUser, error) {
@@ -23,8 +23,8 @@ func VerifyGoogleIDToken(idToken string) (*GoogleUser, error) {
 	}
 
 	return &GoogleUser{
-		Email:         payload.Claims["email"].(string),
-		EmailVerified: payload.Claims["email_verified"].(bool),
-		Name:          payload.Claims["name"].(string),
+		Email:		payload.Claims["email"].(string),
+		EmailVerified:	payload.Claims["email_verified"].(bool),
+		Name:		payload.Claims["name"].(string),
 	}, nil
 }

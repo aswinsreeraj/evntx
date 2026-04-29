@@ -78,11 +78,11 @@ func TestAuthUsecase_VerifyEmailOTP(t *testing.T) {
 		hashedOTP, _ := otp.HashOTP(rawOTP)
 
 		storedOTP := &domain.EmailOTP{
-			ID:        "otp-id",
-			Email:     email,
-			OTPHash:   hashedOTP,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
-			Consumed:  false,
+			ID:		"otp-id",
+			Email:		email,
+			OTPHash:	hashedOTP,
+			ExpiresAt:	time.Now().Add(5 * time.Minute),
+			Consumed:	false,
 		}
 
 		user := &domain.User{ID: "user-id", Email: email, IsActive: true}
@@ -90,7 +90,7 @@ func TestAuthUsecase_VerifyEmailOTP(t *testing.T) {
 		mockOTPRepo.On("FindValidOTP", email).Return(storedOTP, nil).Once()
 		mockOTPRepo.On("MarkConsumed", storedOTP.ID).Return(nil).Once()
 		mockUserRepo.On("FindByEmail", email).Return(user, nil).Once()
-		mockUserRepo.On("GetOrganizerDetails", user.ID).Return(nil, gorm.ErrRecordNotFound).Once() 
+		mockUserRepo.On("GetOrganizerDetails", user.ID).Return(nil, gorm.ErrRecordNotFound).Once()
 		mockSessionRepo.On("Create", mock.AnythingOfType("*domain.UserSession")).Return(nil).Once()
 		mockRoleRepo.On("GetRolesByUserID", user.ID).Return([]domain.UserRole{}, nil).Once()
 
@@ -109,10 +109,10 @@ func TestAuthUsecase_VerifyEmailOTP(t *testing.T) {
 		wrongHash, _ := otp.HashOTP("654321")
 
 		storedOTP := &domain.EmailOTP{
-			ID:        "otp-id",
-			Email:     email,
-			OTPHash:   wrongHash,
-			ExpiresAt: time.Now().Add(5 * time.Minute),
+			ID:		"otp-id",
+			Email:		email,
+			OTPHash:	wrongHash,
+			ExpiresAt:	time.Now().Add(5 * time.Minute),
 		}
 
 		mockOTPRepo.On("FindValidOTP", email).Return(storedOTP, nil).Once()

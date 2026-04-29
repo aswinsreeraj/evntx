@@ -37,11 +37,11 @@ func main() {
 
 		fmt.Printf("User %s not found. Creating...\n", email)
 		user = repository.UserModel{
-			ID:            uuid.NewString(),
-			Email:         email,
-			Name:          "Admin User",
-			IsActive:      true,
-			EmailVerified: true,
+			ID:		uuid.NewString(),
+			Email:		email,
+			Name:		"Admin User",
+			IsActive:	true,
+			EmailVerified:	true,
 		}
 		if err := db.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Create(&user).Error; err != nil {
@@ -49,8 +49,8 @@ func main() {
 			}
 
 			wallet := repository.WalletModel{
-				ID:     uuid.NewString(),
-				UserID: user.ID,
+				ID:	uuid.NewString(),
+				UserID:	user.ID,
 			}
 
 			return tx.Create(&wallet).Error
@@ -67,8 +67,8 @@ func main() {
 	if res.Error != nil {
 		fmt.Printf("Granting admin role to %s...\n", email)
 		role = repository.UserRoleModel{
-			UserID: user.ID,
-			Role:   string(domain.RoleAdmin),
+			UserID:	user.ID,
+			Role:	string(domain.RoleAdmin),
 		}
 		if err := db.Create(&role).Error; err != nil {
 			log.Fatalf("Failed to grant admin role: %v", err)

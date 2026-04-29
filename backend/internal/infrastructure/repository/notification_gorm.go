@@ -10,14 +10,14 @@ import (
 )
 
 type NotificationModel struct {
-	ID        string          `gorm:"type:uuid;primaryKey"`
-	UserID    string          `gorm:"type:uuid;index;not null"`
-	Type      string          `gorm:"not null"`
-	Title     string          `gorm:"not null"`
-	Message   string          `gorm:"type:text;not null"`
-	IsRead    bool            `gorm:"default:false;not null"`
-	Metadata  json.RawMessage `gorm:"type:jsonb"`
-	CreatedAt time.Time       `gorm:"not null"`
+	ID		string		`gorm:"type:uuid;primaryKey"`
+	UserID		string		`gorm:"type:uuid;index;not null"`
+	Type		string		`gorm:"not null"`
+	Title		string		`gorm:"not null"`
+	Message		string		`gorm:"type:text;not null"`
+	IsRead		bool		`gorm:"default:false;not null"`
+	Metadata	json.RawMessage	`gorm:"type:jsonb"`
+	CreatedAt	time.Time	`gorm:"not null"`
 }
 
 type notificationGormRepository struct {
@@ -30,14 +30,14 @@ func NewNotificationGormRepository(db *gorm.DB) *notificationGormRepository {
 
 func (r *notificationGormRepository) CreateNotification(notification *domain.Notification) error {
 	model := NotificationModel{
-		ID:        notification.ID,
-		UserID:    notification.UserID,
-		Type:      notification.Type,
-		Title:     notification.Title,
-		Message:   notification.Message,
-		IsRead:    notification.IsRead,
-		Metadata:  notification.Metadata,
-		CreatedAt: notification.CreatedAt,
+		ID:		notification.ID,
+		UserID:		notification.UserID,
+		Type:		notification.Type,
+		Title:		notification.Title,
+		Message:	notification.Message,
+		IsRead:		notification.IsRead,
+		Metadata:	notification.Metadata,
+		CreatedAt:	notification.CreatedAt,
 	}
 
 	return r.db.Create(&model).Error
@@ -76,14 +76,14 @@ func (r *notificationGormRepository) GetNotificationsByUser(
 	notifications := make([]domain.Notification, 0, len(models))
 	for _, model := range models {
 		notifications = append(notifications, domain.Notification{
-			ID:        model.ID,
-			UserID:    model.UserID,
-			Type:      model.Type,
-			Title:     model.Title,
-			Message:   model.Message,
-			IsRead:    model.IsRead,
-			Metadata:  model.Metadata,
-			CreatedAt: model.CreatedAt,
+			ID:		model.ID,
+			UserID:		model.UserID,
+			Type:		model.Type,
+			Title:		model.Title,
+			Message:	model.Message,
+			IsRead:		model.IsRead,
+			Metadata:	model.Metadata,
+			CreatedAt:	model.CreatedAt,
 		})
 	}
 

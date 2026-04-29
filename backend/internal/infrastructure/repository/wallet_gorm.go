@@ -9,25 +9,25 @@ import (
 )
 
 type WalletModel struct {
-	ID               string  `gorm:"type:uuid;primaryKey"`
-	UserID           string  `gorm:"type:uuid;uniqueIndex;not null"`
-	AvailableBalance float64 `gorm:"type:numeric(18,2);default:0;not null"`
-	PendingBalance   float64 `gorm:"type:numeric(18,2);default:0;not null"`
-	ReserveBalance   float64 `gorm:"type:numeric(18,2);default:0;not null"`
-	TotalCredited    float64 `gorm:"type:numeric(18,2);default:0;not null"`
-	TotalDebited     float64 `gorm:"type:numeric(18,2);default:0;not null"`
-	UpdatedAt        time.Time
+	ID			string	`gorm:"type:uuid;primaryKey"`
+	UserID			string	`gorm:"type:uuid;uniqueIndex;not null"`
+	AvailableBalance	float64	`gorm:"type:numeric(18,2);default:0;not null"`
+	PendingBalance		float64	`gorm:"type:numeric(18,2);default:0;not null"`
+	ReserveBalance		float64	`gorm:"type:numeric(18,2);default:0;not null"`
+	TotalCredited		float64	`gorm:"type:numeric(18,2);default:0;not null"`
+	TotalDebited		float64	`gorm:"type:numeric(18,2);default:0;not null"`
+	UpdatedAt		time.Time
 }
 
 type WalletTransactionModel struct {
-	ID            string    `gorm:"type:uuid;primaryKey"`
-	WalletID      string    `gorm:"type:uuid;index;not null"`
-	Type          string    `gorm:"size:2;not null"`
-	Amount        float64   `gorm:"type:numeric(18,2);not null"`
-	ReferenceType string    `gorm:"not null"`
-	ReferenceID   string    `gorm:"not null"`
-	Status        string    `gorm:"not null"`
-	CreatedAt     time.Time `gorm:"index;not null"`
+	ID		string		`gorm:"type:uuid;primaryKey"`
+	WalletID	string		`gorm:"type:uuid;index;not null"`
+	Type		string		`gorm:"size:2;not null"`
+	Amount		float64		`gorm:"type:numeric(18,2);not null"`
+	ReferenceType	string		`gorm:"not null"`
+	ReferenceID	string		`gorm:"not null"`
+	Status		string		`gorm:"not null"`
+	CreatedAt	time.Time	`gorm:"index;not null"`
 }
 
 type walletGormRepository struct {
@@ -75,25 +75,25 @@ func (r *walletGormRepository) UpdateWallet(wallet *domain.Wallet) error {
 			"updated_at",
 		).
 		Updates(WalletModel{
-			AvailableBalance: wallet.AvailableBalance,
-			PendingBalance:   wallet.PendingBalance,
-			ReserveBalance:   wallet.ReserveBalance,
-			TotalCredited:    wallet.TotalCredited,
-			TotalDebited:     wallet.TotalDebited,
-			UpdatedAt:        wallet.UpdatedAt,
+			AvailableBalance:	wallet.AvailableBalance,
+			PendingBalance:		wallet.PendingBalance,
+			ReserveBalance:		wallet.ReserveBalance,
+			TotalCredited:		wallet.TotalCredited,
+			TotalDebited:		wallet.TotalDebited,
+			UpdatedAt:		wallet.UpdatedAt,
 		}).Error
 }
 
 func (r *walletGormRepository) CreateTransaction(txn *domain.WalletTransaction) error {
 	model := WalletTransactionModel{
-		ID:            txn.ID,
-		WalletID:      txn.WalletID,
-		Type:          txn.Type,
-		Amount:        txn.Amount,
-		ReferenceType: txn.ReferenceType,
-		ReferenceID:   txn.ReferenceID,
-		Status:        txn.Status,
-		CreatedAt:     txn.CreatedAt,
+		ID:		txn.ID,
+		WalletID:	txn.WalletID,
+		Type:		txn.Type,
+		Amount:		txn.Amount,
+		ReferenceType:	txn.ReferenceType,
+		ReferenceID:	txn.ReferenceID,
+		Status:		txn.Status,
+		CreatedAt:	txn.CreatedAt,
 	}
 
 	return r.db.Create(&model).Error
@@ -134,14 +134,14 @@ func (r *walletGormRepository) GetTransactionsByWalletID(
 	transactions := make([]domain.WalletTransaction, 0, len(models))
 	for _, model := range models {
 		transactions = append(transactions, domain.WalletTransaction{
-			ID:            model.ID,
-			WalletID:      model.WalletID,
-			Type:          model.Type,
-			Amount:        model.Amount,
-			ReferenceType: model.ReferenceType,
-			ReferenceID:   model.ReferenceID,
-			Status:        model.Status,
-			CreatedAt:     model.CreatedAt,
+			ID:		model.ID,
+			WalletID:	model.WalletID,
+			Type:		model.Type,
+			Amount:		model.Amount,
+			ReferenceType:	model.ReferenceType,
+			ReferenceID:	model.ReferenceID,
+			Status:		model.Status,
+			CreatedAt:	model.CreatedAt,
 		})
 	}
 
@@ -156,27 +156,27 @@ func (r *walletGormRepository) WithTransaction(fn func(repo repositoryContract.W
 
 func walletDomainToModel(wallet *domain.Wallet) WalletModel {
 	return WalletModel{
-		ID:               wallet.ID,
-		UserID:           wallet.UserID,
-		AvailableBalance: wallet.AvailableBalance,
-		PendingBalance:   wallet.PendingBalance,
-		ReserveBalance:   wallet.ReserveBalance,
-		TotalCredited:    wallet.TotalCredited,
-		TotalDebited:     wallet.TotalDebited,
-		UpdatedAt:        wallet.UpdatedAt,
+		ID:			wallet.ID,
+		UserID:			wallet.UserID,
+		AvailableBalance:	wallet.AvailableBalance,
+		PendingBalance:		wallet.PendingBalance,
+		ReserveBalance:		wallet.ReserveBalance,
+		TotalCredited:		wallet.TotalCredited,
+		TotalDebited:		wallet.TotalDebited,
+		UpdatedAt:		wallet.UpdatedAt,
 	}
 }
 
 func walletModelToDomain(model WalletModel) *domain.Wallet {
 	return &domain.Wallet{
-		ID:               model.ID,
-		UserID:           model.UserID,
-		AvailableBalance: model.AvailableBalance,
-		PendingBalance:   model.PendingBalance,
-		ReserveBalance:   model.ReserveBalance,
-		TotalCredited:    model.TotalCredited,
-		TotalDebited:     model.TotalDebited,
-		UpdatedAt:        model.UpdatedAt,
+		ID:			model.ID,
+		UserID:			model.UserID,
+		AvailableBalance:	model.AvailableBalance,
+		PendingBalance:		model.PendingBalance,
+		ReserveBalance:		model.ReserveBalance,
+		TotalCredited:		model.TotalCredited,
+		TotalDebited:		model.TotalDebited,
+		UpdatedAt:		model.UpdatedAt,
 	}
 }
 

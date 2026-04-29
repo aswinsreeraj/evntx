@@ -71,7 +71,7 @@
 				
 				<option value="file7">github.com/aswinsreeraj/evntx/internal/usecase/user_usecase.go (0.0%)</option>
 				
-				<option value="file8">github.com/aswinsreeraj/evntx/internal/usecase/wallet_usecase.go (23.3%)</option>
+				<option value="file8">github.com/aswinsreeraj/evntx/internal/usecase/wallet_usecase.go (22.2%)</option>
 				
 				</select>
 			</div>
@@ -97,20 +97,20 @@ import (
 )
 
 type AuditUsecase struct {
-        auditRepo repository.AuditRepository
-        userRepo  repository.UserRepository
+        auditRepo        repository.AuditRepository
+        userRepo        repository.UserRepository
 }
 
 func NewAuditUsecase(auditRepo repository.AuditRepository, userRepo repository.UserRepository) *AuditUsecase <span class="cov0" title="0">{
         return &amp;AuditUsecase{
-                auditRepo: auditRepo,
-                userRepo:  userRepo,
+                auditRepo:        auditRepo,
+                userRepo:        userRepo,
         }
 }</span>
 
 func (u *AuditUsecase) LogAction(adminID, action string, tag domain.AuditActionTag, detailsMap map[string]interface{}, ipAddress string) error <span class="cov0" title="0">{
         adminName := "System/Unknown"
-        
+
         if adminID != "" </span><span class="cov0" title="0">{
                 admin, err := u.userRepo.FindByID(adminID)
                 if err == nil &amp;&amp; admin != nil </span><span class="cov0" title="0">{
@@ -126,14 +126,14 @@ func (u *AuditUsecase) LogAction(adminID, action string, tag domain.AuditActionT
         }
 
         <span class="cov0" title="0">log := &amp;domain.AuditLog{
-                ID:        uuid.NewString(),
-                AdminID:   adminID,
-                AdminName: adminName,
-                Action:    action,
-                ActionTag: tag,
-                Details:   detailsJSON,
-                IPAddress: ipAddress,
-                Timestamp: time.Now(),
+                ID:                uuid.NewString(),
+                AdminID:        adminID,
+                AdminName:        adminName,
+                Action:                action,
+                ActionTag:        tag,
+                Details:        detailsJSON,
+                IPAddress:        ipAddress,
+                Timestamp:        time.Now(),
         }
 
         return u.auditRepo.Create(log)</span>
@@ -166,13 +166,13 @@ import (
 )
 
 type AuthUsecase struct {
-        otpRepo     repository.EmailOTPRepository
-        userRepo    repository.UserRepository
-        sessionRepo repository.UserSessionRepository
-        emailSender repository.EmailSender
-        roleRepo    repository.UserRoleRepository
-        walletRepo  repository.WalletRepository
-        settingsRepo repository.SettingsRepository
+        otpRepo                repository.EmailOTPRepository
+        userRepo        repository.UserRepository
+        sessionRepo        repository.UserSessionRepository
+        emailSender        repository.EmailSender
+        roleRepo        repository.UserRoleRepository
+        walletRepo        repository.WalletRepository
+        settingsRepo        repository.SettingsRepository
 }
 
 func NewAuthUsecase(
@@ -185,13 +185,13 @@ func NewAuthUsecase(
         settingsRepo repository.SettingsRepository,
 ) *AuthUsecase <span class="cov8" title="1">{
         return &amp;AuthUsecase{
-                otpRepo:     otpRepo,
-                userRepo:    userRepo,
-                sessionRepo: sessionRepo,
-                emailSender: emailSender,
-                roleRepo:    roleRepo,
-                walletRepo:  walletRepo,
-                settingsRepo: settingsRepo,
+                otpRepo:        otpRepo,
+                userRepo:        userRepo,
+                sessionRepo:        sessionRepo,
+                emailSender:        emailSender,
+                roleRepo:        roleRepo,
+                walletRepo:        walletRepo,
+                settingsRepo:        settingsRepo,
         }
 }</span>
 
@@ -253,11 +253,11 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) <span class="c
         }</span>
 
         <span class="cov8" title="1">emailOTP := &amp;domain.EmailOTP{
-                ID:        uuid.NewString(),
-                Email:     email,
-                OTPHash:   hash,
-                ExpiresAt: time.Now().Add(5 * time.Minute),
-                Consumed:  false,
+                ID:                uuid.NewString(),
+                Email:                email,
+                OTPHash:        hash,
+                ExpiresAt:        time.Now().Add(5 * time.Minute),
+                Consumed:        false,
         }
 
         if err := u.otpRepo.Create(emailOTP); err != nil </span><span class="cov0" title="0">{
@@ -293,11 +293,11 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
         if err != nil </span><span class="cov0" title="0">{
                 if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
                         user = &amp;domain.User{
-                                ID:            uuid.NewString(),
-                                Email:         email,
-                                Name:          name,
-                                IsActive:      true,
-                                EmailVerified: true,
+                                ID:                uuid.NewString(),
+                                Email:                email,
+                                Name:                name,
+                                IsActive:        true,
+                                EmailVerified:        true,
                         }
 
                         if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
@@ -305,13 +305,13 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
                         }</span>
 
                         <span class="cov0" title="0">wallet := &amp;domain.Wallet{
-                                ID:               uuid.NewString(),
-                                UserID:           user.ID,
-                                AvailableBalance: 0,
-                                PendingBalance:   0,
-                                TotalCredited:    0,
-                                TotalDebited:     0,
-                                UpdatedAt:        time.Now(),
+                                ID:                        uuid.NewString(),
+                                UserID:                        user.ID,
+                                AvailableBalance:        0,
+                                PendingBalance:                0,
+                                TotalCredited:                0,
+                                TotalDebited:                0,
+                                UpdatedAt:                time.Now(),
                         }
                         if err := u.walletRepo.CreateWallet(wallet); err != nil </span><span class="cov0" title="0">{
                                 logger.Log.Error().Err(err).Msg("failed to create wallet for user during authentication/registration")
@@ -340,13 +340,13 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
         <span class="cov8" title="1">refreshHash := hash.HashToken(refreshToken)
 
         session := &amp;domain.UserSession{
-                ID:               uuid.NewString(),
-                UserID:           user.ID,
-                RefreshTokenHash: refreshHash,
-                UserAgent:        userAgent,
-                IPAddress:        ip,
-                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-                Revoked:          false,
+                ID:                        uuid.NewString(),
+                UserID:                        user.ID,
+                RefreshTokenHash:        refreshHash,
+                UserAgent:                userAgent,
+                IPAddress:                ip,
+                ExpiresAt:                time.Now().Add(7 * 24 * time.Hour),
+                Revoked:                false,
         }
 
         if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
@@ -390,13 +390,13 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
         if err != nil </span><span class="cov0" title="0">{
                 if errors.Is(err, gorm.ErrRecordNotFound) </span><span class="cov0" title="0">{
                         user = &amp;domain.User{
-                                ID:            uuid.NewString(),
-                                Email:         email,
-                                Name:          name,
-                                Dob:           dob,
-                                Gender:        gender,
-                                IsActive:      true,
-                                EmailVerified: true,
+                                ID:                uuid.NewString(),
+                                Email:                email,
+                                Name:                name,
+                                Dob:                dob,
+                                Gender:                gender,
+                                IsActive:        true,
+                                EmailVerified:        true,
                         }
 
                         if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
@@ -450,10 +450,10 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
                         approvalStatus = "pending"
                 }</span>
                 <span class="cov0" title="0">if err := u.userRepo.UpsertOrganizerDetails(&amp;domain.OrganizerDetail{
-                        UserID:           user.ID,
-                        OrganizationName: organizationName,
-                        Address:          "",
-                        ApprovalStatus:   approvalStatus,
+                        UserID:                        user.ID,
+                        OrganizationName:        organizationName,
+                        Address:                "",
+                        ApprovalStatus:                approvalStatus,
                 }); err != nil </span><span class="cov0" title="0">{
                         return nil, nil, "", "", err
                 }</span>
@@ -476,13 +476,13 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
         <span class="cov0" title="0">refreshHash := hash.HashToken(refreshToken)
 
         session := &amp;domain.UserSession{
-                ID:               uuid.NewString(),
-                UserID:           user.ID,
-                RefreshTokenHash: refreshHash,
-                UserAgent:        userAgent,
-                IPAddress:        ip,
-                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-                Revoked:          false,
+                ID:                        uuid.NewString(),
+                UserID:                        user.ID,
+                RefreshTokenHash:        refreshHash,
+                UserAgent:                userAgent,
+                IPAddress:                ip,
+                ExpiresAt:                time.Now().Add(7 * 24 * time.Hour),
+                Revoked:                false,
         }
 
         if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
@@ -553,24 +553,24 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
                 }
 
                 <span class="cov0" title="0">user = &amp;domain.User{
-                        ID:            uuid.NewString(),
-                        Email:         googleUser.Email,
-                        Name:          googleUser.Name,
-                        IsActive:      true,
-                        EmailVerified: true,
+                        ID:                uuid.NewString(),
+                        Email:                googleUser.Email,
+                        Name:                googleUser.Name,
+                        IsActive:        true,
+                        EmailVerified:        true,
                 }
                 if err := u.userRepo.Create(user); err != nil </span><span class="cov0" title="0">{
                         return "", "", err
                 }</span>
 
                 <span class="cov0" title="0">wallet := &amp;domain.Wallet{
-                        ID:               uuid.NewString(),
-                        UserID:           user.ID,
-                        AvailableBalance: 0,
-                        PendingBalance:   0,
-                        TotalCredited:    0,
-                        TotalDebited:     0,
-                        UpdatedAt:        time.Now(),
+                        ID:                        uuid.NewString(),
+                        UserID:                        user.ID,
+                        AvailableBalance:        0,
+                        PendingBalance:                0,
+                        TotalCredited:                0,
+                        TotalDebited:                0,
+                        UpdatedAt:                time.Now(),
                 }
                 if err := u.walletRepo.CreateWallet(wallet); err != nil </span><span class="cov0" title="0">{
                         logger.Log.Error().Err(err).Msg("failed to create wallet for user during Google login")
@@ -596,13 +596,13 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
         <span class="cov0" title="0">refreshHash := hash.HashToken(refreshToken)
 
         session := &amp;domain.UserSession{
-                ID:               uuid.NewString(),
-                UserID:           user.ID,
-                RefreshTokenHash: refreshHash,
-                UserAgent:        userAgent,
-                IPAddress:        ip,
-                ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-                Revoked:          false,
+                ID:                        uuid.NewString(),
+                UserID:                        user.ID,
+                RefreshTokenHash:        refreshHash,
+                UserAgent:                userAgent,
+                IPAddress:                ip,
+                ExpiresAt:                time.Now().Add(7 * 24 * time.Hour),
+                Revoked:                false,
         }
 
         if err := u.sessionRepo.Create(session); err != nil </span><span class="cov0" title="0">{
@@ -629,11 +629,11 @@ import (
 )
 
 type BookingUsecase struct {
-        bookingRepo         repository.BookingRepository
-        eventRepo           repository.EventRepository
-        notificationUsecase *NotificationUsecase
-        roleRepo            repository.UserRoleRepository
-        settingsRepo        repository.SettingsRepository
+        bookingRepo                repository.BookingRepository
+        eventRepo                repository.EventRepository
+        notificationUsecase        *NotificationUsecase
+        roleRepo                repository.UserRoleRepository
+        settingsRepo                repository.SettingsRepository
 }
 
 func NewBookingUsecase(
@@ -644,11 +644,11 @@ func NewBookingUsecase(
         settingsRepo repository.SettingsRepository,
 ) *BookingUsecase <span class="cov8" title="1">{
         return &amp;BookingUsecase{
-                bookingRepo:         bookingRepo,
-                eventRepo:           eventRepo,
-                roleRepo:            roleRepo,
-                notificationUsecase: notificationUsecase,
-                settingsRepo:        settingsRepo,
+                bookingRepo:                bookingRepo,
+                eventRepo:                eventRepo,
+                roleRepo:                roleRepo,
+                notificationUsecase:        notificationUsecase,
+                settingsRepo:                settingsRepo,
         }
 }</span>
 
@@ -689,9 +689,9 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
                 <span class="cov8" title="1">baseTotal += tt.Price * float64(req.Quantity)
 
                 bookingTickets = append(bookingTickets, domain.BookingTicket{
-                        BookingID:    bookingID,
-                        TicketTypeID: req.TicketTypeID,
-                        Quantity:     req.Quantity,
+                        BookingID:        bookingID,
+                        TicketTypeID:        req.TicketTypeID,
+                        Quantity:        req.Quantity,
                 })</span>
         }
 
@@ -719,13 +719,13 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
         <span class="cov8" title="1">totalAmount := baseTotal + userFee
 
         booking := &amp;domain.Booking{
-                ID:          bookingID,
-                UserID:      userID,
-                EventID:     eventID,
-                Status:      "reserved",
-                TotalAmount: totalAmount,
-                ExpiresAt:   expiresAt,
-                CreatedAt:   now,
+                ID:                bookingID,
+                UserID:                userID,
+                EventID:        eventID,
+                Status:                "reserved",
+                TotalAmount:        totalAmount,
+                ExpiresAt:        expiresAt,
+                CreatedAt:        now,
         }
 
         err = u.bookingRepo.ReserveTickets(ctx, booking, bookingTickets)
@@ -762,10 +762,10 @@ func (u *BookingUsecase) ReserveTickets(ctx context.Context, userID string, even
                         "Booking reserved",
                         "Booking reserved. Complete payment before expiry.",
                         map[string]interface{}{
-                                "booking_id":  booking.ID,
-                                "event_id":    booking.EventID,
-                                "event_title": event.Title,
-                                "expires_at":  booking.ExpiresAt,
+                                "booking_id":        booking.ID,
+                                "event_id":        booking.EventID,
+                                "event_title":        event.Title,
+                                "expires_at":        booking.ExpiresAt,
                         },
                 ); notifyErr != nil </span><span class="cov0" title="0">{
                         logger.Log.Warn().
@@ -856,12 +856,12 @@ func (u *BookingUsecase) CancelBooking(ctx context.Context, bookingID string, us
                         "Booking cancelled",
                         "A user cancelled ticket(s) for your event.",
                         map[string]interface{}{
-                                "booking_id":            bookingID,
-                                "event_id":              booking.EventID,
-                                "event_title":           event.Title,
-                                "cancelled_by_user_id":  userID,
-                                "cancelled_items_count": len(items),
-                                "is_refundable":         isRefundable,
+                                "booking_id":                        bookingID,
+                                "event_id":                        booking.EventID,
+                                "event_title":                        event.Title,
+                                "cancelled_by_user_id":                userID,
+                                "cancelled_items_count":        len(items),
+                                "is_refundable":                isRefundable,
                         },
                 ); notifyErr != nil </span><span class="cov0" title="0">{
                         logger.Log.Warn().
@@ -951,10 +951,10 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
                         "Payment successful",
                         "Payment successful via wallet. Tickets confirmed.",
                         map[string]interface{}{
-                                "booking_id":  booking.ID,
-                                "event_id":    booking.EventID,
-                                "event_title": event.Title,
-                                "amount":      booking.TotalAmount,
+                                "booking_id":        booking.ID,
+                                "event_id":        booking.EventID,
+                                "event_title":        event.Title,
+                                "amount":        booking.TotalAmount,
                         },
                 )
 
@@ -964,9 +964,9 @@ func (u *BookingUsecase) PayWithWallet(ctx context.Context, bookingID string, us
                         "Your tickets are generated",
                         "Your tickets are generated",
                         map[string]interface{}{
-                                "booking_id":  booking.ID,
-                                "event_id":    booking.EventID,
-                                "event_title": event.Title,
+                                "booking_id":        booking.ID,
+                                "event_id":        booking.EventID,
+                                "event_title":        event.Title,
                         },
                 )
         }</span>
@@ -996,12 +996,12 @@ func NewEngagementUsecase(repo repository.EngagementRepository) *EngagementUseca
 
 func (u *EngagementUsecase) InitializeSession(ctx context.Context, userID *string, ipAddress, userAgent string) (*domain.VisitorSession, error) <span class="cov0" title="0">{
         session := &amp;domain.VisitorSession{
-                ID:         uuid.NewString(),
-                UserID:     userID,
-                IPAddress:  ipAddress,
-                UserAgent:  userAgent,
-                CreatedAt:  time.Now(),
-                LastSeenAt: time.Now(),
+                ID:                uuid.NewString(),
+                UserID:                userID,
+                IPAddress:        ipAddress,
+                UserAgent:        userAgent,
+                CreatedAt:        time.Now(),
+                LastSeenAt:        time.Now(),
         }
 
         err := u.repo.CreateSession(ctx, session)
@@ -1020,14 +1020,12 @@ func (u *EngagementUsecase) TrackEvent(
         eventID *string,
         metadata, ipAddress, userAgent string,
 ) error <span class="cov0" title="0">{
-        
+
         _ = u.repo.UpdateSessionLastSeen(ctx, sessionID, userID)
 
-        
         if eventID != nil &amp;&amp; *eventID != "" </span><span class="cov0" title="0">{
                 if _, err := uuid.Parse(*eventID); err != nil </span><span class="cov0" title="0">{
-                        
-                        
+
                         eventID = nil
                 }</span>
         }
@@ -1037,15 +1035,15 @@ func (u *EngagementUsecase) TrackEvent(
         }</span>
 
         <span class="cov0" title="0">evt := &amp;domain.EngagementEvent{
-                ID:        uuid.NewString(),
-                UserID:    userID,
-                SessionID: sessionID,
-                EventID:   eventID,
-                EventType: eventType,
-                Metadata:  metadata,
-                IPAddress: ipAddress,
-                UserAgent: userAgent,
-                CreatedAt: time.Now(),
+                ID:                uuid.NewString(),
+                UserID:                userID,
+                SessionID:        sessionID,
+                EventID:        eventID,
+                EventType:        eventType,
+                Metadata:        metadata,
+                IPAddress:        ipAddress,
+                UserAgent:        userAgent,
+                CreatedAt:        time.Now(),
         }
 
         return u.repo.LogEvent(ctx, evt)</span>
@@ -1076,10 +1074,10 @@ import (
 )
 
 type EventUsecase struct {
-        repo                repository.EventRepository
-        bookingRepo         repository.BookingRepository
-        notificationUsecase *NotificationUsecase
-        settingsRepo        repository.SettingsRepository
+        repo                        repository.EventRepository
+        bookingRepo                repository.BookingRepository
+        notificationUsecase        *NotificationUsecase
+        settingsRepo                repository.SettingsRepository
 }
 
 func NewEventUsecase(
@@ -1107,12 +1105,12 @@ func (u *EventUsecase) GetSalesReport(organizerID string, eventID string, startD
         return u.repo.GetSalesReport(organizerID, eventID, startDate, endDate)
 }</span>
 
-func (u *EventUsecase) GetAdminDashboardStats() (*domain.AdminDashboardStats, error) <span class="cov0" title="0">{
-        return u.repo.GetAdminDashboardStats()
+func (u *EventUsecase) GetAdminDashboardStats(span string, groupBy string) (*domain.AdminDashboardStats, error) <span class="cov0" title="0">{
+        return u.repo.GetAdminDashboardStats(span, groupBy)
 }</span>
 
-func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time) (*domain.AdminRevenueReport, error) <span class="cov0" title="0">{
-        return u.repo.GetAdminRevenueReport(startDate, endDate)
+func (u *EventUsecase) GetAdminRevenueReport(startDate, endDate time.Time, groupBy string) (*domain.AdminRevenueReport, error) <span class="cov0" title="0">{
+        return u.repo.GetAdminRevenueReport(startDate, endDate, groupBy)
 }</span>
 
 func (u *EventUsecase) GetEventByID(id string) (*domain.Event, error) <span class="cov0" title="0">{
@@ -1750,14 +1748,14 @@ func (u *NotificationUsecase) SendNotification(
         }
 
         <span class="cov0" title="0">notification := &amp;domain.Notification{
-                ID:        uuid.NewString(),
-                UserID:    userID,
-                Type:      notificationType,
-                Title:     title,
-                Message:   message,
-                IsRead:    false,
-                Metadata:  rawMetadata,
-                CreatedAt: time.Now(),
+                ID:                uuid.NewString(),
+                UserID:                userID,
+                Type:                notificationType,
+                Title:                title,
+                Message:        message,
+                IsRead:                false,
+                Metadata:        rawMetadata,
+                CreatedAt:        time.Now(),
         }
 
         return u.repo.CreateNotification(notification)</span>
@@ -1813,12 +1811,12 @@ import (
 )
 
 type PaymentUsecase struct {
-        bookingRepo         repository.BookingRepository
-        eventRepo           repository.EventRepository
-        paymentRepo         repository.PaymentRepository
-        razorpayService     repository.RazorpayService
-        notificationUsecase *NotificationUsecase
-        engagementRepo      repository.EngagementRepository
+        bookingRepo                repository.BookingRepository
+        eventRepo                repository.EventRepository
+        paymentRepo                repository.PaymentRepository
+        razorpayService                repository.RazorpayService
+        notificationUsecase        *NotificationUsecase
+        engagementRepo                repository.EngagementRepository
 }
 
 func NewPaymentUsecase(
@@ -1830,12 +1828,12 @@ func NewPaymentUsecase(
         engagementRepo repository.EngagementRepository,
 ) *PaymentUsecase <span class="cov0" title="0">{
         return &amp;PaymentUsecase{
-                bookingRepo:         bookingRepo,
-                eventRepo:           eventRepo,
-                paymentRepo:         paymentRepo,
-                razorpayService:     razorpayService,
-                notificationUsecase: notificationUsecase,
-                engagementRepo:      engagementRepo,
+                bookingRepo:                bookingRepo,
+                eventRepo:                eventRepo,
+                paymentRepo:                paymentRepo,
+                razorpayService:        razorpayService,
+                notificationUsecase:        notificationUsecase,
+                engagementRepo:                engagementRepo,
         }
 }</span>
 
@@ -1859,14 +1857,14 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
 
         <span class="cov0" title="0">if booking.TotalAmount == 0 </span><span class="cov0" title="0">{
                 payment := &amp;domain.Payment{
-                        ID:                uuid.NewString(),
-                        BookingID:         booking.ID,
-                        Provider:          "free",
-                        ProviderReference: "FREE_" + booking.ID,
-                        Amount:            0,
-                        Status:            domain.PaymentStatusSuccess,
-                        RawResponse:       []byte(`{}`),
-                        CreatedAt:         time.Now(),
+                        ID:                        uuid.NewString(),
+                        BookingID:                booking.ID,
+                        Provider:                "free",
+                        ProviderReference:        "FREE_" + booking.ID,
+                        Amount:                        0,
+                        Status:                        domain.PaymentStatusSuccess,
+                        RawResponse:                []byte(`{}`),
+                        CreatedAt:                time.Now(),
                 }
 
                 if err := u.paymentRepo.CreatePayment(payment); err != nil </span><span class="cov0" title="0">{
@@ -1888,11 +1886,11 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
                         Msg("free_payment_order_created_and_successful")
 
                 return &amp;domain.PaymentOrderResponse{
-                        OrderID:       "FREE_" + booking.ID,
-                        Amount:        0,
-                        Currency:      "INR",
-                        RazorpayKey:   "",
-                        IsFreeBooking: true,
+                        OrderID:        "FREE_" + booking.ID,
+                        Amount:                0,
+                        Currency:        "INR",
+                        RazorpayKey:        "",
+                        IsFreeBooking:        true,
                 }, nil</span>
         }
 
@@ -1903,14 +1901,14 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
         }</span>
 
         <span class="cov0" title="0">payment := &amp;domain.Payment{
-                ID:                uuid.NewString(),
-                BookingID:         booking.ID,
-                Provider:          "razorpay",
-                ProviderReference: order.ID,
-                Amount:            booking.TotalAmount,
-                Status:            domain.PaymentStatusInitiated,
-                RawResponse:       order.RawResponse,
-                CreatedAt:         time.Now(),
+                ID:                        uuid.NewString(),
+                BookingID:                booking.ID,
+                Provider:                "razorpay",
+                ProviderReference:        order.ID,
+                Amount:                        booking.TotalAmount,
+                Status:                        domain.PaymentStatusInitiated,
+                RawResponse:                order.RawResponse,
+                CreatedAt:                time.Now(),
         }
 
         if err := u.paymentRepo.CreatePayment(payment); err != nil </span><span class="cov0" title="0">{
@@ -1926,10 +1924,10 @@ func (u *PaymentUsecase) CreatePaymentOrder(ctx context.Context, bookingID strin
                 Msg("payment_order_created")
 
         return &amp;domain.PaymentOrderResponse{
-                OrderID:     order.ID,
-                Amount:      order.Amount,
-                Currency:    order.Currency,
-                RazorpayKey: u.razorpayService.GetKeyID(),
+                OrderID:        order.ID,
+                Amount:                order.Amount,
+                Currency:        order.Currency,
+                RazorpayKey:        u.razorpayService.GetKeyID(),
         }, nil</span>
 }
 
@@ -1969,8 +1967,8 @@ func (u *PaymentUsecase) VerifyPayment(
                                         "Payment failed",
                                         "Payment failed. Please retry.",
                                         map[string]interface{}{
-                                                "booking_id": payment.BookingID,
-                                                "payment_id": payment.ID,
+                                                "booking_id":        payment.BookingID,
+                                                "payment_id":        payment.ID,
                                         },
                                 ); notifyErr != nil </span><span class="cov0" title="0">{
                                         logger.Log.Warn().
@@ -2026,10 +2024,10 @@ func (u *PaymentUsecase) VerifyPayment(
                                         "Booking expired, refund initiated",
                                         "Your payment was captured after booking expiry. We have initiated an automatic refund to your original payment source via Razorpay.",
                                         map[string]interface{}{
-                                                "booking_id": payment.BookingID,
-                                                "payment_id": payment.ID,
-                                                "is_late_payment": true,
-                                                "is_source_refund": true,
+                                                "booking_id":                payment.BookingID,
+                                                "payment_id":                payment.ID,
+                                                "is_late_payment":        true,
+                                                "is_source_refund":        true,
                                         },
                                 )
                         }</span>
@@ -2066,10 +2064,10 @@ func (u *PaymentUsecase) VerifyPayment(
                                 "Payment successful",
                                 "Payment successful. Tickets confirmed.",
                                 map[string]interface{}{
-                                        "booking_id":  booking.ID,
-                                        "event_id":    event.ID,
-                                        "event_title": event.Title,
-                                        "amount":      payment.Amount,
+                                        "booking_id":        booking.ID,
+                                        "event_id":        event.ID,
+                                        "event_title":        event.Title,
+                                        "amount":        payment.Amount,
                                 },
                         ); notifyErr != nil </span><span class="cov0" title="0">{
                                 logger.Log.Warn().
@@ -2085,9 +2083,9 @@ func (u *PaymentUsecase) VerifyPayment(
                                 "Your tickets are generated",
                                 "Your tickets are generated",
                                 map[string]interface{}{
-                                        "booking_id":  booking.ID,
-                                        "event_id":    event.ID,
-                                        "event_title": event.Title,
+                                        "booking_id":        booking.ID,
+                                        "event_id":        event.ID,
+                                        "event_title":        event.Title,
                                 },
                         ); notifyErr != nil </span><span class="cov0" title="0">{
                                 logger.Log.Warn().
@@ -2109,10 +2107,10 @@ func (u *PaymentUsecase) VerifyPayment(
                                 "New booking received",
                                 "New booking received. You will earn ₹"+strconv.FormatFloat(organizerEarnings, 'f', 2, 64)+" after settlement.",
                                 map[string]interface{}{
-                                        "booking_id":  booking.ID,
-                                        "event_id":    event.ID,
-                                        "event_title": event.Title,
-                                        "amount":      organizerEarnings,
+                                        "booking_id":        booking.ID,
+                                        "event_id":        event.ID,
+                                        "event_title":        event.Title,
+                                        "amount":        organizerEarnings,
                                 },
                         ); notifyErr != nil </span><span class="cov0" title="0">{
                                 logger.Log.Warn().
@@ -2217,10 +2215,10 @@ import (
 )
 
 type UserUsecase struct {
-        repo       repository.UserRepository
-        roleRepo   repository.UserRoleRepository
-        walletRepo repository.WalletRepository
-        emailSender repository.EmailSender
+        repo                repository.UserRepository
+        roleRepo        repository.UserRoleRepository
+        walletRepo        repository.WalletRepository
+        emailSender        repository.EmailSender
 }
 
 func NewUserUsecase(
@@ -2234,10 +2232,10 @@ func NewUserUsecase(
 
 func (u *UserUsecase) Register(email string) (*domain.User, error) <span class="cov0" title="0">{
         user := &amp;domain.User{
-                ID:            uuid.NewString(),
-                Email:         email,
-                IsActive:      true,
-                EmailVerified: false,
+                ID:                uuid.NewString(),
+                Email:                email,
+                IsActive:        true,
+                EmailVerified:        false,
         }
 
         err := u.repo.Create(user)
@@ -2307,9 +2305,9 @@ func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizat
         <span class="cov0" title="0">for _, role := range roles </span><span class="cov0" title="0">{
                 if role == domain.RoleOrganizer </span><span class="cov0" title="0">{
                         return u.repo.UpsertOrganizerDetails(&amp;domain.OrganizerDetail{
-                                UserID:           userID,
-                                OrganizationName: organizationName,
-                                Address:          address,
+                                UserID:                        userID,
+                                OrganizationName:        organizationName,
+                                Address:                address,
                         })
                 }</span>
         }
@@ -2394,11 +2392,11 @@ func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) <span class="cov0"
 
 func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) <span class="cov0" title="0">{
         user := &amp;domain.User{
-                ID:            uuid.NewString(),
-                Name:          name,
-                Email:         email,
-                IsActive:      true,
-                EmailVerified: true,
+                ID:                uuid.NewString(),
+                Name:                name,
+                Email:                email,
+                IsActive:        true,
+                EmailVerified:        true,
         }
 
         if err := u.repo.Create(user); err != nil </span><span class="cov0" title="0">{
@@ -2415,7 +2413,6 @@ func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) <span c
 func (u *UserUsecase) DeleteAdmin(adminID string) error <span class="cov0" title="0">{
         return u.repo.Delete(adminID)
 }</span>
-
 </pre>
 		
 		<pre class="file" id="file8" style="display: none">package usecase
@@ -2435,13 +2432,13 @@ import (
 )
 
 type WalletUsecase struct {
-        repo               repository.WalletRepository
-        roleRepo           repository.UserRoleRepository
-        platformWalletRepo repository.PlatformWalletRepository
-        razorpayService    repository.RazorpayService
-        bookingRepo        repository.BookingRepository
-        payoutRepo         repository.PayoutRepository
-        notificationUsecase *NotificationUsecase
+        repo                        repository.WalletRepository
+        roleRepo                repository.UserRoleRepository
+        platformWalletRepo        repository.PlatformWalletRepository
+        razorpayService                repository.RazorpayService
+        bookingRepo                repository.BookingRepository
+        payoutRepo                repository.PayoutRepository
+        notificationUsecase        *NotificationUsecase
 }
 
 func NewWalletUsecase(
@@ -2501,14 +2498,14 @@ func (u *WalletUsecase) ApplyTransaction(
                 }</span>
 
                 <span class="cov8" title="1">txn := &amp;domain.WalletTransaction{
-                        ID:            uuid.NewString(),
-                        WalletID:      wallet.ID,
-                        Type:          txnType,
-                        Amount:        normalizedAmount,
-                        ReferenceType: referenceType,
-                        ReferenceID:   referenceID,
-                        Status:        domain.WalletTransactionStatusCompleted,
-                        CreatedAt:     now,
+                        ID:                uuid.NewString(),
+                        WalletID:        wallet.ID,
+                        Type:                txnType,
+                        Amount:                normalizedAmount,
+                        ReferenceType:        referenceType,
+                        ReferenceID:        referenceID,
+                        Status:                domain.WalletTransactionStatusCompleted,
+                        CreatedAt:        now,
                 }
 
                 if err := repo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
@@ -2594,14 +2591,27 @@ func (u *WalletUsecase) GetTransactionsByUserID(
                         }</span>
                 } else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypePayout </span><span class="cov0" title="0">{
                         txnCtx.Details = domain.PayoutContextDetails{
-                                Amount:      txn.Amount,
-                                Status:      txn.Status,
-                                ProcessedAt: txn.CreatedAt,
+                                Amount:                txn.Amount,
+                                Status:                txn.Status,
+                                ProcessedAt:        txn.CreatedAt,
                         }
-                }</span> else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypeFundAddition </span><span class="cov0" title="0">{
+                }</span> else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypePayoutRefund </span><span class="cov0" title="0">{
+                        reason := ""
+                        if p, err := u.payoutRepo.GetPayoutRequestByID(context.Background(), txn.ReferenceID); err == nil </span><span class="cov0" title="0">{
+                                if p.FailureReason != nil </span><span class="cov0" title="0">{
+                                        reason = *p.FailureReason
+                                }</span>
+                        }
+                        <span class="cov0" title="0">txnCtx.Details = domain.PayoutContextDetails{
+                                Amount:                txn.Amount,
+                                Status:                "rejected",
+                                ProcessedAt:        txn.CreatedAt,
+                                Reason:                reason,
+                        }</span>
+                } else<span class="cov0" title="0"> if txn.ReferenceType == domain.WalletReferenceTypeFundAddition </span><span class="cov0" title="0">{
                         txnCtx.Details = map[string]interface{}{
-                                "method": "razorpay",
-                                "id":     txn.ReferenceID,
+                                "method":        "razorpay",
+                                "id":                txn.ReferenceID,
                         }
                 }</span>
 
@@ -2634,14 +2644,14 @@ func (u *WalletUsecase) AddPayoutCredentials(ctx context.Context, userID, holder
         }
 
         <span class="cov0" title="0">cred := &amp;domain.PayoutCredential{
-                ID:                     uuid.NewString(),
-                UserID:                 userID,
-                AccountHolderName:      holderName,
-                AccountNumberEncrypted: encAcc,
-                IFSCCodeEncrypted:      encIFSC,
-                UPIIDEncrypted:         encUPI,
-                CreatedAt:              time.Now(),
-                UpdatedAt:              time.Now(),
+                ID:                        uuid.NewString(),
+                UserID:                        userID,
+                AccountHolderName:        holderName,
+                AccountNumberEncrypted:        encAcc,
+                IFSCCodeEncrypted:        encIFSC,
+                UPIIDEncrypted:                encUPI,
+                CreatedAt:                time.Now(),
+                UpdatedAt:                time.Now(),
         }
 
         return u.payoutRepo.UpsertCredential(ctx, cred)</span>
@@ -2684,12 +2694,12 @@ func (u *WalletUsecase) RequestPayout(ctx context.Context, userID string, amount
                 }</span>
 
                 <span class="cov8" title="1">payoutReq := &amp;domain.PayoutRequest{
-                        ID:          uuid.NewString(),
-                        UserID:      userID,
-                        Amount:      normalizedAmount,
-                        Status:      domain.PayoutStatusPending,
-                        RequestedAt: time.Now(),
-                        CreatedAt:   time.Now(),
+                        ID:                uuid.NewString(),
+                        UserID:                userID,
+                        Amount:                normalizedAmount,
+                        Status:                domain.PayoutStatusPending,
+                        RequestedAt:        time.Now(),
+                        CreatedAt:        time.Now(),
                 }
 
                 if err := u.payoutRepo.CreatePayoutRequest(ctx, payoutReq); err != nil </span><span class="cov0" title="0">{
@@ -2697,14 +2707,14 @@ func (u *WalletUsecase) RequestPayout(ctx context.Context, userID string, amount
                 }</span>
 
                 <span class="cov8" title="1">txn := &amp;domain.WalletTransaction{
-                        ID:            uuid.NewString(),
-                        WalletID:      wallet.ID,
-                        Type:          domain.WalletTransactionTypeDebit,
-                        Amount:        normalizedAmount,
-                        ReferenceType: domain.WalletReferenceTypePayout,
-                        ReferenceID:   payoutReq.ID,
-                        Status:        "pending",
-                        CreatedAt:     time.Now(),
+                        ID:                uuid.NewString(),
+                        WalletID:        wallet.ID,
+                        Type:                domain.WalletTransactionTypeDebit,
+                        Amount:                normalizedAmount,
+                        ReferenceType:        domain.WalletReferenceTypePayout,
+                        ReferenceID:        payoutReq.ID,
+                        Status:                "pending",
+                        CreatedAt:        time.Now(),
                 }
 
                 if err := txRepo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
@@ -2729,11 +2739,11 @@ func (u *WalletUsecase) CreateAddFundOrder(userID string, amount float64) (*doma
                 if err == gorm.ErrRecordNotFound </span><span class="cov0" title="0">{
 
                         wallet = &amp;domain.Wallet{
-                                ID:               uuid.NewString(),
-                                UserID:           userID,
-                                AvailableBalance: 0,
-                                PendingBalance:   0,
-                                UpdatedAt:        time.Now(),
+                                ID:                        uuid.NewString(),
+                                UserID:                        userID,
+                                AvailableBalance:        0,
+                                PendingBalance:                0,
+                                UpdatedAt:                time.Now(),
                         }
                         if createErr := u.repo.CreateWallet(wallet); createErr != nil </span><span class="cov0" title="0">{
                                 logger.Log.Error().Err(createErr).Str("user_id", userID).Msg("failed to create missing wallet during add-fund")
@@ -2758,10 +2768,10 @@ func (u *WalletUsecase) CreateAddFundOrder(userID string, amount float64) (*doma
         }</span>
 
         <span class="cov0" title="0">return &amp;domain.PaymentOrderResponse{
-                OrderID:     order.ID,
-                Amount:      order.Amount,
-                Currency:    order.Currency,
-                RazorpayKey: u.razorpayService.GetKeyID(),
+                OrderID:        order.ID,
+                Amount:                order.Amount,
+                Currency:        order.Currency,
+                RazorpayKey:        u.razorpayService.GetKeyID(),
         }, nil</span>
 }
 
@@ -2839,6 +2849,17 @@ func (u *WalletUsecase) AdminApprovePayout(ctx context.Context, adminID, payoutI
                         return err
                 }</span>
 
+                <span class="cov0" title="0">if u.platformWalletRepo != nil </span><span class="cov0" title="0">{
+                        if notifyErr := u.platformWalletRepo.ApplyPlatformTransaction(
+                                domain.WalletTransactionTypeDebit,
+                                p.Amount,
+                                domain.PlatformRefTypePayout,
+                                payoutID,
+                        ); notifyErr != nil </span><span class="cov0" title="0">{
+                                logger.Log.Error().Err(notifyErr).Msg("Failed to apply platform transaction for payout")
+                        }</span>
+                }
+
                 <span class="cov0" title="0">return u.payoutRepo.UpdatePayoutRequestStatus(ctx, payoutID, domain.PayoutStatusApproved, &amp;adminID, nil)</span>
         })
 }
@@ -2867,14 +2888,14 @@ func (u *WalletUsecase) AdminRejectPayout(ctx context.Context, adminID, payoutID
                 }</span>
 
                 <span class="cov0" title="0">txn := &amp;domain.WalletTransaction{
-                        ID:            uuid.NewString(),
-                        WalletID:      wallet.ID,
-                        Type:          domain.WalletTransactionTypeCredit,
-                        Amount:        p.Amount,
-                        ReferenceType: "payout_refund",
-                        ReferenceID:   payoutID,
-                        Status:        "completed",
-                        CreatedAt:     time.Now(),
+                        ID:                uuid.NewString(),
+                        WalletID:        wallet.ID,
+                        Type:                domain.WalletTransactionTypeCredit,
+                        Amount:                p.Amount,
+                        ReferenceType:        "payout_refund",
+                        ReferenceID:        payoutID,
+                        Status:                "completed",
+                        CreatedAt:        time.Now(),
                 }
 
                 if err := txRepo.CreateTransaction(txn); err != nil </span><span class="cov0" title="0">{
@@ -2898,6 +2919,10 @@ func (u *WalletUsecase) GetPayoutRequestsByUser(ctx context.Context, userID stri
 
 func (u *WalletUsecase) AdminGetPayoutRequests(ctx context.Context, status string, page, limit int) ([]domain.AdminPayoutDetail, int64, error) <span class="cov0" title="0">{
         return u.payoutRepo.AdminGetPayoutRequests(ctx, status, page, limit)
+}</span>
+
+func (u *WalletUsecase) GetTotalPayoutsSum(ctx context.Context) (float64, error) <span class="cov0" title="0">{
+        return u.payoutRepo.GetTotalPayoutsSum(ctx)
 }</span>
 
 func (u *WalletUsecase) AutoProcessApprovedPayouts(ctx context.Context) error <span class="cov0" title="0">{

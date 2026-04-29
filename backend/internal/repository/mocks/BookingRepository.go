@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -9,11 +7,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type BookingRepository struct {
 	mock.Mock
 }
-
 
 func (_m *BookingRepository) CancelBooking(ctx context.Context, bookingID string, userID string, items []domain.TicketCancelRequest, isRefundable bool) error {
 	ret := _m.Called(ctx, bookingID, userID, items, isRefundable)
@@ -31,7 +27,6 @@ func (_m *BookingRepository) CancelBooking(ctx context.Context, bookingID string
 
 	return r0
 }
-
 
 func (_m *BookingRepository) CheckInTicket(ctx context.Context, eventID string, ticketCode string) (*domain.TicketCheckIn, error) {
 	ret := _m.Called(ctx, eventID, ticketCode)
@@ -62,7 +57,6 @@ func (_m *BookingRepository) CheckInTicket(ctx context.Context, eventID string, 
 	return r0, r1
 }
 
-
 func (_m *BookingRepository) ExpireBookings(ctx context.Context) ([]domain.Booking, error) {
 	ret := _m.Called(ctx)
 
@@ -91,7 +85,6 @@ func (_m *BookingRepository) ExpireBookings(ctx context.Context) ([]domain.Booki
 
 	return r0, r1
 }
-
 
 func (_m *BookingRepository) FindByID(ctx context.Context, bookingID string) (*domain.Booking, error) {
 	ret := _m.Called(ctx, bookingID)
@@ -122,7 +115,6 @@ func (_m *BookingRepository) FindByID(ctx context.Context, bookingID string) (*d
 	return r0, r1
 }
 
-
 func (_m *BookingRepository) GetBookingContextsByIDs(ctx context.Context, bookingIDs []string) (map[string]domain.BookingContextDetails, error) {
 	ret := _m.Called(ctx, bookingIDs)
 
@@ -151,7 +143,6 @@ func (_m *BookingRepository) GetBookingContextsByIDs(ctx context.Context, bookin
 
 	return r0, r1
 }
-
 
 func (_m *BookingRepository) GetPaidBookingsByEventID(ctx context.Context, eventID string) ([]domain.Booking, error) {
 	ret := _m.Called(ctx, eventID)
@@ -182,7 +173,6 @@ func (_m *BookingRepository) GetPaidBookingsByEventID(ctx context.Context, event
 	return r0, r1
 }
 
-
 func (_m *BookingRepository) GetTicketCountByBookingID(ctx context.Context, bookingID string) (int, error) {
 	ret := _m.Called(ctx, bookingID)
 
@@ -209,7 +199,6 @@ func (_m *BookingRepository) GetTicketCountByBookingID(ctx context.Context, book
 
 	return r0, r1
 }
-
 
 func (_m *BookingRepository) GetUserBookings(ctx context.Context, userID string, page int, limit int, status string) ([]domain.BookingWithEvent, int64, error) {
 	ret := _m.Called(ctx, userID, page, limit, status)
@@ -247,7 +236,6 @@ func (_m *BookingRepository) GetUserBookings(ctx context.Context, userID string,
 	return r0, r1, r2
 }
 
-
 func (_m *BookingRepository) GetUserTickets(ctx context.Context, userID string, eventID string, bookingID string, status string) ([]domain.TicketWithEvent, error) {
 	ret := _m.Called(ctx, userID, eventID, bookingID, status)
 
@@ -277,7 +265,6 @@ func (_m *BookingRepository) GetUserTickets(ctx context.Context, userID string, 
 	return r0, r1
 }
 
-
 func (_m *BookingRepository) PayWithWallet(ctx context.Context, bookingID string, userID string, amount float64) error {
 	ret := _m.Called(ctx, bookingID, userID, amount)
 
@@ -295,7 +282,6 @@ func (_m *BookingRepository) PayWithWallet(ctx context.Context, bookingID string
 	return r0
 }
 
-
 func (_m *BookingRepository) ReserveTickets(ctx context.Context, booking *domain.Booking, tickets []domain.BookingTicket) error {
 	ret := _m.Called(ctx, booking, tickets)
 
@@ -312,8 +298,6 @@ func (_m *BookingRepository) ReserveTickets(ctx context.Context, booking *domain
 
 	return r0
 }
-
-
 
 func NewBookingRepository(t interface {
 	mock.TestingT

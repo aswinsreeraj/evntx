@@ -10,8 +10,8 @@ import (
 )
 
 type CapturingEmailSender struct {
-	LastEmail string
-	LastOTP   string
+	LastEmail	string
+	LastOTP		string
 }
 
 func (s *CapturingEmailSender) SendOTP(to, otp string) error {
@@ -42,7 +42,6 @@ func TestAuthIntegration_OTPFlow(t *testing.T) {
 
 	testEmail := "test_auth_flow@example.com"
 
-	
 	isNewUser, err := authUsecase.RequestEmailOTP(testEmail)
 	assert.NoError(t, err)
 	assert.True(t, isNewUser, "User should be identified as new")
@@ -51,14 +50,12 @@ func TestAuthIntegration_OTPFlow(t *testing.T) {
 
 	rawOTP := emailSender.LastOTP
 
-	
 	storedOTP, err := otpRepo.FindValidOTP(testEmail)
 	assert.NoError(t, err)
 	assert.NotNil(t, storedOTP)
 	assert.Equal(t, testEmail, storedOTP.Email)
 	assert.False(t, storedOTP.Consumed)
 
-	
 	user, roles, accessToken, refreshToken, err := authUsecase.VerifyEmailOTP(testEmail, rawOTP, "Test User", "Go-http-client/1.1", "127.0.0.1")
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
@@ -68,20 +65,17 @@ func TestAuthIntegration_OTPFlow(t *testing.T) {
 	assert.NotEmpty(t, refreshToken)
 	assert.Empty(t, roles, "New user should have no roles by default")
 
-	
 	dbUser, err := userRepo.FindByEmail(testEmail)
 	assert.NoError(t, err)
 	assert.Equal(t, user.ID, dbUser.ID)
 	assert.True(t, dbUser.EmailVerified)
 
-	
 	wallet, err := walletRepo.GetWalletByUserID(user.ID)
 	assert.NoError(t, err)
 	assert.NotNil(t, wallet)
 	assert.Equal(t, float64(0), wallet.AvailableBalance)
 
-	
 	consumedOTP, err := otpRepo.FindValidOTP(testEmail)
-	assert.Error(t, err) 
+	assert.Error(t, err)
 	assert.Nil(t, consumedOTP)
 }

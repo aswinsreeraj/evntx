@@ -11,25 +11,25 @@ import (
 )
 
 type PlatformSettingsModel struct {
-	ID                                string    `gorm:"type:uuid;primaryKey"`
-	EnableUserRegistration            bool      `gorm:"default:true;not null"`
-	AllowGoogleLogin                  bool      `gorm:"default:true;not null"`
-	RequireAdminApprovalForOrganizers bool      `gorm:"default:false;not null"`
-	RequireAdminApprovalForEvents     bool      `gorm:"default:true;not null"`
-	RefundWindowDays                  int       `gorm:"default:3;not null"`
-	AllowEventCancellation            bool      `gorm:"default:true;not null"`
-	PlatformFeeValue                  float64   `gorm:"type:numeric(10,2);default:30;not null"`
-	PlatformFeeType                   string    `gorm:"size:20;default:'fixed';not null"`
-	UpdatedAt                         time.Time `gorm:"not null"`
+	ID					string		`gorm:"type:uuid;primaryKey"`
+	EnableUserRegistration			bool		`gorm:"default:true;not null"`
+	AllowGoogleLogin			bool		`gorm:"default:true;not null"`
+	RequireAdminApprovalForOrganizers	bool		`gorm:"default:false;not null"`
+	RequireAdminApprovalForEvents		bool		`gorm:"default:true;not null"`
+	RefundWindowDays			int		`gorm:"default:3;not null"`
+	AllowEventCancellation			bool		`gorm:"default:true;not null"`
+	PlatformFeeValue			float64		`gorm:"type:numeric(10,2);default:30;not null"`
+	PlatformFeeType				string		`gorm:"size:20;default:'fixed';not null"`
+	UpdatedAt				time.Time	`gorm:"not null"`
 }
 
 type PaymentSettingsModel struct {
-	ID        string          `gorm:"type:uuid;primaryKey"`
-	Provider  string          `gorm:"uniqueIndex;not null"`
-	IsEnabled bool            `gorm:"default:false;not null"`
-	Config    json.RawMessage `gorm:"type:jsonb"`
-	CreatedAt time.Time       `gorm:"not null"`
-	UpdatedAt time.Time       `gorm:"not null"`
+	ID		string		`gorm:"type:uuid;primaryKey"`
+	Provider	string		`gorm:"uniqueIndex;not null"`
+	IsEnabled	bool		`gorm:"default:false;not null"`
+	Config		json.RawMessage	`gorm:"type:jsonb"`
+	CreatedAt	time.Time	`gorm:"not null"`
+	UpdatedAt	time.Time	`gorm:"not null"`
 }
 
 type settingsGormRepository struct {
@@ -42,16 +42,16 @@ func NewSettingsGormRepository(db *gorm.DB) *settingsGormRepository {
 
 func (r *settingsGormRepository) EnsureExists() error {
 	platformModel := PlatformSettingsModel{
-		ID:                                domain.PlatformSettingsID,
-		EnableUserRegistration:            true,
-		AllowGoogleLogin:                  true,
-		RequireAdminApprovalForOrganizers: false,
-		RequireAdminApprovalForEvents:     true,
-		RefundWindowDays:                  3,
-		AllowEventCancellation:            true,
-		PlatformFeeValue:                  30,
-		PlatformFeeType:                   string(domain.PlatformFeeTypeFixed),
-		UpdatedAt:                         time.Now(),
+		ID:					domain.PlatformSettingsID,
+		EnableUserRegistration:			true,
+		AllowGoogleLogin:			true,
+		RequireAdminApprovalForOrganizers:	false,
+		RequireAdminApprovalForEvents:		true,
+		RefundWindowDays:			3,
+		AllowEventCancellation:			true,
+		PlatformFeeValue:			30,
+		PlatformFeeType:			string(domain.PlatformFeeTypeFixed),
+		UpdatedAt:				time.Now(),
 	}
 
 	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&platformModel).Error; err != nil {
@@ -59,12 +59,12 @@ func (r *settingsGormRepository) EnsureExists() error {
 	}
 
 	razorpayModel := PaymentSettingsModel{
-		ID:        uuid.NewString(),
-		Provider:  "razorpay",
-		IsEnabled: true,
-		Config:    json.RawMessage(`{}`),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:		uuid.NewString(),
+		Provider:	"razorpay",
+		IsEnabled:	true,
+		Config:		json.RawMessage(`{}`),
+		CreatedAt:	time.Now(),
+		UpdatedAt:	time.Now(),
 	}
 
 	if err := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&razorpayModel).Error; err != nil {
@@ -72,12 +72,12 @@ func (r *settingsGormRepository) EnsureExists() error {
 	}
 
 	walletModel := PaymentSettingsModel{
-		ID:        uuid.NewString(),
-		Provider:  "wallet",
-		IsEnabled: true,
-		Config:    json.RawMessage(`{}`),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:		uuid.NewString(),
+		Provider:	"wallet",
+		IsEnabled:	true,
+		Config:		json.RawMessage(`{}`),
+		CreatedAt:	time.Now(),
+		UpdatedAt:	time.Now(),
 	}
 
 	return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&walletModel).Error
@@ -96,15 +96,15 @@ func (r *settingsGormRepository) UpdatePlatformSettings(s *domain.PlatformSettin
 	return r.db.Model(&PlatformSettingsModel{}).
 		Where("id = ?", domain.PlatformSettingsID).
 		Updates(map[string]interface{}{
-			"enable_user_registration":              s.EnableUserRegistration,
-			"allow_google_login":                    s.AllowGoogleLogin,
-			"require_admin_approval_for_organizers": s.RequireAdminApprovalForOrganizers,
-			"require_admin_approval_for_events":     s.RequireAdminApprovalForEvents,
-			"refund_window_days":                    s.RefundWindowDays,
-			"allow_event_cancellation":              s.AllowEventCancellation,
-			"platform_fee_value":                    s.PlatformFeeValue,
-			"platform_fee_type":                     string(s.PlatformFeeType),
-			"updated_at":                            s.UpdatedAt,
+			"enable_user_registration":			s.EnableUserRegistration,
+			"allow_google_login":				s.AllowGoogleLogin,
+			"require_admin_approval_for_organizers":	s.RequireAdminApprovalForOrganizers,
+			"require_admin_approval_for_events":		s.RequireAdminApprovalForEvents,
+			"refund_window_days":				s.RefundWindowDays,
+			"allow_event_cancellation":			s.AllowEventCancellation,
+			"platform_fee_value":				s.PlatformFeeValue,
+			"platform_fee_type":				string(s.PlatformFeeType),
+			"updated_at":					s.UpdatedAt,
 		}).Error
 }
 
@@ -141,24 +141,24 @@ func (r *settingsGormRepository) UpdatePaymentProvider(provider string, isEnable
 	return r.db.Model(&PaymentSettingsModel{}).
 		Where("provider = ?", provider).
 		Updates(map[string]interface{}{
-			"is_enabled": isEnabled,
-			"config":     json.RawMessage(configBytes),
-			"updated_at": time.Now(),
+			"is_enabled":	isEnabled,
+			"config":	json.RawMessage(configBytes),
+			"updated_at":	time.Now(),
 		}).Error
 }
 
 func toDomainPlatformSettings(m *PlatformSettingsModel) *domain.PlatformSettings {
 	return &domain.PlatformSettings{
-		ID:                                m.ID,
-		EnableUserRegistration:            m.EnableUserRegistration,
-		AllowGoogleLogin:                  m.AllowGoogleLogin,
-		RequireAdminApprovalForOrganizers: m.RequireAdminApprovalForOrganizers,
-		RequireAdminApprovalForEvents:     m.RequireAdminApprovalForEvents,
-		RefundWindowDays:                  m.RefundWindowDays,
-		AllowEventCancellation:            m.AllowEventCancellation,
-		PlatformFeeValue:                  m.PlatformFeeValue,
-		PlatformFeeType:                   domain.PlatformFeeType(m.PlatformFeeType),
-		UpdatedAt:                         m.UpdatedAt,
+		ID:					m.ID,
+		EnableUserRegistration:			m.EnableUserRegistration,
+		AllowGoogleLogin:			m.AllowGoogleLogin,
+		RequireAdminApprovalForOrganizers:	m.RequireAdminApprovalForOrganizers,
+		RequireAdminApprovalForEvents:		m.RequireAdminApprovalForEvents,
+		RefundWindowDays:			m.RefundWindowDays,
+		AllowEventCancellation:			m.AllowEventCancellation,
+		PlatformFeeValue:			m.PlatformFeeValue,
+		PlatformFeeType:			domain.PlatformFeeType(m.PlatformFeeType),
+		UpdatedAt:				m.UpdatedAt,
 	}
 }
 
@@ -172,11 +172,11 @@ func toDomainPaymentSettings(m *PaymentSettingsModel) *domain.PaymentSettings {
 	}
 
 	return &domain.PaymentSettings{
-		ID:        m.ID,
-		Provider:  m.Provider,
-		IsEnabled: m.IsEnabled,
-		Config:    config,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		ID:		m.ID,
+		Provider:	m.Provider,
+		IsEnabled:	m.IsEnabled,
+		Config:		config,
+		CreatedAt:	m.CreatedAt,
+		UpdatedAt:	m.UpdatedAt,
 	}
 }

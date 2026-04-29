@@ -31,9 +31,9 @@ func TestWalletUsecase_ApplyTransaction(t *testing.T) {
 		amount := 100.0
 
 		wallet := &domain.Wallet{
-			ID:               walletID,
-			AvailableBalance: 50.0,
-			TotalCredited:    50.0,
+			ID:			walletID,
+			AvailableBalance:	50.0,
+			TotalCredited:		50.0,
 		}
 
 		mockWalletRepo.On("WithTransaction", mock.AnythingOfType("func(repository.WalletRepository) error")).
@@ -59,8 +59,8 @@ func TestWalletUsecase_ApplyTransaction(t *testing.T) {
 		amount := 100.0
 
 		wallet := &domain.Wallet{
-			ID:               walletID,
-			AvailableBalance: 50.0, 
+			ID:			walletID,
+			AvailableBalance:	50.0,
 		}
 
 		mockWalletRepo.On("WithTransaction", mock.AnythingOfType("func(repository.WalletRepository) error")).
@@ -98,11 +98,11 @@ func TestWalletUsecase_RequestPayout(t *testing.T) {
 		amount := 50.0
 
 		wallet := &domain.Wallet{
-			ID:               "wallet-123",
-			UserID:           userID,
-			AvailableBalance: 100.0,
-			PendingBalance:   0.0,
-			ReserveBalance:   0.0, 
+			ID:			"wallet-123",
+			UserID:			userID,
+			AvailableBalance:	100.0,
+			PendingBalance:		0.0,
+			ReserveBalance:		0.0,
 		}
 
 		mockPayoutRepo.On("GetCredentialByUserID", ctx, userID).Return(&domain.PayoutCredential{}, nil).Once()
@@ -132,10 +132,10 @@ func TestWalletUsecase_RequestPayout(t *testing.T) {
 		amount := 50.0
 
 		wallet := &domain.Wallet{
-			ID:               "wallet-123",
-			UserID:           userID,
-			AvailableBalance: 100.0,
-			ReserveBalance:   -60.0, 
+			ID:			"wallet-123",
+			UserID:			userID,
+			AvailableBalance:	100.0,
+			ReserveBalance:		-60.0,
 		}
 
 		mockPayoutRepo.On("GetCredentialByUserID", ctx, userID).Return(&domain.PayoutCredential{}, nil).Once()

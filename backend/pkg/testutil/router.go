@@ -14,23 +14,21 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type MockEmailSender struct{}
 
-func (m *MockEmailSender) SendOTP(to, otp string) error { return nil }
-func (m *MockEmailSender) SendOrganizerApproval(email, name string) error { return nil }
-
+func (m *MockEmailSender) SendOTP(to, otp string) error				{ return nil }
+func (m *MockEmailSender) SendOrganizerApproval(email, name string) error	{ return nil }
 
 type MockPaymentService struct{}
 
-func (m *MockPaymentService) GetKeyID() string { return "test-key" }
+func (m *MockPaymentService) GetKeyID() string	{ return "test-key" }
 
 func (m *MockPaymentService) CreateOrder(amount int64, receipt string) (*domain.RazorpayOrder, error) {
 	return &domain.RazorpayOrder{
-		ID:       "order_mock123",
-		Amount:   amount,
-		Currency: "INR",
-		Receipt:  receipt,
+		ID:		"order_mock123",
+		Amount:		amount,
+		Currency:	"INR",
+		Receipt:	receipt,
 	}, nil
 }
 
@@ -40,10 +38,10 @@ func (m *MockPaymentService) VerifySignature(orderID, paymentID, signature strin
 
 func (m *MockPaymentService) FetchOrder(orderID string) (*domain.RazorpayOrder, error) {
 	return &domain.RazorpayOrder{
-		ID:       orderID,
-		Amount:   50000,
-		Currency: "INR",
-		Status:   "paid",
+		ID:		orderID,
+		Amount:		50000,
+		Currency:	"INR",
+		Status:		"paid",
 	}, nil
 }
 
@@ -51,13 +49,10 @@ func (m *MockPaymentService) RefundPayment(paymentID string, amount int64) error
 	return nil
 }
 
-
-
 func SetupTestRouter(db *gorm.DB) *gin.Engine {
 	emailSender := &MockEmailSender{}
 	paymentService := &MockPaymentService{}
 
-	
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
 	walletRepo := repoImpl.NewWalletGormRepository(db)
@@ -77,7 +72,6 @@ func SetupTestRouter(db *gorm.DB) *gin.Engine {
 	otpRepo := repoImpl.NewEmailOTPGormRepository(db)
 	sessionRepo := repoImpl.NewUserSessionGormRepository(db)
 
-	
 	notificationUsecase := usecase.NewNotificationUsecase(notificationRepo)
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo, walletRepo, emailSender)
 	walletUsecase := usecase.NewWalletUsecase(walletRepo, roleRepo, platformWalletRepo, paymentService, bookingRepo, payoutRepo, notificationUsecase)
@@ -88,10 +82,8 @@ func SetupTestRouter(db *gorm.DB) *gin.Engine {
 	authUsecase := usecase.NewAuthUsecase(otpRepo, userRepo, sessionRepo, emailSender, roleRepo, walletRepo, settingsRepo)
 	eventUsecase := usecase.NewEventUsecase(eventRepo, bookingRepo, notificationUsecase, settingsRepo)
 
-	
 	apiCache := cache.NewCache()
 
-	
 	notificationHandler := httpDelivery.NewNotificationHandler(notificationUsecase)
 	userHandler := httpDelivery.NewUserHandler(userUsecase, walletUsecase, bookingUsecase, auditUsecase)
 	authHandler := httpDelivery.NewAuthHandler(authUsecase)
@@ -106,11 +98,11 @@ func SetupTestRouter(db *gorm.DB) *gin.Engine {
 	router := gin.New()
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+		AllowOrigins:		[]string{"*"},
+		AllowMethods:		[]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:		[]string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials:	true,
+		MaxAge:			12 * time.Hour,
 	}))
 
 	router.Use(middleware.LoggingMiddleware())

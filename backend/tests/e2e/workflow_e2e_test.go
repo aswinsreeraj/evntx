@@ -46,15 +46,12 @@ func TestWorkflowE2E_BookingJourney(t *testing.T) {
 
 	router := testutil.SetupTestRouter(db)
 
-	
 	user := testutil.SeedUser(db, "e2e_user@example.com", "user")
 	organizer := testutil.SeedUser(db, "e2e_org@example.com", string(domain.RoleOrganizer))
-	
-	
+
 	event := testutil.SeedEvent(db, organizer.ID, "E2E Music Festival", "live")
 	ticketType := testutil.SeedTicketType(db, event.ID, "VIP", 500.0, 100)
 
-	
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/events/"+event.Slug, nil)
 	router.ServeHTTP(w, req)
@@ -62,13 +59,12 @@ func TestWorkflowE2E_BookingJourney(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "E2E Music Festival")
 
-	
 	reservePayload := map[string]interface{}{
-		"event_id": event.ID,
+		"event_id":	event.ID,
 		"tickets": []map[string]interface{}{
 			{
-				"ticket_type_id": ticketType.ID,
-				"quantity":       2,
+				"ticket_type_id":	ticketType.ID,
+				"quantity":		2,
 			},
 		},
 	}
@@ -85,7 +81,7 @@ func TestWorkflowE2E_BookingJourney(t *testing.T) {
 	var reserveResp map[string]interface{}
 	err := json.Unmarshal(w.Body.Bytes(), &reserveResp)
 	assert.NoError(t, err)
-	
+
 	var bookingID string
 	if data, ok := reserveResp["data"].(map[string]interface{}); ok {
 		bookingID = data["booking_id"].(string)
@@ -94,7 +90,6 @@ func TestWorkflowE2E_BookingJourney(t *testing.T) {
 	}
 	assert.NotEmpty(t, bookingID)
 
-	
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/users/me/bookings?status=reserved", nil)
 	req.Header.Set("Authorization", getAuthHeader(user.ID))
@@ -111,14 +106,11 @@ func TestWorkflowE2E_AdminEventApproval(t *testing.T) {
 
 	router := testutil.SetupTestRouter(db)
 
-	
 	admin := testutil.SeedUser(db, "e2e_admin@example.com", string(domain.RoleAdmin))
 	organizer := testutil.SeedUser(db, "e2e_org2@example.com", string(domain.RoleOrganizer))
-	
-	
+
 	event := testutil.SeedEvent(db, organizer.ID, "Pending Tech Talk", "pending")
 
-	
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/admin/events?status=pending", nil)
 	req.Header.Set("Authorization", getAuthHeader(admin.ID))
@@ -127,7 +119,6 @@ func TestWorkflowE2E_AdminEventApproval(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Pending Tech Talk")
 
-	
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("PATCH", "/admin/events/"+event.ID+"/approve", nil)
 	req.Header.Set("Authorization", getAuthHeader(admin.ID))
@@ -135,7 +126,6 @@ func TestWorkflowE2E_AdminEventApproval(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 
-	
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/events/"+event.Slug, nil)
 	router.ServeHTTP(w, req)

@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -11,11 +9,9 @@ import (
 	repository "github.com/aswinsreeraj/evntx/internal/repository"
 )
 
-
 type PayoutRepository struct {
 	mock.Mock
 }
-
 
 func (_m *PayoutRepository) AdminGetPayoutRequests(ctx context.Context, status string, page int, limit int) ([]domain.AdminPayoutDetail, int64, error) {
 	ret := _m.Called(ctx, status, page, limit)
@@ -53,7 +49,6 @@ func (_m *PayoutRepository) AdminGetPayoutRequests(ctx context.Context, status s
 	return r0, r1, r2
 }
 
-
 func (_m *PayoutRepository) CreatePayoutRequest(ctx context.Context, req *domain.PayoutRequest) error {
 	ret := _m.Called(ctx, req)
 
@@ -70,7 +65,6 @@ func (_m *PayoutRepository) CreatePayoutRequest(ctx context.Context, req *domain
 
 	return r0
 }
-
 
 func (_m *PayoutRepository) GetCredentialByUserID(ctx context.Context, userID string) (*domain.PayoutCredential, error) {
 	ret := _m.Called(ctx, userID)
@@ -101,7 +95,6 @@ func (_m *PayoutRepository) GetCredentialByUserID(ctx context.Context, userID st
 	return r0, r1
 }
 
-
 func (_m *PayoutRepository) GetPayoutRequestByID(ctx context.Context, payoutID string) (*domain.PayoutRequest, error) {
 	ret := _m.Called(ctx, payoutID)
 
@@ -130,7 +123,6 @@ func (_m *PayoutRepository) GetPayoutRequestByID(ctx context.Context, payoutID s
 
 	return r0, r1
 }
-
 
 func (_m *PayoutRepository) GetPayoutRequestsByUserID(ctx context.Context, userID string, page int, limit int) ([]domain.PayoutRequest, int64, error) {
 	ret := _m.Called(ctx, userID, page, limit)
@@ -168,6 +160,32 @@ func (_m *PayoutRepository) GetPayoutRequestsByUserID(ctx context.Context, userI
 	return r0, r1, r2
 }
 
+func (_m *PayoutRepository) GetTotalPayoutsSum(ctx context.Context) (float64, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTotalPayoutsSum")
+	}
+
+	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (float64, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) float64); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
 
 func (_m *PayoutRepository) UpdatePayoutRequestStatus(ctx context.Context, payoutID string, newStatus domain.PayoutStatus, adminID *string, failureReason *string) error {
 	ret := _m.Called(ctx, payoutID, newStatus, adminID, failureReason)
@@ -186,7 +204,6 @@ func (_m *PayoutRepository) UpdatePayoutRequestStatus(ctx context.Context, payou
 	return r0
 }
 
-
 func (_m *PayoutRepository) UpsertCredential(ctx context.Context, cred *domain.PayoutCredential) error {
 	ret := _m.Called(ctx, cred)
 
@@ -204,7 +221,6 @@ func (_m *PayoutRepository) UpsertCredential(ctx context.Context, cred *domain.P
 	return r0
 }
 
-
 func (_m *PayoutRepository) WithTransaction(fn func(repository.PayoutRepository) error) error {
 	ret := _m.Called(fn)
 
@@ -221,8 +237,6 @@ func (_m *PayoutRepository) WithTransaction(fn func(repository.PayoutRepository)
 
 	return r0
 }
-
-
 
 func NewPayoutRepository(t interface {
 	mock.TestingT

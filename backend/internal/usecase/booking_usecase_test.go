@@ -41,11 +41,10 @@ func TestBookingUsecase_ReserveTickets(t *testing.T) {
 
 		mockEventRepo.On("GetEventByID", eventID).Return(event, nil).Once()
 		mockEventRepo.On("GetTicketTypesByEventID", eventID).Return(ticketTypes, nil).Once()
-		
-		
+
 		mockSettingsRepo.On("GetPlatformSettings").Return(&domain.PlatformSettings{
-			PlatformFeeType:  domain.PlatformFeeTypeFixed,
-			PlatformFeeValue: 10,
+			PlatformFeeType:	domain.PlatformFeeTypeFixed,
+			PlatformFeeValue:	10,
 		}, nil).Once()
 
 		mockBookingRepo.On("ReserveTickets", ctx, mock.AnythingOfType("*domain.Booking"), mock.AnythingOfType("[]domain.BookingTicket")).Return(nil).Once()
@@ -55,9 +54,7 @@ func TestBookingUsecase_ReserveTickets(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, booking)
 		assert.Equal(t, "reserved", booking.Status)
-		
-		
-		
+
 		assert.Equal(t, float64(220), booking.TotalAmount)
 	})
 
@@ -71,7 +68,7 @@ func TestBookingUsecase_ReserveTickets(t *testing.T) {
 
 		event := &domain.Event{ID: eventID, Status: "live"}
 		ticketTypes := []domain.TicketType{
-			{ID: "tt-1", Price: 100, AvailableQuantity: 2}, 
+			{ID: "tt-1", Price: 100, AvailableQuantity: 2},
 		}
 
 		mockEventRepo.On("GetEventByID", eventID).Return(event, nil).Once()
@@ -124,12 +121,12 @@ func TestBookingUsecase_CheckInTicket(t *testing.T) {
 
 		mockRoleRepo.On("GetRolesByUserID", actorID).Return([]domain.UserRole{domain.RoleOrganizer}, nil).Once()
 		mockEventRepo.On("GetEventByID", eventID).Return(&domain.Event{ID: eventID, OrganizerID: actorID}, nil).Once()
-		
+
 		expectedCheckIn := &domain.TicketCheckIn{
-			TicketID: "ticket-1",
-			TicketCode: ticketCode,
-			Status: "checked-in",
-			CheckedInAt: time.Now(),
+			TicketID:	"ticket-1",
+			TicketCode:	ticketCode,
+			Status:		"checked-in",
+			CheckedInAt:	time.Now(),
 		}
 		mockBookingRepo.On("CheckInTicket", ctx, eventID, ticketCode).Return(expectedCheckIn, nil).Once()
 
@@ -143,7 +140,7 @@ func TestBookingUsecase_CheckInTicket(t *testing.T) {
 	t.Run("Failure_Unauthorized", func(t *testing.T) {
 		ctx := context.Background()
 		eventID := "event-123"
-		actorID := "user-456" 
+		actorID := "user-456"
 		ticketCode := "TICKET-123"
 
 		mockRoleRepo.On("GetRolesByUserID", actorID).Return([]domain.UserRole{domain.UserRole("user")}, nil).Once()

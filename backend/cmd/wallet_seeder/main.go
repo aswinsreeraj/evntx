@@ -46,20 +46,20 @@ func main() {
 	wallets := make([]infraRepo.WalletModel, 0, len(usersWithoutWallet))
 	for _, user := range usersWithoutWallet {
 		wallets = append(wallets, infraRepo.WalletModel{
-			ID:               uuid.NewString(),
-			UserID:           user.ID,
-			AvailableBalance: 0,
-			PendingBalance:   0,
-			TotalCredited:    0,
-			TotalDebited:     0,
-			UpdatedAt:        now,
+			ID:			uuid.NewString(),
+			UserID:			user.ID,
+			AvailableBalance:	0,
+			PendingBalance:		0,
+			TotalCredited:		0,
+			TotalDebited:		0,
+			UpdatedAt:		now,
 		})
 	}
 
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "user_id"}},
-			DoNothing: true,
+			Columns:	[]clause.Column{{Name: "user_id"}},
+			DoNothing:	true,
 		}).Create(&wallets)
 		if result.Error != nil {
 			return result.Error

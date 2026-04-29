@@ -20,7 +20,6 @@ func getAESKey() []byte {
 	return hash[:]
 }
 
-
 func EncryptAES(plainText string) (string, error) {
 	if plainText == "" {
 		return "", errors.New("cannot encrypt empty string")
@@ -45,7 +44,6 @@ func EncryptAES(plainText string) (string, error) {
 	dst := gcm.Seal(nonce, nonce, []byte(plainText), nil)
 	return hex.EncodeToString(dst), nil
 }
-
 
 func DecryptAES(cryptoHex string) (string, error) {
 	if cryptoHex == "" {

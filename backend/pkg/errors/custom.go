@@ -5,10 +5,10 @@ import (
 )
 
 type AppError struct {
-	HTTPCode int
-	Code     string
-	Message  string
-	Err      error
+	HTTPCode	int
+	Code		string
+	Message		string
+	Err		error
 }
 
 var _ error = (*AppError)(nil)
@@ -26,17 +26,17 @@ func (e *AppError) Unwrap() error {
 
 func New(httpCode int, code, message string) *AppError {
 	return &AppError{
-		HTTPCode: httpCode,
-		Code:     code,
-		Message:  message,
+		HTTPCode:	httpCode,
+		Code:		code,
+		Message:	message,
 	}
 }
 
 func Wrap(err error, httpCode int, code, message string) *AppError {
 	return &AppError{
-		HTTPCode: httpCode,
-		Code:     code,
-		Message:  message,
-		Err:      err,
+		HTTPCode:	httpCode,
+		Code:		code,
+		Message:	message,
+		Err:		err,
 	}
 }

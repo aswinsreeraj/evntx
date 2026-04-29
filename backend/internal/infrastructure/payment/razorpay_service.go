@@ -13,9 +13,9 @@ import (
 )
 
 type RazorpayService struct {
-	keyID     string
-	keySecret string
-	client    *razorpay.Client
+	keyID		string
+	keySecret	string
+	client		*razorpay.Client
 }
 
 func NewRazorpayService() repository.RazorpayService {
@@ -24,9 +24,9 @@ func NewRazorpayService() repository.RazorpayService {
 	client := razorpay.NewClient(keyID, keySecret)
 
 	return &RazorpayService{
-		keyID:     keyID,
-		keySecret: keySecret,
-		client:    client,
+		keyID:		keyID,
+		keySecret:	keySecret,
+		client:		client,
 	}
 }
 
@@ -41,9 +41,9 @@ func (s *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Raz
 	}
 
 	orderData := map[string]interface{}{
-		"amount":   amount,
-		"currency": "INR",
-		"receipt":  receipt,
+		"amount":	amount,
+		"currency":	"INR",
+		"receipt":	receipt,
 	}
 
 	body, err := s.client.Order.Create(orderData, nil)
@@ -76,8 +76,8 @@ func (s *RazorpayService) VerifySignature(orderID string, paymentID string, sign
 	}
 
 	params := map[string]interface{}{
-		"razorpay_order_id":   orderID,
-		"razorpay_payment_id": paymentID,
+		"razorpay_order_id":	orderID,
+		"razorpay_payment_id":	paymentID,
 	}
 
 	return utils.VerifyPaymentSignature(params, signature, s.keySecret), nil

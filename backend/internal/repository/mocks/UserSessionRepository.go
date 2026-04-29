@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type UserSessionRepository struct {
 	mock.Mock
 }
-
 
 func (_m *UserSessionRepository) Create(session *domain.UserSession) error {
 	ret := _m.Called(session)
@@ -29,7 +25,6 @@ func (_m *UserSessionRepository) Create(session *domain.UserSession) error {
 
 	return r0
 }
-
 
 func (_m *UserSessionRepository) FindByUserID(userID string) (*domain.UserSession, error) {
 	ret := _m.Called(userID)
@@ -60,7 +55,6 @@ func (_m *UserSessionRepository) FindByUserID(userID string) (*domain.UserSessio
 	return r0, r1
 }
 
-
 func (_m *UserSessionRepository) Revoke(sessionID string) error {
 	ret := _m.Called(sessionID)
 
@@ -77,8 +71,6 @@ func (_m *UserSessionRepository) Revoke(sessionID string) error {
 
 	return r0
 }
-
-
 
 func NewUserSessionRepository(t interface {
 	mock.TestingT

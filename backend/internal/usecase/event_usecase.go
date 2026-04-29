@@ -14,10 +14,10 @@ import (
 )
 
 type EventUsecase struct {
-	repo                repository.EventRepository
-	bookingRepo         repository.BookingRepository
-	notificationUsecase *NotificationUsecase
-	settingsRepo        repository.SettingsRepository
+	repo			repository.EventRepository
+	bookingRepo		repository.BookingRepository
+	notificationUsecase	*NotificationUsecase
+	settingsRepo		repository.SettingsRepository
 }
 
 func NewEventUsecase(

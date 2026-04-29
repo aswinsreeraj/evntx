@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type UserRepository struct {
 	mock.Mock
 }
-
 
 func (_m *UserRepository) Create(user *domain.User) error {
 	ret := _m.Called(user)
@@ -30,7 +26,6 @@ func (_m *UserRepository) Create(user *domain.User) error {
 	return r0
 }
 
-
 func (_m *UserRepository) Delete(id string) error {
 	ret := _m.Called(id)
 
@@ -47,7 +42,6 @@ func (_m *UserRepository) Delete(id string) error {
 
 	return r0
 }
-
 
 func (_m *UserRepository) FindByEmail(email string) (*domain.User, error) {
 	ret := _m.Called(email)
@@ -78,7 +72,6 @@ func (_m *UserRepository) FindByEmail(email string) (*domain.User, error) {
 	return r0, r1
 }
 
-
 func (_m *UserRepository) FindByID(id string) (*domain.User, error) {
 	ret := _m.Called(id)
 
@@ -107,7 +100,6 @@ func (_m *UserRepository) FindByID(id string) (*domain.User, error) {
 
 	return r0, r1
 }
-
 
 func (_m *UserRepository) FindUsersByRole(role domain.UserRole) ([]domain.User, error) {
 	ret := _m.Called(role)
@@ -138,7 +130,6 @@ func (_m *UserRepository) FindUsersByRole(role domain.UserRole) ([]domain.User, 
 	return r0, r1
 }
 
-
 func (_m *UserRepository) GetOrganizerDetails(userID string) (*domain.OrganizerDetail, error) {
 	ret := _m.Called(userID)
 
@@ -167,7 +158,6 @@ func (_m *UserRepository) GetOrganizerDetails(userID string) (*domain.OrganizerD
 
 	return r0, r1
 }
-
 
 func (_m *UserRepository) Search(search string, status string, page int, limit int) ([]domain.AdminUserDetails, int64, error) {
 	ret := _m.Called(search, status, page, limit)
@@ -205,7 +195,6 @@ func (_m *UserRepository) Search(search string, status string, page int, limit i
 	return r0, r1, r2
 }
 
-
 func (_m *UserRepository) SearchOrganizers(search string, status string, page int, limit int) ([]domain.OrganizerDetails, int64, error) {
 	ret := _m.Called(search, status, page, limit)
 
@@ -242,7 +231,6 @@ func (_m *UserRepository) SearchOrganizers(search string, status string, page in
 	return r0, r1, r2
 }
 
-
 func (_m *UserRepository) Update(user *domain.User) error {
 	ret := _m.Called(user)
 
@@ -259,7 +247,6 @@ func (_m *UserRepository) Update(user *domain.User) error {
 
 	return r0
 }
-
 
 func (_m *UserRepository) UpdateOrganizerApprovalStatus(userID string, approvalStatus string) error {
 	ret := _m.Called(userID, approvalStatus)
@@ -278,7 +265,6 @@ func (_m *UserRepository) UpdateOrganizerApprovalStatus(userID string, approvalS
 	return r0
 }
 
-
 func (_m *UserRepository) UpdateStatus(userID string, isActive bool) error {
 	ret := _m.Called(userID, isActive)
 
@@ -296,7 +282,6 @@ func (_m *UserRepository) UpdateStatus(userID string, isActive bool) error {
 	return r0
 }
 
-
 func (_m *UserRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail) error {
 	ret := _m.Called(detail)
 
@@ -313,8 +298,6 @@ func (_m *UserRepository) UpsertOrganizerDetails(detail *domain.OrganizerDetail)
 
 	return r0
 }
-
-
 
 func NewUserRepository(t interface {
 	mock.TestingT

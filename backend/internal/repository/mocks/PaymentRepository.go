@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type PaymentRepository struct {
 	mock.Mock
 }
-
 
 func (_m *PaymentRepository) CreatePayment(payment *domain.Payment) error {
 	ret := _m.Called(payment)
@@ -29,7 +25,6 @@ func (_m *PaymentRepository) CreatePayment(payment *domain.Payment) error {
 
 	return r0
 }
-
 
 func (_m *PaymentRepository) FindByBookingID(bookingID string) (*domain.Payment, error) {
 	ret := _m.Called(bookingID)
@@ -60,7 +55,6 @@ func (_m *PaymentRepository) FindByBookingID(bookingID string) (*domain.Payment,
 	return r0, r1
 }
 
-
 func (_m *PaymentRepository) FindByProviderReference(orderID string) (*domain.Payment, error) {
 	ret := _m.Called(orderID)
 
@@ -90,7 +84,6 @@ func (_m *PaymentRepository) FindByProviderReference(orderID string) (*domain.Pa
 	return r0, r1
 }
 
-
 func (_m *PaymentRepository) MarkPaymentSuccess(paymentID string, bookingID string, organizerID string, amount float64) error {
 	ret := _m.Called(paymentID, bookingID, organizerID, amount)
 
@@ -107,7 +100,6 @@ func (_m *PaymentRepository) MarkPaymentSuccess(paymentID string, bookingID stri
 
 	return r0
 }
-
 
 func (_m *PaymentRepository) RefundPaymentToWallet(userID string, paymentID string, bookingID string, refundAmount float64, platformFeeAmount float64) error {
 	ret := _m.Called(userID, paymentID, bookingID, refundAmount, platformFeeAmount)
@@ -126,7 +118,6 @@ func (_m *PaymentRepository) RefundPaymentToWallet(userID string, paymentID stri
 	return r0
 }
 
-
 func (_m *PaymentRepository) UpdateStatus(paymentID string, status string) error {
 	ret := _m.Called(paymentID, status)
 
@@ -143,8 +134,6 @@ func (_m *PaymentRepository) UpdateStatus(paymentID string, status string) error
 
 	return r0
 }
-
-
 
 func NewPaymentRepository(t interface {
 	mock.TestingT

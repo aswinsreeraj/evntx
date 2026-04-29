@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type RazorpayService struct {
 	mock.Mock
 }
-
 
 func (_m *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.RazorpayOrder, error) {
 	ret := _m.Called(amount, receipt)
@@ -42,7 +38,6 @@ func (_m *RazorpayService) CreateOrder(amount int64, receipt string) (*domain.Ra
 	return r0, r1
 }
 
-
 func (_m *RazorpayService) FetchOrder(orderID string) (*domain.RazorpayOrder, error) {
 	ret := _m.Called(orderID)
 
@@ -72,7 +67,6 @@ func (_m *RazorpayService) FetchOrder(orderID string) (*domain.RazorpayOrder, er
 	return r0, r1
 }
 
-
 func (_m *RazorpayService) GetKeyID() string {
 	ret := _m.Called()
 
@@ -90,7 +84,6 @@ func (_m *RazorpayService) GetKeyID() string {
 	return r0
 }
 
-
 func (_m *RazorpayService) RefundPayment(paymentID string, amount int64) error {
 	ret := _m.Called(paymentID, amount)
 
@@ -107,7 +100,6 @@ func (_m *RazorpayService) RefundPayment(paymentID string, amount int64) error {
 
 	return r0
 }
-
 
 func (_m *RazorpayService) VerifySignature(orderID string, paymentID string, signature string) (bool, error) {
 	ret := _m.Called(orderID, paymentID, signature)
@@ -135,8 +127,6 @@ func (_m *RazorpayService) VerifySignature(orderID string, paymentID string, sig
 
 	return r0, r1
 }
-
-
 
 func NewRazorpayService(t interface {
 	mock.TestingT

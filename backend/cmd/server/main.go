@@ -270,6 +270,7 @@ func main() {
 	adminGroup.GET("/platform-wallet/transactions", adminHandler.GetPlatformTransactions)
 
 	adminGroup.GET("/payouts", adminHandler.AdminGetPayouts)
+	adminGroup.GET("/payouts/sum", adminHandler.AdminGetTotalPayoutsSum)
 	adminGroup.PATCH("/payouts/:id/approve", adminHandler.AdminApprovePayout)
 	adminGroup.PATCH("/payouts/:id/reject", adminHandler.AdminRejectPayout)
 	adminGroup.POST("/payouts/bulk-approve", adminHandler.AdminBulkApprovePayouts)

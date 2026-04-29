@@ -6,13 +6,13 @@ import (
 )
 
 type CacheItem struct {
-	Data      interface{}
-	ExpiresAt time.Time
+	Data		interface{}
+	ExpiresAt	time.Time
 }
 
 type Cache struct {
-	store map[string]CacheItem
-	mu    sync.RWMutex
+	store	map[string]CacheItem
+	mu	sync.RWMutex
 }
 
 func NewCache() *Cache {
@@ -30,9 +30,8 @@ func (c *Cache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	
 	if time.Now().After(item.ExpiresAt) {
-		
+
 		c.Delete(key)
 		return nil, false
 	}
@@ -45,8 +44,8 @@ func (c *Cache) Set(key string, value interface{}, ttl time.Duration) {
 	defer c.mu.Unlock()
 
 	c.store[key] = CacheItem{
-		Data:      value,
-		ExpiresAt: time.Now().Add(ttl),
+		Data:		value,
+		ExpiresAt:	time.Now().Add(ttl),
 	}
 }
 

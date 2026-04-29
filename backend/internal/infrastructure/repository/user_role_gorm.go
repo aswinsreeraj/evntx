@@ -6,8 +6,8 @@ import (
 )
 
 type UserRoleModel struct {
-	UserID string `gorm:"primaryKey"`
-	Role   string `gorm:"primaryKey"`
+	UserID	string	`gorm:"primaryKey"`
+	Role	string	`gorm:"primaryKey"`
 }
 
 type userRoleGormRepository struct {
@@ -36,8 +36,8 @@ func (r *userRoleGormRepository) GetRolesByUserID(userID string) ([]domain.UserR
 
 func (r *userRoleGormRepository) AddRole(userID string, role domain.UserRole) error {
 	model := UserRoleModel{
-		UserID: userID,
-		Role:   string(role),
+		UserID:	userID,
+		Role:	string(role),
 	}
 	return r.db.Save(&model).Error
 }

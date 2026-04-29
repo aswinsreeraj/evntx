@@ -3,8 +3,11 @@
 coverage.html
 coverage.out
 uploads/
+assets/
 admin
 cmd/seeder
 cmd/wallet_seeder
+internal/repository/mocks
+tests/
 Dockerfile
 .dockerignore

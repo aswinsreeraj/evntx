@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type JobRepository struct {
 	mock.Mock
 }
-
 
 func (_m *JobRepository) LogJob(log *domain.JobLog) error {
 	ret := _m.Called(log)
@@ -29,8 +25,6 @@ func (_m *JobRepository) LogJob(log *domain.JobLog) error {
 
 	return r0
 }
-
-
 
 func NewJobRepository(t interface {
 	mock.TestingT

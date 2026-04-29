@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -7,11 +5,9 @@ import (
 	mock "github.com/stretchr/testify/mock"
 )
 
-
 type EmailOTPRepository struct {
 	mock.Mock
 }
-
 
 func (_m *EmailOTPRepository) Create(otp *domain.EmailOTP) error {
 	ret := _m.Called(otp)
@@ -29,7 +25,6 @@ func (_m *EmailOTPRepository) Create(otp *domain.EmailOTP) error {
 
 	return r0
 }
-
 
 func (_m *EmailOTPRepository) FindValidOTP(email string) (*domain.EmailOTP, error) {
 	ret := _m.Called(email)
@@ -60,7 +55,6 @@ func (_m *EmailOTPRepository) FindValidOTP(email string) (*domain.EmailOTP, erro
 	return r0, r1
 }
 
-
 func (_m *EmailOTPRepository) InvalidatePrevious(email string) error {
 	ret := _m.Called(email)
 
@@ -78,7 +72,6 @@ func (_m *EmailOTPRepository) InvalidatePrevious(email string) error {
 	return r0
 }
 
-
 func (_m *EmailOTPRepository) MarkConsumed(id string) error {
 	ret := _m.Called(id)
 
@@ -95,8 +88,6 @@ func (_m *EmailOTPRepository) MarkConsumed(id string) error {
 
 	return r0
 }
-
-
 
 func NewEmailOTPRepository(t interface {
 	mock.TestingT

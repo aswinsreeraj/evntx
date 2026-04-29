@@ -29,12 +29,12 @@ func (h *NotificationHandler) GetNotifications(c *gin.Context) {
 	}
 
 	response.Success(c, "Notifications fetched successfully", gin.H{
-		"notifications": notifications,
-		"unread_count":  unreadCount,
+		"notifications":	notifications,
+		"unread_count":		unreadCount,
 		"pagination": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+			"page":		page,
+			"limit":	limit,
+			"total":	total,
 		},
 	})
 }

@@ -14,10 +14,10 @@ import (
 )
 
 type EventHandler struct {
-	usecase        *usecase.EventUsecase
-	userUsecase    *usecase.UserUsecase
-	bookingUsecase *usecase.BookingUsecase
-	cache          *cache.Cache
+	usecase		*usecase.EventUsecase
+	userUsecase	*usecase.UserUsecase
+	bookingUsecase	*usecase.BookingUsecase
+	cache		*cache.Cache
 }
 
 func NewEventHandler(
@@ -60,15 +60,15 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	}
 
 	response.Success(c, "Events fetched successfully", gin.H{
-		"events": events,
+		"events":	events,
 		"pagination": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+			"page":		page,
+			"limit":	limit,
+			"total":	total,
 		},
 		"price_range": gin.H{
-			"min": min_price_val,
-			"max": max_price_val,
+			"min":	min_price_val,
+			"max":	max_price_val,
 		},
 	})
 }
@@ -101,11 +101,11 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 				orgName = organizerDetail.OrganizationName
 			}
 			host = gin.H{
-				"name":         user.Name,
-				"organization": orgName,
-				"role":         "Event Organizer",
-				"avatar":       user.ProfileImage,
-				"address":      "",
+				"name":		user.Name,
+				"organization":	orgName,
+				"role":		"Event Organizer",
+				"avatar":	user.ProfileImage,
+				"address":	"",
 			}
 			if organizerDetail != nil {
 				host["address"] = organizerDetail.Address
@@ -114,11 +114,11 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	}
 
 	responseData := gin.H{
-		"event":        event,
-		"details":      details,
-		"personnels":   personnels,
-		"ticket_types": tickets,
-		"host":         host,
+		"event":	event,
+		"details":	details,
+		"personnels":	personnels,
+		"ticket_types":	tickets,
+		"host":		host,
 	}
 
 	if h.cache != nil {
@@ -148,9 +148,9 @@ func (h *EventHandler) CheckInTicket(c *gin.Context) {
 	}
 
 	response.Success(c, "Ticket validated successfully", gin.H{
-		"ticket_id":     ticket.TicketID,
-		"ticket_code":   ticket.TicketCode,
-		"status":        ticket.Status,
-		"checked_in_at": ticket.CheckedInAt,
+		"ticket_id":		ticket.TicketID,
+		"ticket_code":		ticket.TicketCode,
+		"status":		ticket.Status,
+		"checked_in_at":	ticket.CheckedInAt,
 	})
 }

@@ -12,12 +12,12 @@ import (
 )
 
 type VisitorSessionModel struct {
-	ID         string  `gorm:"type:uuid;primaryKey"`
-	UserID     *string `gorm:"type:uuid"`
-	IPAddress  string  `gorm:"type:varchar"`
-	UserAgent  string  `gorm:"type:text"`
-	CreatedAt  time.Time
-	LastSeenAt time.Time
+	ID		string	`gorm:"type:uuid;primaryKey"`
+	UserID		*string	`gorm:"type:uuid"`
+	IPAddress	string	`gorm:"type:varchar"`
+	UserAgent	string	`gorm:"type:text"`
+	CreatedAt	time.Time
+	LastSeenAt	time.Time
 }
 
 func (VisitorSessionModel) TableName() string {
@@ -25,15 +25,15 @@ func (VisitorSessionModel) TableName() string {
 }
 
 type EngagementEventModel struct {
-	ID        string    `gorm:"type:uuid;primaryKey"`
-	UserID    *string   `gorm:"type:uuid"`
-	SessionID string    `gorm:"type:uuid;index"`
-	EventID   *string   `gorm:"type:uuid;index"`
-	EventType string    `gorm:"index"`
-	Metadata  string    `gorm:"type:json"`
-	IPAddress string    `gorm:"type:varchar"`
-	UserAgent string    `gorm:"type:text"`
-	CreatedAt time.Time `gorm:"index"`
+	ID		string		`gorm:"type:uuid;primaryKey"`
+	UserID		*string		`gorm:"type:uuid"`
+	SessionID	string		`gorm:"type:uuid;index"`
+	EventID		*string		`gorm:"type:uuid;index"`
+	EventType	string		`gorm:"index"`
+	Metadata	string		`gorm:"type:json"`
+	IPAddress	string		`gorm:"type:varchar"`
+	UserAgent	string		`gorm:"type:text"`
+	CreatedAt	time.Time	`gorm:"index"`
 }
 
 func (EngagementEventModel) TableName() string {
@@ -41,16 +41,16 @@ func (EngagementEventModel) TableName() string {
 }
 
 type EventEngagementDailyModel struct {
-	ID                 string    `gorm:"type:uuid;primaryKey"`
-	EventID            string    `gorm:"type:uuid;uniqueIndex:idx_event_date"`
-	Date               time.Time `gorm:"type:date;uniqueIndex:idx_event_date"`
-	Visitors           int
-	PageViews          int
-	EventViews         int
-	TicketsSelected    int
-	CheckoutStarted    int
-	SuccessfulBookings int
-	CreatedAt          time.Time
+	ID			string		`gorm:"type:uuid;primaryKey"`
+	EventID			string		`gorm:"type:uuid;uniqueIndex:idx_event_date"`
+	Date			time.Time	`gorm:"type:date;uniqueIndex:idx_event_date"`
+	Visitors		int
+	PageViews		int
+	EventViews		int
+	TicketsSelected		int
+	CheckoutStarted		int
+	SuccessfulBookings	int
+	CreatedAt		time.Time
 }
 
 func (EventEngagementDailyModel) TableName() string {
@@ -67,12 +67,12 @@ func NewEngagementGormRepository(db *gorm.DB) *engagementGormRepository {
 
 func (r *engagementGormRepository) CreateSession(ctx context.Context, session *domain.VisitorSession) error {
 	model := VisitorSessionModel{
-		ID:         session.ID,
-		UserID:     session.UserID,
-		IPAddress:  session.IPAddress,
-		UserAgent:  session.UserAgent,
-		CreatedAt:  session.CreatedAt,
-		LastSeenAt: session.LastSeenAt,
+		ID:		session.ID,
+		UserID:		session.UserID,
+		IPAddress:	session.IPAddress,
+		UserAgent:	session.UserAgent,
+		CreatedAt:	session.CreatedAt,
+		LastSeenAt:	session.LastSeenAt,
 	}
 	return r.db.WithContext(ctx).Create(&model).Error
 }
@@ -83,12 +83,12 @@ func (r *engagementGormRepository) GetSessionByID(ctx context.Context, sessionID
 		return nil, err
 	}
 	return &domain.VisitorSession{
-		ID:         model.ID,
-		UserID:     model.UserID,
-		IPAddress:  model.IPAddress,
-		UserAgent:  model.UserAgent,
-		CreatedAt:  model.CreatedAt,
-		LastSeenAt: model.LastSeenAt,
+		ID:		model.ID,
+		UserID:		model.UserID,
+		IPAddress:	model.IPAddress,
+		UserAgent:	model.UserAgent,
+		CreatedAt:	model.CreatedAt,
+		LastSeenAt:	model.LastSeenAt,
 	}, nil
 }
 
@@ -104,39 +104,39 @@ func (r *engagementGormRepository) UpdateSessionLastSeen(ctx context.Context, se
 
 func (r *engagementGormRepository) LogEvent(ctx context.Context, event *domain.EngagementEvent) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		
+
 		if event.UserID != nil && *event.UserID != "" {
 			var roleCount int64
 			err := tx.Table("user_role_models").
 				Where("user_id = ? AND role IN (?, ?)", *event.UserID, domain.RoleAdmin, domain.RoleOrganizer).
 				Count(&roleCount).Error
 			if err == nil && roleCount > 0 {
-				
+
 				evtModel := EngagementEventModel{
-					ID:        event.ID,
-					UserID:    event.UserID,
-					SessionID: event.SessionID,
-					EventID:   event.EventID,
-					EventType: string(event.EventType),
-					Metadata:  event.Metadata,
-					IPAddress: event.IPAddress,
-					UserAgent: event.UserAgent,
-					CreatedAt: event.CreatedAt,
+					ID:		event.ID,
+					UserID:		event.UserID,
+					SessionID:	event.SessionID,
+					EventID:	event.EventID,
+					EventType:	string(event.EventType),
+					Metadata:	event.Metadata,
+					IPAddress:	event.IPAddress,
+					UserAgent:	event.UserAgent,
+					CreatedAt:	event.CreatedAt,
 				}
 				return tx.Create(&evtModel).Error
 			}
 		}
 
 		evtModel := EngagementEventModel{
-			ID:        event.ID,
-			UserID:    event.UserID,
-			SessionID: event.SessionID,
-			EventID:   event.EventID,
-			EventType: string(event.EventType),
-			Metadata:  event.Metadata,
-			IPAddress: event.IPAddress,
-			UserAgent: event.UserAgent,
-			CreatedAt: event.CreatedAt,
+			ID:		event.ID,
+			UserID:		event.UserID,
+			SessionID:	event.SessionID,
+			EventID:	event.EventID,
+			EventType:	string(event.EventType),
+			Metadata:	event.Metadata,
+			IPAddress:	event.IPAddress,
+			UserAgent:	event.UserAgent,
+			CreatedAt:	event.CreatedAt,
 		}
 		if err := tx.Create(&evtModel).Error; err != nil {
 			return err
@@ -179,10 +179,10 @@ func (r *engagementGormRepository) isFirstInteractionToday(tx *gorm.DB, sessionI
 
 func (r *engagementGormRepository) upsertDaily(tx *gorm.DB, eventID string, date time.Time, eventType domain.EngagementEventType, isUnique bool) error {
 	upsertModel := EventEngagementDailyModel{
-		ID:        uuid.NewString(),
-		EventID:   eventID,
-		Date:      date,
-		CreatedAt: time.Now(),
+		ID:		uuid.NewString(),
+		EventID:	eventID,
+		Date:		date,
+		CreatedAt:	time.Now(),
 	}
 
 	updates := make(map[string]interface{})
@@ -217,22 +217,22 @@ func (r *engagementGormRepository) upsertDaily(tx *gorm.DB, eventID string, date
 
 	if len(updates) > 0 {
 		return tx.Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "event_id"}, {Name: "date"}},
-			DoUpdates: clause.Assignments(updates),
+			Columns:	[]clause.Column{{Name: "event_id"}, {Name: "date"}},
+			DoUpdates:	clause.Assignments(updates),
 		}).Create(&upsertModel).Error
 	}
 	return nil
 }
 
 func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string, userID string) error {
-	
+
 	if userID != "" {
 		var roleCount int64
 		err := r.db.Table("user_role_models").
 			Where("user_id = ? AND role IN (?, ?)", userID, domain.RoleAdmin, domain.RoleOrganizer).
 			Count(&roleCount).Error
 		if err == nil && roleCount > 0 {
-			
+
 			return nil
 		}
 	}
@@ -243,12 +243,11 @@ func (r *engagementGormRepository) IncrementSuccessfulBookings(ctx context.Conte
 	dateParsed, _ := time.Parse("2006-01-02", dateStr)
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		
+
 		if err := r.upsertDaily(tx, domain.PlatformEventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
 			return err
 		}
 
-		
 		if eventID != "" && eventID != domain.PlatformEventID {
 			if err := r.upsertDaily(tx, eventID, dateParsed, domain.EngagementEventSuccessfulBooking, false); err != nil {
 				return err
@@ -277,16 +276,16 @@ func (r *engagementGormRepository) GetDailyAggregates(ctx context.Context, event
 	results := make([]domain.EventEngagementDaily, 0, len(models))
 	for _, m := range models {
 		results = append(results, domain.EventEngagementDaily{
-			ID:                 m.ID,
-			EventID:            m.EventID,
-			Date:               m.Date,
-			Visitors:           m.Visitors,
-			PageViews:          m.PageViews,
-			EventViews:         m.EventViews,
-			TicketsSelected:    m.TicketsSelected,
-			CheckoutStarted:    m.CheckoutStarted,
-			SuccessfulBookings: m.SuccessfulBookings,
-			CreatedAt:          m.CreatedAt,
+			ID:			m.ID,
+			EventID:		m.EventID,
+			Date:			m.Date,
+			Visitors:		m.Visitors,
+			PageViews:		m.PageViews,
+			EventViews:		m.EventViews,
+			TicketsSelected:	m.TicketsSelected,
+			CheckoutStarted:	m.CheckoutStarted,
+			SuccessfulBookings:	m.SuccessfulBookings,
+			CreatedAt:		m.CreatedAt,
 		})
 	}
 	return results, nil
@@ -308,7 +307,7 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	if !endDate.IsZero() {
 		query = query.Where("date <= ?", endDate.In(loc).Format("2006-01-02"))
 	}
-	
+
 	if err := query.Find(&models).Error; err != nil {
 		return nil, err
 	}
@@ -318,7 +317,6 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	checkoutByDow := make([]int, 7)
 	bookingsByDow := make([]int, 7)
 
-	
 	hasPlatformID := false
 	for _, id := range eventIDs {
 		if id == domain.PlatformEventID {
@@ -329,18 +327,17 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 
 	for _, m := range models {
 		if hasPlatformID && m.EventID == domain.PlatformEventID {
-			
+
 			totalVisitors = m.Visitors
 			totalPageViews = m.PageViews
 			totalBookings = m.SuccessfulBookings
 		} else if !hasPlatformID {
-			
+
 			totalVisitors += m.Visitors
 			totalPageViews += m.PageViews
 			totalBookings += m.SuccessfulBookings
 		}
 
-		
 		if m.EventID != domain.PlatformEventID {
 			totalEventViews += m.EventViews
 			totalTicketsSelected += m.TicketsSelected
@@ -353,7 +350,6 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		}
 	}
 
-	
 	duration := endDate.Sub(startDate)
 	prevEnd := startDate
 	prevStart := prevEnd.Add(-duration)
@@ -376,16 +372,14 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		}
 	}
 
-	
 	pvPct := 0.0
 	if prevPageViews > 0 {
-		pvPct = float64(totalPageViews-prevPageViews) / float64(prevPageViews) * 100 
+		pvPct = float64(totalPageViews-prevPageViews) / float64(prevPageViews) * 100
 	} else if totalPageViews > 0 {
 		pvPct = 100.0
 	}
 	stats.PageViews = domain.StatCard{Value: float64(totalPageViews), Percentage: pvPct}
 
-	
 	convRate := 0.0
 	if totalVisitors > 0 {
 		convRate = float64(totalBookings) / float64(totalVisitors) * 100
@@ -400,7 +394,6 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 	}
 	stats.ConversionRate = domain.StatCard{Value: convRate, Percentage: convPct}
 
-	
 	pct := func(numerator, denominator int) float64 {
 		if denominator == 0 {
 			return 0
@@ -415,14 +408,13 @@ func (r *engagementGormRepository) GetEngagementReport(ctx context.Context, even
 		{Label: "Successful Bookings", Count: totalBookings, Percentage: pct(totalBookings, totalVisitors)},
 	}
 
-	
 	dowLabels := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
-	dowOrder := []int{1, 2, 3, 4, 5, 6, 0} 
+	dowOrder := []int{1, 2, 3, 4, 5, 6, 0}
 	for i, dowIdx := range dowOrder {
 		stats.PeakUsage = append(stats.PeakUsage, domain.PeakUsagePoint{
-			Label:    dowLabels[i],
-			Viewing:  viewingByDow[dowIdx],
-			Bookings: bookingsByDow[dowIdx],
+			Label:		dowLabels[i],
+			Viewing:	viewingByDow[dowIdx],
+			Bookings:	bookingsByDow[dowIdx],
 		})
 	}
 

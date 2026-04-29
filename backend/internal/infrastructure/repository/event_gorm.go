@@ -14,69 +14,69 @@ import (
 )
 
 type EventModel struct {
-	ID                        string
-	OrganizerID               string `gorm:"index"`
-	Title                     string
-	Slug                      string `gorm:"uniqueIndex"`
-	City                      string `gorm:"index"`
-	VenueName                 string
-	Category                  string `gorm:"index"`
-	StartTime                 int64  `gorm:"index"`
-	EndTime                   int64
-	Tags                      string
-	Status                    string `gorm:"index"`
-	CoverImageURL             string
-	MinPrice                  float64 `gorm:"->"`
-	AvailableCapacity         int     `gorm:"->"`
-	Settled                   bool
-	RejectionReason           string `gorm:"->"`
-	CancellationRequestReason string `gorm:"->"`
-	CreatedAt                 int64
-	UpdatedAt                 int64
+	ID				string
+	OrganizerID			string	`gorm:"index"`
+	Title				string
+	Slug				string	`gorm:"uniqueIndex"`
+	City				string	`gorm:"index"`
+	VenueName			string
+	Category			string	`gorm:"index"`
+	StartTime			int64	`gorm:"index"`
+	EndTime				int64
+	Tags				string
+	Status				string	`gorm:"index"`
+	CoverImageURL			string
+	MinPrice			float64	`gorm:"->"`
+	AvailableCapacity		int	`gorm:"->"`
+	Settled				bool
+	RejectionReason			string	`gorm:"->"`
+	CancellationRequestReason	string	`gorm:"->"`
+	CreatedAt			int64
+	UpdatedAt			int64
 }
 
 type EventDetailsModel struct {
-	EventID            string
-	Description        string
-	VenueAddress       string
-	MapURL             string
-	TotalCapacity      int
-	AvailableCapacity  int
-	Rating             float64
-	TotalReviews       int
-	TermsAndConditions string
-	CreatedAt          int64
-	UpdatedAt          int64
+	EventID			string
+	Description		string
+	VenueAddress		string
+	MapURL			string
+	TotalCapacity		int
+	AvailableCapacity	int
+	Rating			float64
+	TotalReviews		int
+	TermsAndConditions	string
+	CreatedAt		int64
+	UpdatedAt		int64
 }
 
 type EventPersonnelModel struct {
-	ID          string
-	EventID     string
-	Name        string
-	Role        string
-	Image       string
-	ProfileLink string
+	ID		string
+	EventID		string
+	Name		string
+	Role		string
+	Image		string
+	ProfileLink	string
 }
 
 type TicketTypeModel struct {
-	ID                string
-	EventID           string
-	Name              string
-	Price             float64
-	TotalQuantity     int
-	AvailableQuantity int
-	Version           int
-	CreatedAt         int64
-	UpdatedAt         int64
+	ID			string
+	EventID			string
+	Name			string
+	Price			float64
+	TotalQuantity		int
+	AvailableQuantity	int
+	Version			int
+	CreatedAt		int64
+	UpdatedAt		int64
 }
 
 type EventModerationLogModel struct {
-	ID        string
-	EventID   string
-	AdminID   string
-	Action    string
-	Reason    string
-	CreatedAt int64
+	ID		string
+	EventID		string
+	AdminID		string
+	Action		string
+	Reason		string
+	CreatedAt	int64
 }
 
 type eventGormRepository struct {
@@ -221,21 +221,21 @@ func (r *eventGormRepository) ListLiveEvents(city, category, search, sortBy, min
 
 	for _, m := range models {
 		events = append(events, domain.Event{
-			ID:                m.ID,
-			Title:             m.Title,
-			Slug:              m.Slug,
-			City:              m.City,
-			VenueName:         m.VenueName,
-			Category:          m.Category,
-			StartTime:         time.Unix(m.StartTime, 0),
-			EndTime:           time.Unix(m.EndTime, 0),
-			Tags:              m.Tags,
-			CoverImageURL:     m.CoverImageURL,
-			MinPrice:          m.MinPrice,
-			AvailableCapacity: m.AvailableCapacity,
-			Settled:           m.Settled,
-			CreatedAt:         time.Unix(m.CreatedAt, 0),
-			UpdatedAt:         time.Unix(m.UpdatedAt, 0),
+			ID:			m.ID,
+			Title:			m.Title,
+			Slug:			m.Slug,
+			City:			m.City,
+			VenueName:		m.VenueName,
+			Category:		m.Category,
+			StartTime:		time.Unix(m.StartTime, 0),
+			EndTime:		time.Unix(m.EndTime, 0),
+			Tags:			m.Tags,
+			CoverImageURL:		m.CoverImageURL,
+			MinPrice:		m.MinPrice,
+			AvailableCapacity:	m.AvailableCapacity,
+			Settled:		m.Settled,
+			CreatedAt:		time.Unix(m.CreatedAt, 0),
+			UpdatedAt:		time.Unix(m.UpdatedAt, 0),
 		})
 	}
 
@@ -251,9 +251,9 @@ func (r *eventGormRepository) AdminSearchEvents(
 
 	var models []struct {
 		EventModel
-		OrganizerName string
-		TicketsSold   int64
-		Revenue       float64
+		OrganizerName	string
+		TicketsSold	int64
+		Revenue		float64
 	}
 	var total int64
 
@@ -316,19 +316,19 @@ func (r *eventGormRepository) AdminSearchEvents(
 	for _, m := range models {
 		details = append(details, domain.AdminEventDetails{
 			Event: domain.Event{
-				ID:                        m.ID,
-				Title:                     m.Title,
-				City:                      m.City,
-				StartTime:                 time.Unix(m.StartTime, 0),
-				Status:                    m.Status,
-				Settled:                   m.Settled,
-				CancellationRequestReason: m.CancellationRequestReason,
-				CreatedAt:                 time.Unix(m.CreatedAt, 0),
-				UpdatedAt:                 time.Unix(m.UpdatedAt, 0),
+				ID:				m.ID,
+				Title:				m.Title,
+				City:				m.City,
+				StartTime:			time.Unix(m.StartTime, 0),
+				Status:				m.Status,
+				Settled:			m.Settled,
+				CancellationRequestReason:	m.CancellationRequestReason,
+				CreatedAt:			time.Unix(m.CreatedAt, 0),
+				UpdatedAt:			time.Unix(m.UpdatedAt, 0),
 			},
-			OrganizerName: m.OrganizerName,
-			TicketsSold:   m.TicketsSold,
-			Revenue:       int64(m.Revenue),
+			OrganizerName:	m.OrganizerName,
+			TicketsSold:	m.TicketsSold,
+			Revenue:	int64(m.Revenue),
 		})
 	}
 
@@ -349,23 +349,23 @@ func (r *eventGormRepository) GetEventBySlug(slug string) (*domain.Event, error)
 	}
 
 	return &domain.Event{
-		ID:                        model.ID,
-		OrganizerID:               model.OrganizerID,
-		Title:                     model.Title,
-		Slug:                      model.Slug,
-		Status:                    model.Status,
-		City:                      model.City,
-		VenueName:                 model.VenueName,
-		Category:                  model.Category,
-		StartTime:                 time.Unix(model.StartTime, 0),
-		EndTime:                   time.Unix(model.EndTime, 0),
-		Tags:                      model.Tags,
-		CoverImageURL:             model.CoverImageURL,
-		AvailableCapacity:         model.AvailableCapacity,
-		Settled:                   model.Settled,
-		CancellationRequestReason: model.CancellationRequestReason,
-		CreatedAt:                 time.Unix(model.CreatedAt, 0),
-		UpdatedAt:                 time.Unix(model.UpdatedAt, 0),
+		ID:				model.ID,
+		OrganizerID:			model.OrganizerID,
+		Title:				model.Title,
+		Slug:				model.Slug,
+		Status:				model.Status,
+		City:				model.City,
+		VenueName:			model.VenueName,
+		Category:			model.Category,
+		StartTime:			time.Unix(model.StartTime, 0),
+		EndTime:			time.Unix(model.EndTime, 0),
+		Tags:				model.Tags,
+		CoverImageURL:			model.CoverImageURL,
+		AvailableCapacity:		model.AvailableCapacity,
+		Settled:			model.Settled,
+		CancellationRequestReason:	model.CancellationRequestReason,
+		CreatedAt:			time.Unix(model.CreatedAt, 0),
+		UpdatedAt:			time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -383,23 +383,23 @@ func (r *eventGormRepository) GetEventByID(eventID string) (*domain.Event, error
 	}
 
 	return &domain.Event{
-		ID:                        model.ID,
-		OrganizerID:               model.OrganizerID,
-		Title:                     model.Title,
-		Slug:                      model.Slug,
-		Status:                    model.Status,
-		City:                      model.City,
-		VenueName:                 model.VenueName,
-		Category:                  model.Category,
-		StartTime:                 time.Unix(model.StartTime, 0),
-		EndTime:                   time.Unix(model.EndTime, 0),
-		Tags:                      model.Tags,
-		CoverImageURL:             model.CoverImageURL,
-		AvailableCapacity:         model.AvailableCapacity,
-		Settled:                   model.Settled,
-		CancellationRequestReason: model.CancellationRequestReason,
-		CreatedAt:                 time.Unix(model.CreatedAt, 0),
-		UpdatedAt:                 time.Unix(model.UpdatedAt, 0),
+		ID:				model.ID,
+		OrganizerID:			model.OrganizerID,
+		Title:				model.Title,
+		Slug:				model.Slug,
+		Status:				model.Status,
+		City:				model.City,
+		VenueName:			model.VenueName,
+		Category:			model.Category,
+		StartTime:			time.Unix(model.StartTime, 0),
+		EndTime:			time.Unix(model.EndTime, 0),
+		Tags:				model.Tags,
+		CoverImageURL:			model.CoverImageURL,
+		AvailableCapacity:		model.AvailableCapacity,
+		Settled:			model.Settled,
+		CancellationRequestReason:	model.CancellationRequestReason,
+		CreatedAt:			time.Unix(model.CreatedAt, 0),
+		UpdatedAt:			time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -417,17 +417,17 @@ func (r *eventGormRepository) GetEventDetails(eventID string) (*domain.EventDeta
 	}
 
 	return &domain.EventDetails{
-		EventID:            model.EventID,
-		Description:        model.Description,
-		VenueAddress:       model.VenueAddress,
-		MapURL:             model.MapURL,
-		TotalCapacity:      model.TotalCapacity,
-		AvailableCapacity:  model.AvailableCapacity,
-		Rating:             model.Rating,
-		TotalReviews:       model.TotalReviews,
-		TermsAndConditions: model.TermsAndConditions,
-		CreatedAt:          time.Unix(model.CreatedAt, 0),
-		UpdatedAt:          time.Unix(model.UpdatedAt, 0),
+		EventID:		model.EventID,
+		Description:		model.Description,
+		VenueAddress:		model.VenueAddress,
+		MapURL:			model.MapURL,
+		TotalCapacity:		model.TotalCapacity,
+		AvailableCapacity:	model.AvailableCapacity,
+		Rating:			model.Rating,
+		TotalReviews:		model.TotalReviews,
+		TermsAndConditions:	model.TermsAndConditions,
+		CreatedAt:		time.Unix(model.CreatedAt, 0),
+		UpdatedAt:		time.Unix(model.UpdatedAt, 0),
 	}, nil
 }
 
@@ -447,12 +447,12 @@ func (r *eventGormRepository) GetEventPersonnels(eventID string) ([]domain.Event
 
 	for _, m := range models {
 		personnels = append(personnels, domain.EventPersonnel{
-			ID:          m.ID,
-			EventID:     m.EventID,
-			Name:        m.Name,
-			Role:        m.Role,
-			Image:       m.Image,
-			ProfileLink: m.ProfileLink,
+			ID:		m.ID,
+			EventID:	m.EventID,
+			Name:		m.Name,
+			Role:		m.Role,
+			Image:		m.Image,
+			ProfileLink:	m.ProfileLink,
 		})
 	}
 
@@ -470,13 +470,13 @@ func (r *eventGormRepository) GetTicketTypesByEventID(eventID string) ([]domain.
 	tickets := make([]domain.TicketType, 0, len(models))
 	for _, m := range models {
 		tickets = append(tickets, domain.TicketType{
-			ID:                m.ID,
-			EventID:           m.EventID,
-			Name:              m.Name,
-			Price:             m.Price,
-			TotalQuantity:     m.TotalQuantity,
-			AvailableQuantity: m.AvailableQuantity,
-			Version:           m.Version,
+			ID:			m.ID,
+			EventID:		m.EventID,
+			Name:			m.Name,
+			Price:			m.Price,
+			TotalQuantity:		m.TotalQuantity,
+			AvailableQuantity:	m.AvailableQuantity,
+			Version:		m.Version,
 		})
 	}
 
@@ -487,21 +487,21 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
 		eventModel := EventModel{
-			ID:            event.ID,
-			OrganizerID:   event.OrganizerID,
-			Title:         event.Title,
-			Slug:          event.Slug,
-			City:          event.City,
-			VenueName:     event.VenueName,
-			Category:      event.Category,
-			StartTime:     event.StartTime.Unix(),
-			EndTime:       event.EndTime.Unix(),
-			Tags:          event.Tags,
-			Status:        event.Status,
-			Settled:       event.Settled,
-			CoverImageURL: event.CoverImageURL,
-			CreatedAt:     event.CreatedAt.Unix(),
-			UpdatedAt:     event.UpdatedAt.Unix(),
+			ID:		event.ID,
+			OrganizerID:	event.OrganizerID,
+			Title:		event.Title,
+			Slug:		event.Slug,
+			City:		event.City,
+			VenueName:	event.VenueName,
+			Category:	event.Category,
+			StartTime:	event.StartTime.Unix(),
+			EndTime:	event.EndTime.Unix(),
+			Tags:		event.Tags,
+			Status:		event.Status,
+			Settled:	event.Settled,
+			CoverImageURL:	event.CoverImageURL,
+			CreatedAt:	event.CreatedAt.Unix(),
+			UpdatedAt:	event.UpdatedAt.Unix(),
 		}
 
 		if err := tx.Create(&eventModel).Error; err != nil {
@@ -509,17 +509,17 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 		}
 
 		detailsModel := EventDetailsModel{
-			EventID:            details.EventID,
-			Description:        details.Description,
-			VenueAddress:       details.VenueAddress,
-			MapURL:             details.MapURL,
-			TotalCapacity:      details.TotalCapacity,
-			AvailableCapacity:  details.AvailableCapacity,
-			Rating:             details.Rating,
-			TotalReviews:       details.TotalReviews,
-			TermsAndConditions: details.TermsAndConditions,
-			CreatedAt:          details.CreatedAt.Unix(),
-			UpdatedAt:          details.UpdatedAt.Unix(),
+			EventID:		details.EventID,
+			Description:		details.Description,
+			VenueAddress:		details.VenueAddress,
+			MapURL:			details.MapURL,
+			TotalCapacity:		details.TotalCapacity,
+			AvailableCapacity:	details.AvailableCapacity,
+			Rating:			details.Rating,
+			TotalReviews:		details.TotalReviews,
+			TermsAndConditions:	details.TermsAndConditions,
+			CreatedAt:		details.CreatedAt.Unix(),
+			UpdatedAt:		details.UpdatedAt.Unix(),
 		}
 
 		if err := tx.Create(&detailsModel).Error; err != nil {
@@ -528,15 +528,15 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 
 		for _, ticket := range tickets {
 			ticketModel := TicketTypeModel{
-				ID:                ticket.ID,
-				EventID:           ticket.EventID,
-				Name:              ticket.Name,
-				Price:             ticket.Price,
-				TotalQuantity:     ticket.TotalQuantity,
-				AvailableQuantity: ticket.AvailableQuantity,
-				Version:           ticket.Version,
-				CreatedAt:         ticket.CreatedAt.Unix(),
-				UpdatedAt:         ticket.UpdatedAt.Unix(),
+				ID:			ticket.ID,
+				EventID:		ticket.EventID,
+				Name:			ticket.Name,
+				Price:			ticket.Price,
+				TotalQuantity:		ticket.TotalQuantity,
+				AvailableQuantity:	ticket.AvailableQuantity,
+				Version:		ticket.Version,
+				CreatedAt:		ticket.CreatedAt.Unix(),
+				UpdatedAt:		ticket.UpdatedAt.Unix(),
 			}
 
 			if err := tx.Create(&ticketModel).Error; err != nil {
@@ -546,12 +546,12 @@ func (r *eventGormRepository) CreateEvent(ctx context.Context, event *domain.Eve
 
 		for _, p := range personnels {
 			pModel := EventPersonnelModel{
-				ID:          p.ID,
-				EventID:     p.EventID,
-				Name:        p.Name,
-				Role:        p.Role,
-				Image:       p.Image,
-				ProfileLink: p.ProfileLink,
+				ID:		p.ID,
+				EventID:	p.EventID,
+				Name:		p.Name,
+				Role:		p.Role,
+				Image:		p.Image,
+				ProfileLink:	p.ProfileLink,
 			}
 			if err := tx.Create(&pModel).Error; err != nil {
 				return err
@@ -603,15 +603,15 @@ func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, e
 
 			for _, ticket := range ticketUpdates {
 				model := TicketTypeModel{
-					ID:                ticket.ID,
-					EventID:           ticket.EventID,
-					Name:              ticket.Name,
-					Price:             ticket.Price,
-					TotalQuantity:     ticket.TotalQuantity,
-					AvailableQuantity: ticket.AvailableQuantity,
-					Version:           ticket.Version,
-					CreatedAt:         ticket.CreatedAt.Unix(),
-					UpdatedAt:         ticket.UpdatedAt.Unix(),
+					ID:			ticket.ID,
+					EventID:		ticket.EventID,
+					Name:			ticket.Name,
+					Price:			ticket.Price,
+					TotalQuantity:		ticket.TotalQuantity,
+					AvailableQuantity:	ticket.AvailableQuantity,
+					Version:		ticket.Version,
+					CreatedAt:		ticket.CreatedAt.Unix(),
+					UpdatedAt:		ticket.UpdatedAt.Unix(),
 				}
 
 				if err := tx.Save(&model).Error; err != nil {
@@ -626,12 +626,12 @@ func (r *eventGormRepository) UpdateEvent(ctx context.Context, eventID string, e
 			}
 			for _, p := range personnelUpdates {
 				model := EventPersonnelModel{
-					ID:          p.ID,
-					EventID:     p.EventID,
-					Name:        p.Name,
-					Role:        p.Role,
-					Image:       p.Image,
-					ProfileLink: p.ProfileLink,
+					ID:		p.ID,
+					EventID:	p.EventID,
+					Name:		p.Name,
+					Role:		p.Role,
+					Image:		p.Image,
+					ProfileLink:	p.ProfileLink,
 				}
 				if err := tx.Create(&model).Error; err != nil {
 					return err
@@ -647,8 +647,8 @@ func (r *eventGormRepository) UpdateEventStatus(ctx context.Context, eventID str
 	return r.db.WithContext(ctx).Model(&EventModel{}).
 		Where("id = ?", eventID).
 		Updates(map[string]interface{}{
-			"status":     status,
-			"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			"status":	status,
+			"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 		}).Error
 }
 
@@ -662,8 +662,8 @@ func (r *eventGormRepository) SettleEventEarnings(
 		eventResult := tx.Model(&EventModel{}).
 			Where("id = ? AND status = ? AND settled = ?", eventID, "completed", false).
 			Updates(map[string]interface{}{
-				"settled":    true,
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"settled":	true,
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			})
 		if eventResult.Error != nil {
 			return eventResult.Error
@@ -673,8 +673,8 @@ func (r *eventGormRepository) SettleEventEarnings(
 		}
 
 		var bookingStats struct {
-			TotalAmount  float64
-			TotalTickets int64
+			TotalAmount	float64
+			TotalTickets	int64
 		}
 
 		if err := tx.Table("booking_models").
@@ -708,14 +708,14 @@ func (r *eventGormRepository) SettleEventEarnings(
 		}
 
 		if err := tx.Create(&WalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      wallet.ID,
-			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        organizerRevenue,
-			ReferenceType: domain.WalletReferenceTypeSettlement,
-			ReferenceID:   eventID,
-			Status:        domain.WalletTransactionStatusCompleted,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	wallet.ID,
+			Type:		domain.WalletTransactionTypeCredit,
+			Amount:		organizerRevenue,
+			ReferenceType:	domain.WalletReferenceTypeSettlement,
+			ReferenceID:	eventID,
+			Status:		domain.WalletTransactionStatusCompleted,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -729,10 +729,10 @@ func (r *eventGormRepository) SettleEventEarnings(
 			Where("id = ?", wallet.ID).
 			Select("pending_balance", "available_balance", "reserve_balance", "updated_at").
 			Updates(WalletModel{
-				PendingBalance:   wallet.PendingBalance,
-				AvailableBalance: wallet.AvailableBalance,
-				ReserveBalance:   wallet.ReserveBalance,
-				UpdatedAt:        wallet.UpdatedAt,
+				PendingBalance:		wallet.PendingBalance,
+				AvailableBalance:	wallet.AvailableBalance,
+				ReserveBalance:		wallet.ReserveBalance,
+				UpdatedAt:		wallet.UpdatedAt,
 			}).Error; err != nil {
 			return err
 		}
@@ -743,13 +743,13 @@ func (r *eventGormRepository) SettleEventEarnings(
 		}
 
 		if err := tx.Create(&PlatformWalletTransactionModel{
-			ID:            uuid.NewString(),
-			WalletID:      domain.PlatformWalletID,
-			Type:          domain.WalletTransactionTypeCredit,
-			Amount:        organizerFee,
-			ReferenceType: domain.PlatformRefTypeEarning,
-			ReferenceID:   eventID,
-			CreatedAt:     now,
+			ID:		uuid.NewString(),
+			WalletID:	domain.PlatformWalletID,
+			Type:		domain.WalletTransactionTypeCredit,
+			Amount:		organizerFee,
+			ReferenceType:	domain.PlatformRefTypeEarning,
+			ReferenceID:	eventID,
+			CreatedAt:	now,
 		}).Error; err != nil {
 			return err
 		}
@@ -762,9 +762,9 @@ func (r *eventGormRepository) SettleEventEarnings(
 			Where("id = ?", domain.PlatformWalletID).
 			Select("available_balance", "total_credited", "updated_at").
 			Updates(PlatformWalletModel{
-				AvailableBalance: platformWallet.AvailableBalance,
-				TotalCredited:    platformWallet.TotalCredited,
-				UpdatedAt:        platformWallet.UpdatedAt,
+				AvailableBalance:	platformWallet.AvailableBalance,
+				TotalCredited:		platformWallet.TotalCredited,
+				UpdatedAt:		platformWallet.UpdatedAt,
 			}).Error; err != nil {
 			return err
 		}
@@ -777,8 +777,8 @@ func (r *eventGormRepository) ApproveEvent(ctx context.Context, eventID string) 
 	return r.db.WithContext(ctx).Model(&EventModel{}).
 		Where("id = ?", eventID).
 		Updates(map[string]interface{}{
-			"status":     "approved",
-			"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+			"status":	"approved",
+			"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 		}).Error
 }
 
@@ -787,19 +787,19 @@ func (r *eventGormRepository) RejectEvent(ctx context.Context, eventID string, a
 		if err := tx.Model(&EventModel{}).
 			Where("id = ?", eventID).
 			Updates(map[string]interface{}{
-				"status":     "rejected",
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"status":	"rejected",
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			}).Error; err != nil {
 			return err
 		}
 
 		logModel := EventModerationLogModel{
-			ID:        uuid.New().String(),
-			EventID:   eventID,
-			AdminID:   adminID,
-			Action:    "rejected",
-			Reason:    reason,
-			CreatedAt: time.Now().Unix(),
+			ID:		uuid.New().String(),
+			EventID:	eventID,
+			AdminID:	adminID,
+			Action:		"rejected",
+			Reason:		reason,
+			CreatedAt:	time.Now().Unix(),
 		}
 
 		return tx.Create(&logModel).Error
@@ -811,19 +811,19 @@ func (r *eventGormRepository) SuspendLiveEvent(ctx context.Context, eventID stri
 		if err := tx.Model(&EventModel{}).
 			Where("id = ?", eventID).
 			Updates(map[string]interface{}{
-				"status":     "suspended",
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"status":	"suspended",
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			}).Error; err != nil {
 			return err
 		}
 
 		logModel := EventModerationLogModel{
-			ID:        uuid.New().String(),
-			EventID:   eventID,
-			AdminID:   adminID,
-			Action:    "suspended",
-			Reason:    reason,
-			CreatedAt: time.Now().Unix(),
+			ID:		uuid.New().String(),
+			EventID:	eventID,
+			AdminID:	adminID,
+			Action:		"suspended",
+			Reason:		reason,
+			CreatedAt:	time.Now().Unix(),
 		}
 
 		return tx.Create(&logModel).Error
@@ -851,24 +851,24 @@ func (r *eventGormRepository) GetEventsByOrganizerID(organizerID string, status 
 	events := make([]domain.Event, 0)
 	for _, m := range models {
 		events = append(events, domain.Event{
-			ID:                        m.ID,
-			OrganizerID:               m.OrganizerID,
-			Title:                     m.Title,
-			Slug:                      m.Slug,
-			Status:                    m.Status,
-			City:                      m.City,
-			VenueName:                 m.VenueName,
-			Category:                  m.Category,
-			StartTime:                 time.Unix(m.StartTime, 0),
-			EndTime:                   time.Unix(m.EndTime, 0),
-			Tags:                      m.Tags,
-			CoverImageURL:             m.CoverImageURL,
-			AvailableCapacity:         m.AvailableCapacity,
-			Settled:                   m.Settled,
-			RejectionReason:           m.RejectionReason,
-			CancellationRequestReason: m.CancellationRequestReason,
-			CreatedAt:                 time.Unix(m.CreatedAt, 0),
-			UpdatedAt:                 time.Unix(m.UpdatedAt, 0),
+			ID:				m.ID,
+			OrganizerID:			m.OrganizerID,
+			Title:				m.Title,
+			Slug:				m.Slug,
+			Status:				m.Status,
+			City:				m.City,
+			VenueName:			m.VenueName,
+			Category:			m.Category,
+			StartTime:			time.Unix(m.StartTime, 0),
+			EndTime:			time.Unix(m.EndTime, 0),
+			Tags:				m.Tags,
+			CoverImageURL:			m.CoverImageURL,
+			AvailableCapacity:		m.AvailableCapacity,
+			Settled:			m.Settled,
+			RejectionReason:		m.RejectionReason,
+			CancellationRequestReason:	m.CancellationRequestReason,
+			CreatedAt:			time.Unix(m.CreatedAt, 0),
+			UpdatedAt:			time.Unix(m.UpdatedAt, 0),
 		})
 	}
 	return events, nil
@@ -897,8 +897,8 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 		eventResult := tx.Model(&EventModel{}).
 			Where("id = ? AND organizer_id = ? AND status IN ('live', 'approved', 'cancellation_pending')", eventID, organizerID).
 			Updates(map[string]interface{}{
-				"status":     "cancelled",
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"status":	"cancelled",
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			})
 		if eventResult.Error != nil {
 			return eventResult.Error
@@ -940,7 +940,7 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 			} else {
 				feesPerTicket := bm.PlatformFeeValue
 				if feesPerTicket == 0 {
-					feesPerTicket = 30 
+					feesPerTicket = 30
 				}
 				platformFee = math.Round(float64(totalTicketsCancelled)*feesPerTicket*100) / 100
 			}
@@ -965,22 +965,22 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 			}
 
 			if err := tx.Create(&WalletTransactionModel{
-				ID:            uuid.NewString(),
-				WalletID:      userWallet.ID,
-				Type:          domain.WalletTransactionTypeCredit,
-				Amount:        totalRefundToUser,
-				ReferenceType: domain.WalletReferenceTypeOrganizerCancellation,
-				ReferenceID:   bm.ID,
-				Status:        domain.WalletTransactionStatusCompleted,
-				CreatedAt:     now,
+				ID:		uuid.NewString(),
+				WalletID:	userWallet.ID,
+				Type:		domain.WalletTransactionTypeCredit,
+				Amount:		totalRefundToUser,
+				ReferenceType:	domain.WalletReferenceTypeOrganizerCancellation,
+				ReferenceID:	bm.ID,
+				Status:		domain.WalletTransactionStatusCompleted,
+				CreatedAt:	now,
 			}).Error; err != nil {
 				return err
 			}
 
 			userWallet.AvailableBalance = math.Round((userWallet.AvailableBalance+totalRefundToUser)*100) / 100
 			if err := tx.Model(&WalletModel{}).Where("id = ?", userWallet.ID).Updates(map[string]interface{}{
-				"available_balance": userWallet.AvailableBalance,
-				"updated_at":        now,
+				"available_balance":	userWallet.AvailableBalance,
+				"updated_at":		now,
 			}).Error; err != nil {
 				return err
 			}
@@ -991,14 +991,14 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 			}
 
 			if err := tx.Create(&WalletTransactionModel{
-				ID:            uuid.NewString(),
-				WalletID:      orgWallet.ID,
-				Type:          domain.WalletTransactionTypeDebit,
-				Amount:        totalRefundToUser,
-				ReferenceType: domain.WalletReferenceTypeOrganizerCancellation,
-				ReferenceID:   bm.ID,
-				Status:        domain.WalletTransactionStatusCompleted,
-				CreatedAt:     now,
+				ID:		uuid.NewString(),
+				WalletID:	orgWallet.ID,
+				Type:		domain.WalletTransactionTypeDebit,
+				Amount:		totalRefundToUser,
+				ReferenceType:	domain.WalletReferenceTypeOrganizerCancellation,
+				ReferenceID:	bm.ID,
+				Status:		domain.WalletTransactionStatusCompleted,
+				CreatedAt:	now,
 			}).Error; err != nil {
 				return err
 			}
@@ -1007,21 +1007,21 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 			orgWallet.AvailableBalance = math.Round((orgWallet.AvailableBalance-platformFee)*100) / 100
 
 			if err := tx.Model(&WalletModel{}).Where("id = ?", orgWallet.ID).Updates(map[string]interface{}{
-				"pending_balance":   orgWallet.PendingBalance,
-				"available_balance": orgWallet.AvailableBalance,
-				"updated_at":        now,
+				"pending_balance":	orgWallet.PendingBalance,
+				"available_balance":	orgWallet.AvailableBalance,
+				"updated_at":		now,
 			}).Error; err != nil {
 				return err
 			}
 
 			if err := tx.Create(&PlatformWalletTransactionModel{
-				ID:            uuid.NewString(),
-				WalletID:      domain.PlatformWalletID,
-				Type:          domain.WalletTransactionTypeCredit,
-				Amount:        platformFee,
-				ReferenceType: domain.PlatformRefTypeCancellationPenalty,
-				ReferenceID:   bm.ID,
-				CreatedAt:     now,
+				ID:		uuid.NewString(),
+				WalletID:	domain.PlatformWalletID,
+				Type:		domain.WalletTransactionTypeCredit,
+				Amount:		platformFee,
+				ReferenceType:	domain.PlatformRefTypeCancellationPenalty,
+				ReferenceID:	bm.ID,
+				CreatedAt:	now,
 			}).Error; err != nil {
 				return err
 			}
@@ -1032,9 +1032,9 @@ func (r *eventGormRepository) CancelLiveEvent(ctx context.Context, eventID strin
 		}
 
 		if err := tx.Model(&PlatformWalletModel{}).Where("id = ?", domain.PlatformWalletID).Updates(map[string]interface{}{
-			"available_balance": platformWallet.AvailableBalance,
-			"total_credited":    platformWallet.TotalCredited,
-			"updated_at":        platformWallet.UpdatedAt,
+			"available_balance":	platformWallet.AvailableBalance,
+			"total_credited":	platformWallet.TotalCredited,
+			"updated_at":		platformWallet.UpdatedAt,
 		}).Error; err != nil {
 			return err
 		}
@@ -1048,8 +1048,8 @@ func (r *eventGormRepository) RequestEventCancellation(ctx context.Context, even
 		eventResult := tx.Model(&EventModel{}).
 			Where("id = ? AND organizer_id = ? AND status = 'live'", eventID, organizerID).
 			Updates(map[string]interface{}{
-				"status":     "cancellation_pending",
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"status":	"cancellation_pending",
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			})
 		if eventResult.Error != nil {
 			return eventResult.Error
@@ -1059,12 +1059,12 @@ func (r *eventGormRepository) RequestEventCancellation(ctx context.Context, even
 		}
 
 		logModel := EventModerationLogModel{
-			ID:        uuid.New().String(),
-			EventID:   eventID,
-			AdminID:   organizerID,
-			Action:    "cancellation_requested",
-			Reason:    reason,
-			CreatedAt: time.Now().Unix(),
+			ID:		uuid.New().String(),
+			EventID:	eventID,
+			AdminID:	organizerID,
+			Action:		"cancellation_requested",
+			Reason:		reason,
+			CreatedAt:	time.Now().Unix(),
 		}
 		return tx.Create(&logModel).Error
 	})
@@ -1075,8 +1075,8 @@ func (r *eventGormRepository) RejectEventCancellation(ctx context.Context, event
 		eventResult := tx.Model(&EventModel{}).
 			Where("id = ? AND status = 'cancellation_pending'", eventID).
 			Updates(map[string]interface{}{
-				"status":     "live",
-				"updated_at": gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
+				"status":	"live",
+				"updated_at":	gorm.Expr("EXTRACT(EPOCH FROM NOW())"),
 			})
 		if eventResult.Error != nil {
 			return eventResult.Error
@@ -1086,12 +1086,12 @@ func (r *eventGormRepository) RejectEventCancellation(ctx context.Context, event
 		}
 
 		logModel := EventModerationLogModel{
-			ID:        uuid.New().String(),
-			EventID:   eventID,
-			AdminID:   adminID,
-			Action:    "cancellation_rejected",
-			Reason:    reason,
-			CreatedAt: time.Now().Unix(),
+			ID:		uuid.New().String(),
+			EventID:	eventID,
+			AdminID:	adminID,
+			Action:		"cancellation_rejected",
+			Reason:		reason,
+			CreatedAt:	time.Now().Unix(),
 		}
 		return tx.Create(&logModel).Error
 	})
@@ -1110,21 +1110,21 @@ func (r *eventGormRepository) FindPastLiveEvents(ctx context.Context, now time.T
 	events := make([]domain.Event, len(models))
 	for i, model := range models {
 		events[i] = domain.Event{
-			ID:            model.ID,
-			OrganizerID:   model.OrganizerID,
-			Title:         model.Title,
-			Slug:          model.Slug,
-			Status:        model.Status,
-			City:          model.City,
-			VenueName:     model.VenueName,
-			Category:      model.Category,
-			StartTime:     time.Unix(model.StartTime, 0),
-			EndTime:       time.Unix(model.EndTime, 0),
-			Tags:          model.Tags,
-			CoverImageURL: model.CoverImageURL,
-			Settled:       model.Settled,
-			CreatedAt:     time.Unix(model.CreatedAt, 0),
-			UpdatedAt:     time.Unix(model.UpdatedAt, 0),
+			ID:		model.ID,
+			OrganizerID:	model.OrganizerID,
+			Title:		model.Title,
+			Slug:		model.Slug,
+			Status:		model.Status,
+			City:		model.City,
+			VenueName:	model.VenueName,
+			Category:	model.Category,
+			StartTime:	time.Unix(model.StartTime, 0),
+			EndTime:	time.Unix(model.EndTime, 0),
+			Tags:		model.Tags,
+			CoverImageURL:	model.CoverImageURL,
+			Settled:	model.Settled,
+			CreatedAt:	time.Unix(model.CreatedAt, 0),
+			UpdatedAt:	time.Unix(model.UpdatedAt, 0),
 		}
 	}
 
@@ -1166,10 +1166,10 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 	}
 
 	var bookings []struct {
-		EventID     string
-		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"`
-		Tickets     int
+		EventID		string
+		TotalAmount	float64
+		CreatedAt	int64	`gorm:"column:created_at"`
+		Tickets		int
 	}
 
 	r.db.Table("booking_models").
@@ -1225,16 +1225,16 @@ func (r *eventGormRepository) GetDashboardStats(organizerID string) (*domain.Org
 	for i := 11; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0).Format("Jan 2006")
 		stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
-			Date:   m,
-			Amount: revenueByMonth[m],
+			Date:	m,
+			Amount:	revenueByMonth[m],
 		})
 	}
 
 	for evtID, val := range revenueByEvent {
 		if val > 0 && eventTitleMap[evtID] != "" {
 			stats.SalesBreakdown = append(stats.SalesBreakdown, domain.EventSalesBreakdown{
-				EventName: eventTitleMap[evtID],
-				Revenue:   val,
+				EventName:	eventTitleMap[evtID],
+				Revenue:	val,
 			})
 		}
 	}
@@ -1286,10 +1286,10 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 	prevStartTime := startTime.Add(-duration)
 
 	var bookings []struct {
-		EventID     string
-		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"`
-		Tickets     int
+		EventID		string
+		TotalAmount	float64
+		CreatedAt	int64	`gorm:"column:created_at"`
+		Tickets		int
 	}
 
 	r.db.Table("booking_models").
@@ -1360,8 +1360,8 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 		for i := 0; i <= days; i++ {
 			d := startTime.AddDate(0, 0, i).Format("Jan 02")
 			stats.RevenueOverTime = append(stats.RevenueOverTime, domain.RevenuePoint{
-				Date:   d,
-				Amount: revenueMap[d],
+				Date:	d,
+				Amount:	revenueMap[d],
 			})
 		}
 	} else {
@@ -1369,8 +1369,8 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 		for i := 0; i <= months; i++ {
 			m := startTime.AddDate(0, i, 0).Format("Jan 2006")
 			stats.RevenueOverTime = append(stats.RevenueOverTime, domain.RevenuePoint{
-				Date:   m,
-				Amount: revenueMap[m],
+				Date:	m,
+				Amount:	revenueMap[m],
 			})
 		}
 	}
@@ -1382,9 +1382,9 @@ func (r *eventGormRepository) GetSalesReport(organizerID string, eventID string,
 				percentage = float64(tkts) / float64(totalTkt) * 100
 			}
 			stats.TicketsPerEvent = append(stats.TicketsPerEvent, domain.TicketSalesProportion{
-				EventName:       eventTitleMap[evtID],
-				TicketsSold:     tkts,
-				PercentageTotal: percentage,
+				EventName:		eventTitleMap[evtID],
+				TicketsSold:		tkts,
+				PercentageTotal:	percentage,
 			})
 		}
 	}
@@ -1493,9 +1493,9 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 		refundRatePct = 100
 	}
 	stats.RefundRate = domain.AdminStatCard{
-		Value:      refundRate,
-		Percentage: refundRatePct,
-		Subtitle:   fmt.Sprintf("%d out of %d tickets", refundedTickets, totalTickets),
+		Value:		refundRate,
+		Percentage:	refundRatePct,
+		Subtitle:	fmt.Sprintf("%d out of %d tickets", refundedTickets, totalTickets),
 	}
 
 	growthPct := 0.0
@@ -1543,7 +1543,7 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 	} else if groupBy == "monthly" {
 		useDays = false
 	} else {
-		// Auto-aggregation heuristics
+
 		if durationHours <= 31*24 {
 			useDays = true
 		} else if durationHours <= 120*24 {
@@ -1554,8 +1554,8 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 	}
 
 	var bookingRows []struct {
-		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"`
+		TotalAmount	float64
+		CreatedAt	int64	`gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
@@ -1607,8 +1607,8 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 		for i := 0; i <= days; i++ {
 			d := startDate.AddDate(0, 0, i).Format("Jan 02")
 			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
-				Date:   d,
-				Amount: revenueMap[d],
+				Date:	d,
+				Amount:	revenueMap[d],
 			})
 		}
 	} else if useWeeks {
@@ -1618,8 +1618,8 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 			_, week := d.ISOWeek()
 			key := fmt.Sprintf("Week %d, %d", week, d.Year())
 			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
-				Date:   key,
-				Amount: revenueMap[key],
+				Date:	key,
+				Amount:	revenueMap[key],
 			})
 		}
 	} else {
@@ -1627,8 +1627,8 @@ func (r *eventGormRepository) GetAdminDashboardStats(span string, groupBy string
 		for !cur.After(now) {
 			key := cur.Format("Jan 2006")
 			stats.RevenueOverview = append(stats.RevenueOverview, domain.RevenuePoint{
-				Date:   key,
-				Amount: revenueMap[key],
+				Date:	key,
+				Amount:	revenueMap[key],
 			})
 			cur = cur.AddDate(0, 1, 0)
 		}
@@ -1711,8 +1711,8 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	report.GrowthRate = domain.AdminStatCard{Value: growthRate, Percentage: monthPct}
 
 	var bookingRows []struct {
-		TotalAmount float64
-		CreatedAt   int64 `gorm:"column:created_at"`
+		TotalAmount	float64
+		CreatedAt	int64	`gorm:"column:created_at"`
 	}
 	r.db.Table("booking_models").
 		Select("total_amount, created_at").
@@ -1776,8 +1776,8 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		for i := 0; i <= days; i++ {
 			d := startDate.AddDate(0, 0, i).Format("Jan 02")
 			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
-				Date:   d,
-				Amount: revenueMap[d],
+				Date:	d,
+				Amount:	revenueMap[d],
 			})
 		}
 	} else if useWeeks {
@@ -1787,8 +1787,8 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 			_, week := d.ISOWeek()
 			key := fmt.Sprintf("Week %d, %d", week, d.Year())
 			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
-				Date:   key,
-				Amount: revenueMap[key],
+				Date:	key,
+				Amount:	revenueMap[key],
 			})
 		}
 	} else {
@@ -1796,16 +1796,16 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 		for !cur.After(endDate) {
 			key := cur.Format("Jan 2006")
 			report.RevenueOverTime = append(report.RevenueOverTime, domain.RevenuePoint{
-				Date:   key,
-				Amount: revenueMap[key],
+				Date:	key,
+				Amount:	revenueMap[key],
 			})
 			cur = cur.AddDate(0, 1, 0)
 		}
 	}
 
 	var catRows []struct {
-		Category string
-		Revenue  float64
+		Category	string
+		Revenue		float64
 	}
 	r.db.Table("booking_models").
 		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
@@ -1821,8 +1821,8 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 			cat = "Others"
 		}
 		report.CategoryBreakdown = append(report.CategoryBreakdown, domain.CategoryRevenue{
-			Category: cat,
-			Revenue:  row.Revenue,
+			Category:	cat,
+			Revenue:	row.Revenue,
 		})
 	}
 
@@ -1871,32 +1871,32 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 	for _, v := range refundByMonth {
 		totalRefundAmount += v
 	}
-    
-    overallRate := 0.0
-    if totalTickets > 0 {
-        overallRate = float64(totalRefundAmount) / float64(totalTickets) * 100
-    }
+
+	overallRate := 0.0
+	if totalTickets > 0 {
+		overallRate = float64(totalRefundAmount) / float64(totalTickets) * 100
+	}
 
 	report.RefundTotal = domain.AdminStatCard{
-        Value: overallRate, 
-        Percentage: refundPct,
-        Subtitle: fmt.Sprintf("%d out of %d tickets", int64(totalRefundAmount), totalTickets),
-    }
+		Value:		overallRate,
+		Percentage:	refundPct,
+		Subtitle:	fmt.Sprintf("%d out of %d tickets", int64(totalRefundAmount), totalTickets),
+	}
 
 	for i := 5; i >= 0; i-- {
 		m := now.AddDate(0, -i, 0)
 		report.RefundAnalytics = append(report.RefundAnalytics, domain.RefundDataPoint{
-			Month:  m.Format("Jan 2006"),
-			Amount: refundByMonth[m.Format("Jan 2006")],
+			Month:	m.Format("Jan 2006"),
+			Amount:	refundByMonth[m.Format("Jan 2006")],
 		})
 	}
 
 	var orgRows []struct {
-		OrganizerID   string
-		Name          string
-		TotalRevenue  float64
-		ActiveEvents  int
-		PendingEvents int
+		OrganizerID	string
+		Name		string
+		TotalRevenue	float64
+		ActiveEvents	int
+		PendingEvents	int
 	}
 	r.db.Table("booking_models").
 		Joins("JOIN event_models ON event_models.id::uuid = booking_models.event_id::uuid").
@@ -1921,19 +1921,19 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 			Scan(&avgRating)
 
 		report.TopOrganizers = append(report.TopOrganizers, domain.TopOrganizerEntry{
-			Name:           o.Name,
-			Revenue:        o.TotalRevenue,
-			ActiveEvents:   o.ActiveEvents,
-			PendingEvents:  o.PendingEvents,
-			AvgEventRating: math.Round(avgRating.Avg*10) / 10,
+			Name:		o.Name,
+			Revenue:	o.TotalRevenue,
+			ActiveEvents:	o.ActiveEvents,
+			PendingEvents:	o.PendingEvents,
+			AvgEventRating:	math.Round(avgRating.Avg*10) / 10,
 		})
 	}
 
 	var userRows []struct {
-		UserID        string
-		Name          string
-		TotalSpent    float64
-		BookingsCount int
+		UserID		string
+		Name		string
+		TotalSpent	float64
+		BookingsCount	int
 	}
 	r.db.Table("booking_models").
 		Joins("JOIN user_models ON user_models.id::uuid = booking_models.user_id::uuid").
@@ -1949,9 +1949,9 @@ func (r *eventGormRepository) GetAdminRevenueReport(startDate, endDate time.Time
 
 	for _, u := range userRows {
 		report.TopUsers = append(report.TopUsers, domain.TopUserEntry{
-			Name:           u.Name,
-			EventsAttended: u.BookingsCount,
-			TotalSpent:     u.TotalSpent,
+			Name:		u.Name,
+			EventsAttended:	u.BookingsCount,
+			TotalSpent:	u.TotalSpent,
 		})
 	}
 

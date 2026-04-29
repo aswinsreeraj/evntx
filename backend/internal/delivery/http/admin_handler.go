@@ -15,14 +15,14 @@ import (
 )
 
 type AdminHandler struct {
-	eventUsecase       *usecase.EventUsecase
-	userUsecase        *usecase.UserUsecase
-	walletUsecase      *usecase.WalletUsecase
-	platformWalletRepo repository.PlatformWalletRepository
-	engagementUsecase  *usecase.EngagementUsecase
-	settingsRepo       repository.SettingsRepository
-	roleRepo           repository.UserRoleRepository
-	auditUsecase       *usecase.AuditUsecase
+	eventUsecase		*usecase.EventUsecase
+	userUsecase		*usecase.UserUsecase
+	walletUsecase		*usecase.WalletUsecase
+	platformWalletRepo	repository.PlatformWalletRepository
+	engagementUsecase	*usecase.EngagementUsecase
+	settingsRepo		repository.SettingsRepository
+	roleRepo		repository.UserRoleRepository
+	auditUsecase		*usecase.AuditUsecase
 }
 
 func NewAdminHandler(
@@ -36,14 +36,14 @@ func NewAdminHandler(
 	auditUsecase *usecase.AuditUsecase,
 ) *AdminHandler {
 	return &AdminHandler{
-		eventUsecase:       eventUsecase,
-		userUsecase:        userUsecase,
-		walletUsecase:      walletUsecase,
-		platformWalletRepo: platformWalletRepo,
-		engagementUsecase:  engagementUsecase,
-		settingsRepo:       settingsRepo,
-		roleRepo:           roleRepo,
-		auditUsecase:       auditUsecase,
+		eventUsecase:		eventUsecase,
+		userUsecase:		userUsecase,
+		walletUsecase:		walletUsecase,
+		platformWalletRepo:	platformWalletRepo,
+		engagementUsecase:	engagementUsecase,
+		settingsRepo:		settingsRepo,
+		roleRepo:		roleRepo,
+		auditUsecase:		auditUsecase,
 	}
 }
 
@@ -123,7 +123,6 @@ func (h *AdminHandler) GetAdminEngagementReport(c *gin.Context) {
 		}
 	}
 
-	
 	if eventIDParam == "" || eventIDParam == "all" {
 		eventIDs = append(eventIDs, domain.PlatformEventID)
 	}
@@ -174,26 +173,26 @@ func (h *AdminHandler) AdminListEvents(c *gin.Context) {
 	eventResponses := make([]gin.H, 0, len(events))
 	for _, evt := range events {
 		eventResponses = append(eventResponses, gin.H{
-			"id":             evt.ID,
-			"slug":           evt.Slug,
-			"title":          evt.Title,
-			"organizer_name": evt.OrganizerName,
-			"start_time":     evt.StartTime,
-			"date":           evt.StartTime,
-			"tickets_sold":   evt.TicketsSold,
-			"revenue":        evt.Revenue,
-			"city":           evt.City,
-			"status":         evt.Status,
-			"cancellation_request_reason": evt.CancellationRequestReason,
+			"id":				evt.ID,
+			"slug":				evt.Slug,
+			"title":			evt.Title,
+			"organizer_name":		evt.OrganizerName,
+			"start_time":			evt.StartTime,
+			"date":				evt.StartTime,
+			"tickets_sold":			evt.TicketsSold,
+			"revenue":			evt.Revenue,
+			"city":				evt.City,
+			"status":			evt.Status,
+			"cancellation_request_reason":	evt.CancellationRequestReason,
 		})
 	}
 
 	response.Success(c, "Events retrieved successfully", gin.H{
-		"events": eventResponses,
+		"events":	eventResponses,
 		"pagination": gin.H{
-			"total": total,
-			"page":  page,
-			"limit": limit,
+			"total":	total,
+			"page":		page,
+			"limit":	limit,
 		},
 	})
 }
@@ -206,8 +205,8 @@ func (h *AdminHandler) ApproveEventCancellationHandler(c *gin.Context) {
 		return
 	}
 	response.Success(c, "Event cancellation approved", gin.H{
-		"event_id": eventID,
-		"status":   "cancelled",
+		"event_id":	eventID,
+		"status":	"cancelled",
 	})
 }
 
@@ -226,8 +225,8 @@ func (h *AdminHandler) RejectEventCancellationHandler(c *gin.Context) {
 		return
 	}
 	response.Success(c, "Event cancellation rejected", gin.H{
-		"event_id": eventID,
-		"status":   "live",
+		"event_id":	eventID,
+		"status":	"live",
 	})
 }
 
@@ -254,8 +253,8 @@ func (h *AdminHandler) ApproveEventHandler(c *gin.Context) {
 	}
 
 	response.Success(c, "Event approved successfully", gin.H{
-		"event_id": eventID,
-		"status":   "approved",
+		"event_id":	eventID,
+		"status":	"approved",
 	})
 }
 
@@ -293,8 +292,8 @@ func (h *AdminHandler) RejectEventHandler(c *gin.Context) {
 	}
 
 	response.Success(c, "Event rejected successfully", gin.H{
-		"event_id": eventID,
-		"status":   "rejected",
+		"event_id":	eventID,
+		"status":	"rejected",
 	})
 }
 
@@ -324,8 +323,8 @@ func (h *AdminHandler) SuspendEventHandler(c *gin.Context) {
 	}
 
 	response.Success(c, "Event suspended successfully", gin.H{
-		"event_id": eventID,
-		"status":   "suspended",
+		"event_id":	eventID,
+		"status":	"suspended",
 	})
 }
 
@@ -343,8 +342,8 @@ func (h *AdminHandler) CompleteEventHandler(c *gin.Context) {
 	}
 
 	response.Success(c, "Event completed successfully", gin.H{
-		"event_id": eventID,
-		"status":   "completed",
+		"event_id":	eventID,
+		"status":	"completed",
 	})
 }
 
@@ -385,13 +384,13 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 				orgName = organizerDetail.OrganizationName
 			}
 			host = gin.H{
-				"name":         user.Name,
-				"organization": orgName,
-				"role":         "Event Organizer",
-				"avatar":       user.ProfileImage,
-				"email":        user.Email,
-				"mobile":       user.Mobile,
-				"address":      "",
+				"name":		user.Name,
+				"organization":	orgName,
+				"role":		"Event Organizer",
+				"avatar":	user.ProfileImage,
+				"email":	user.Email,
+				"mobile":	user.Mobile,
+				"address":	"",
 			}
 			if organizerDetail != nil {
 				host["address"] = organizerDetail.Address
@@ -400,11 +399,11 @@ func (h *AdminHandler) AdminGetEvent(c *gin.Context) {
 	}
 
 	response.Success(c, "Event fetched successfully", gin.H{
-		"event":        event,
-		"details":      details,
-		"personnels":   personnels,
-		"ticket_types": tickets,
-		"host":         host,
+		"event":	event,
+		"details":	details,
+		"personnels":	personnels,
+		"ticket_types":	tickets,
+		"host":		host,
 	})
 }
 func (h *AdminHandler) GetPlatformWallet(c *gin.Context) {
@@ -415,12 +414,12 @@ func (h *AdminHandler) GetPlatformWallet(c *gin.Context) {
 	}
 
 	response.Success(c, "Platform wallet retrieved successfully", gin.H{
-		"available_balance": stats.AvailableBalance,
-		"total_revenue":     stats.TotalRevenue,
-		"total_fees":        stats.TotalFees,
-		"total_payouts":     stats.TotalPayouts,
-		"total_refunds":     stats.TotalRefunds,
-		"updated_at":        stats.UpdatedAt,
+		"available_balance":	stats.AvailableBalance,
+		"total_revenue":	stats.TotalRevenue,
+		"total_fees":		stats.TotalFees,
+		"total_payouts":	stats.TotalPayouts,
+		"total_refunds":	stats.TotalRefunds,
+		"updated_at":		stats.UpdatedAt,
 	})
 }
 
@@ -445,11 +444,11 @@ func (h *AdminHandler) GetPlatformTransactions(c *gin.Context) {
 	}
 
 	response.Success(c, "Platform transactions retrieved successfully", gin.H{
-		"transactions": txns,
+		"transactions":	txns,
 		"pagination": gin.H{
-			"total": total,
-			"page":  page,
-			"limit": limit,
+			"total":	total,
+			"page":		page,
+			"limit":	limit,
 		},
 	})
 }
@@ -464,8 +463,8 @@ func (h *AdminHandler) AdminGetPayouts(c *gin.Context) {
 	}
 
 	response.Success(c, "Payouts retrieved successfully", gin.H{
-		"payouts": payouts,
-		"total":   total,
+		"payouts":	payouts,
+		"total":	total,
 	})
 }
 
@@ -532,6 +531,18 @@ func (h *AdminHandler) AdminBulkApprovePayouts(c *gin.Context) {
 	}
 
 	response.Success(c, "Payouts approved successfully", nil)
+}
+
+func (h *AdminHandler) AdminGetTotalPayoutsSum(c *gin.Context) {
+	sum, err := h.walletUsecase.GetTotalPayoutsSum(c.Request.Context())
+	if err != nil {
+		response.AppError(c, pkgErrors.ErrInternalServerError)
+		return
+	}
+
+	response.Success(c, "Total payouts retrieved successfully", gin.H{
+		"total_sum": sum,
+	})
 }
 
 func (h *AdminHandler) GetEventEngagement(c *gin.Context) {
@@ -629,8 +640,8 @@ func (h *AdminHandler) UpdatePaymentProvider(c *gin.Context) {
 
 	provider := c.Param("provider")
 	var req struct {
-		IsEnabled bool                   `json:"is_enabled"`
-		Config    map[string]interface{} `json:"config"`
+		IsEnabled	bool			`json:"is_enabled"`
+		Config		map[string]interface{}	`json:"config"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -664,12 +675,12 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 	}
 
 	type adminEntry struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		Email       string `json:"email"`
-		Role        string `json:"role"`
-		Permissions string `json:"permissions"`
-		Status      string `json:"status"`
+		ID		string	`json:"id"`
+		Name		string	`json:"name"`
+		Email		string	`json:"email"`
+		Role		string	`json:"role"`
+		Permissions	string	`json:"permissions"`
+		Status		string	`json:"status"`
 	}
 
 	admins := make([]adminEntry, 0, len(users))
@@ -688,12 +699,12 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 			status = "Suspended"
 		}
 		admins = append(admins, adminEntry{
-			ID:          u.ID,
-			Name:        u.Name,
-			Email:       u.Email,
-			Role:        role,
-			Permissions: perms,
-			Status:      status,
+			ID:		u.ID,
+			Name:		u.Name,
+			Email:		u.Email,
+			Role:		role,
+			Permissions:	perms,
+			Status:		status,
 		})
 	}
 
@@ -701,8 +712,8 @@ func (h *AdminHandler) ListAdmins(c *gin.Context) {
 }
 
 type addAdminRequest struct {
-	Name  string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required,email"`
+	Name	string	`json:"name" binding:"required"`
+	Email	string	`json:"email" binding:"required,email"`
 }
 
 func (h *AdminHandler) AddAdmin(c *gin.Context) {
@@ -730,9 +741,9 @@ func (h *AdminHandler) AddAdmin(c *gin.Context) {
 
 	response.Success(c, "Admin created successfully", gin.H{
 		"admin": gin.H{
-			"id":    user.ID,
-			"name":  user.Name,
-			"email": user.Email,
+			"id":		user.ID,
+			"name":		user.Name,
+			"email":	user.Email,
 		},
 	})
 }
@@ -790,11 +801,11 @@ func (h *AdminHandler) GetAuditLogs(c *gin.Context) {
 	}
 
 	response.Success(c, "Audit logs retrieved successfully", gin.H{
-		"logs": logs,
+		"logs":	logs,
 		"pagination": gin.H{
-			"total": total,
-			"page":  page,
-			"limit": limit,
+			"total":	total,
+			"page":		page,
+			"limit":	limit,
 		},
 	})
 }

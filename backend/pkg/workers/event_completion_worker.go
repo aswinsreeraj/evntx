@@ -10,12 +10,12 @@ import (
 func AutoProcessCompletedEventsJob(eventUsecase *usecase.EventUsecase) JobFunc {
 	return func(ctx context.Context) error {
 		logger.Log.Info().Msg("Executing AutoProcessCompletedEventsJob...")
-		
+
 		err := eventUsecase.AutoProcessCompletedEvents(ctx)
 		if err != nil {
 			return err
 		}
-		
+
 		return nil
 	}
 }

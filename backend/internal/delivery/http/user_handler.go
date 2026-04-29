@@ -19,10 +19,10 @@ import (
 )
 
 type UserHandler struct {
-	userUsecase    *usecase.UserUsecase
-	walletUsecase  *usecase.WalletUsecase
-	bookingUsecase *usecase.BookingUsecase
-	auditUsecase   *usecase.AuditUsecase
+	userUsecase	*usecase.UserUsecase
+	walletUsecase	*usecase.WalletUsecase
+	bookingUsecase	*usecase.BookingUsecase
+	auditUsecase	*usecase.AuditUsecase
 }
 
 func NewUserHandler(
@@ -32,10 +32,10 @@ func NewUserHandler(
 	auditUsecase *usecase.AuditUsecase,
 ) *UserHandler {
 	return &UserHandler{
-		userUsecase:    userUsecase,
-		walletUsecase:  walletUsecase,
-		bookingUsecase: bookingUsecase,
-		auditUsecase:   auditUsecase,
+		userUsecase:	userUsecase,
+		walletUsecase:	walletUsecase,
+		bookingUsecase:	bookingUsecase,
+		auditUsecase:	auditUsecase,
 	}
 }
 
@@ -49,15 +49,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	resp := gin.H{
-		"id":            user.ID,
-		"name":          user.Name,
-		"email":         user.Email,
-		"mobile":        user.Mobile,
-		"dob":           user.Dob,
-		"gender":        user.Gender,
-		"profile_image": user.ProfileImage,
-		"locations":     user.Locations,
-		"roles":         roles,
+		"id":			user.ID,
+		"name":			user.Name,
+		"email":		user.Email,
+		"mobile":		user.Mobile,
+		"dob":			user.Dob,
+		"gender":		user.Gender,
+		"profile_image":	user.ProfileImage,
+		"locations":		user.Locations,
+		"roles":		roles,
 	}
 
 	if orgDetail != nil {
@@ -83,10 +83,10 @@ func (h *UserHandler) GetWallet(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Wallet retrieved successfully", gin.H{
-		"available_balance": wallet.AvailableBalance,
-		"pending_balance":   wallet.PendingBalance,
-		"total_credited":    wallet.TotalCredited,
-		"total_debited":     wallet.TotalDebited,
+		"available_balance":	wallet.AvailableBalance,
+		"pending_balance":	wallet.PendingBalance,
+		"total_credited":	wallet.TotalCredited,
+		"total_debited":	wallet.TotalDebited,
 	})
 }
 
@@ -94,10 +94,10 @@ func (h *UserHandler) AddPayoutCredentials(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		AccountHolderName string `json:"account_holder_name" binding:"required"`
-		AccountNumber     string `json:"account_number" binding:"required"`
-		IFSCCode          string `json:"ifsc_code" binding:"required"`
-		UPIID             string `json:"upi_id"`
+		AccountHolderName	string	`json:"account_holder_name" binding:"required"`
+		AccountNumber		string	`json:"account_number" binding:"required"`
+		IFSCCode		string	`json:"ifsc_code" binding:"required"`
+		UPIID			string	`json:"upi_id"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,8 +131,8 @@ func (h *UserHandler) RequestPayout(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Payout request submitted", gin.H{
-		"amount": req.Amount,
-		"status": "pending",
+		"amount":	req.Amount,
+		"status":	"pending",
 	})
 }
 
@@ -146,8 +146,8 @@ func (h *UserHandler) GetPayouts(c *gin.Context) {
 	}
 
 	apiResponse.Success(c, "Payouts retrieved successfully", gin.H{
-		"payouts": payouts,
-		"total":   total,
+		"payouts":	payouts,
+		"total":	total,
 	})
 }
 
@@ -176,9 +176,9 @@ func (h *UserHandler) VerifyAddFundPayment(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req struct {
-		RazorpayOrderID   string `json:"razorpay_order_id" binding:"required"`
-		RazorpayPaymentID string `json:"razorpay_payment_id" binding:"required"`
-		RazorpaySignature string `json:"razorpay_signature" binding:"required"`
+		RazorpayOrderID		string	`json:"razorpay_order_id" binding:"required"`
+		RazorpayPaymentID	string	`json:"razorpay_payment_id" binding:"required"`
+		RazorpaySignature	string	`json:"razorpay_signature" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -216,8 +216,8 @@ func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
 	}
 
 	filters := domain.WalletTransactionFilter{
-		Type:   c.Query("type"),
-		Status: c.Query("status"),
+		Type:	c.Query("type"),
+		Status:	c.Query("status"),
 	}
 
 	if filters.Type != "" &&
@@ -249,36 +249,36 @@ func (h *UserHandler) GetWalletTransactions(c *gin.Context) {
 	responseTransactions := make([]gin.H, 0, len(transactions))
 	for _, txn := range transactions {
 		responseTransactions = append(responseTransactions, gin.H{
-			"id":             txn.ID,
-			"wallet_id":      txn.WalletID,
-			"type":           txn.Type,
-			"amount":         txn.Amount,
-			"reference_type": txn.ReferenceType,
-			"reference_id":   txn.ReferenceID,
-			"status":         txn.Status,
-			"created_at":     txn.CreatedAt,
-			"context":        txn.Context,
+			"id":			txn.ID,
+			"wallet_id":		txn.WalletID,
+			"type":			txn.Type,
+			"amount":		txn.Amount,
+			"reference_type":	txn.ReferenceType,
+			"reference_id":		txn.ReferenceID,
+			"status":		txn.Status,
+			"created_at":		txn.CreatedAt,
+			"context":		txn.Context,
 		})
 	}
 
 	apiResponse.Success(c, "Wallet transactions retrieved successfully", gin.H{
-		"transactions": responseTransactions,
+		"transactions":	responseTransactions,
 		"pagination": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+			"page":		page,
+			"limit":	limit,
+			"total":	total,
 		},
 	})
 }
 
 type updateProfileRequest struct {
-	Name             string   `json:"name" binding:"required"`
-	Mobile           string   `json:"mobile"`
-	Dob              string   `json:"dob"`
-	Gender           string   `json:"gender"`
-	OrganizationName string   `json:"organization_name"`
-	Address          string   `json:"address"`
-	Locations        []string `json:"locations"`
+	Name			string		`json:"name" binding:"required"`
+	Mobile			string		`json:"mobile"`
+	Dob			string		`json:"dob"`
+	Gender			string		`json:"gender"`
+	OrganizationName	string		`json:"organization_name"`
+	Address			string		`json:"address"`
+	Locations		[]string	`json:"locations"`
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
@@ -322,22 +322,22 @@ func (h *UserHandler) AdminListUsers(c *gin.Context) {
 	resp := make([]gin.H, 0, len(users))
 	for _, u := range users {
 		resp = append(resp, gin.H{
-			"id":             u.ID,
-			"name":           u.Name,
-			"email":          u.Email,
-			"is_active":      u.IsActive,
-			"total_bookings": u.TotalBookings,
-			"wallet_balance": u.WalletBalance,
-			"created_at":     u.CreatedAt,
+			"id":			u.ID,
+			"name":			u.Name,
+			"email":		u.Email,
+			"is_active":		u.IsActive,
+			"total_bookings":	u.TotalBookings,
+			"wallet_balance":	u.WalletBalance,
+			"created_at":		u.CreatedAt,
 		})
 	}
 
 	apiResponse.Success(c, "Users retrieved successfully", gin.H{
-		"users": resp,
+		"users":	resp,
 		"pagination": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+			"page":		page,
+			"limit":	limit,
+			"total":	total,
 		},
 	})
 }
@@ -367,14 +367,12 @@ func (h *UserHandler) AdminUpdateUserStatus(c *gin.Context) {
 		if req.IsActive {
 			statusText = "changed to active"
 		}
-		
-		
-		
+
 		actionText := "User #" + userID[:6] + " " + statusText
-		
+
 		h.auditUsecase.LogAction(adminID, actionText, domain.ActionTagUser, map[string]interface{}{
-			"user_id": userID,
-			"status": req.IsActive,
+			"user_id":	userID,
+			"status":	req.IsActive,
 		}, clientIP)
 	}
 
@@ -399,24 +397,24 @@ func (h *UserHandler) AdminListOrganizers(c *gin.Context) {
 	resp := make([]gin.H, 0, len(orgs))
 	for _, u := range orgs {
 		resp = append(resp, gin.H{
-			"id":                      u.ID,
-			"name":                    u.Name,
-			"email":                   u.Email,
-			"is_active":               u.IsActive,
-			"approval_status":         u.ApprovalStatus,
-			"total_bookings":          u.TotalBookings,
-			"total_events":            u.TotalEvents,
-			"wallet_balance":          u.WalletBalance,
-			"total_revenue_generated": u.TotalRevenue,
+			"id":				u.ID,
+			"name":				u.Name,
+			"email":			u.Email,
+			"is_active":			u.IsActive,
+			"approval_status":		u.ApprovalStatus,
+			"total_bookings":		u.TotalBookings,
+			"total_events":			u.TotalEvents,
+			"wallet_balance":		u.WalletBalance,
+			"total_revenue_generated":	u.TotalRevenue,
 		})
 	}
 
 	apiResponse.Success(c, "Organizers retrieved successfully", gin.H{
-		"organizers": resp,
+		"organizers":	resp,
 		"pagination": gin.H{
-			"total": total,
-			"page":  page,
-			"limit": limit,
+			"total":	total,
+			"page":		page,
+			"limit":	limit,
 		},
 	})
 }
@@ -465,28 +463,28 @@ func (h *UserHandler) GetMyBookingsHandler(c *gin.Context) {
 	responseBookings := make([]map[string]interface{}, 0, len(bookings))
 	for _, b := range bookings {
 		responseBookings = append(responseBookings, map[string]interface{}{
-			"booking_id":       b.BookingID,
-			"event_id":         b.EventID,
-			"event_title":      b.EventTitle,
-			"event_city":       b.EventCity,
-			"event_start_time": b.EventStartTime,
-			"status":           b.Status,
-			"total_amount":     b.TotalAmount,
-			"ticket_count":     b.TicketCount,
-			"created_at":       b.CreatedAt,
-			"coverImageUrl":    b.CoverImageURL,
-			"venue":            b.VenueName,
-			"tags":             strings.Split(b.Tags, ","),
-			"event_status":     b.EventStatus,
+			"booking_id":		b.BookingID,
+			"event_id":		b.EventID,
+			"event_title":		b.EventTitle,
+			"event_city":		b.EventCity,
+			"event_start_time":	b.EventStartTime,
+			"status":		b.Status,
+			"total_amount":		b.TotalAmount,
+			"ticket_count":		b.TicketCount,
+			"created_at":		b.CreatedAt,
+			"coverImageUrl":	b.CoverImageURL,
+			"venue":		b.VenueName,
+			"tags":			strings.Split(b.Tags, ","),
+			"event_status":		b.EventStatus,
 		})
 	}
 
 	apiResponse.Success(c, "Bookings fetched successfully", gin.H{
-		"bookings": responseBookings,
+		"bookings":	responseBookings,
 		"pagination": gin.H{
-			"page":  page,
-			"limit": limit,
-			"total": total,
+			"page":		page,
+			"limit":	limit,
+			"total":	total,
 		},
 	})
 }
@@ -507,13 +505,13 @@ func (h *UserHandler) GetMyTicketsHandler(c *gin.Context) {
 	responseTickets := make([]map[string]interface{}, 0, len(tickets))
 	for _, t := range tickets {
 		responseTickets = append(responseTickets, map[string]interface{}{
-			"ticket_id":     t.TicketID,
-			"ticket_code":   t.TicketCode,
-			"event_id":      t.EventID,
-			"event_title":   t.EventTitle,
-			"ticket_type":   t.TicketType,
-			"status":        t.Status,
-			"checked_in_at": t.CheckedInAt,
+			"ticket_id":		t.TicketID,
+			"ticket_code":		t.TicketCode,
+			"event_id":		t.EventID,
+			"event_title":		t.EventTitle,
+			"ticket_type":		t.TicketType,
+			"status":		t.Status,
+			"checked_in_at":	t.CheckedInAt,
 		})
 	}
 

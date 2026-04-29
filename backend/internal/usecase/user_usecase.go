@@ -10,10 +10,10 @@ import (
 )
 
 type UserUsecase struct {
-	repo       repository.UserRepository
-	roleRepo   repository.UserRoleRepository
-	walletRepo repository.WalletRepository
-	emailSender repository.EmailSender
+	repo		repository.UserRepository
+	roleRepo	repository.UserRoleRepository
+	walletRepo	repository.WalletRepository
+	emailSender	repository.EmailSender
 }
 
 func NewUserUsecase(
@@ -27,10 +27,10 @@ func NewUserUsecase(
 
 func (u *UserUsecase) Register(email string) (*domain.User, error) {
 	user := &domain.User{
-		ID:            uuid.NewString(),
-		Email:         email,
-		IsActive:      true,
-		EmailVerified: false,
+		ID:		uuid.NewString(),
+		Email:		email,
+		IsActive:	true,
+		EmailVerified:	false,
 	}
 
 	err := u.repo.Create(user)
@@ -100,9 +100,9 @@ func (u *UserUsecase) UpdateProfile(userID, name, mobile, dob, gender, organizat
 	for _, role := range roles {
 		if role == domain.RoleOrganizer {
 			return u.repo.UpsertOrganizerDetails(&domain.OrganizerDetail{
-				UserID:           userID,
-				OrganizationName: organizationName,
-				Address:          address,
+				UserID:			userID,
+				OrganizationName:	organizationName,
+				Address:		address,
 			})
 		}
 	}
@@ -187,11 +187,11 @@ func (u *UserUsecase) ListAdminUsers() ([]domain.User, error) {
 
 func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) {
 	user := &domain.User{
-		ID:            uuid.NewString(),
-		Name:          name,
-		Email:         email,
-		IsActive:      true,
-		EmailVerified: true,
+		ID:		uuid.NewString(),
+		Name:		name,
+		Email:		email,
+		IsActive:	true,
+		EmailVerified:	true,
 	}
 
 	if err := u.repo.Create(user); err != nil {
@@ -208,4 +208,3 @@ func (u *UserUsecase) AddAdmin(name, email string) (*domain.User, error) {
 func (u *UserUsecase) DeleteAdmin(adminID string) error {
 	return u.repo.Delete(adminID)
 }
-

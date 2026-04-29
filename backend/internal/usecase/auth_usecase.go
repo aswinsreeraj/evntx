@@ -20,13 +20,13 @@ import (
 )
 
 type AuthUsecase struct {
-	otpRepo     repository.EmailOTPRepository
-	userRepo    repository.UserRepository
-	sessionRepo repository.UserSessionRepository
-	emailSender repository.EmailSender
-	roleRepo    repository.UserRoleRepository
-	walletRepo  repository.WalletRepository
-	settingsRepo repository.SettingsRepository
+	otpRepo		repository.EmailOTPRepository
+	userRepo	repository.UserRepository
+	sessionRepo	repository.UserSessionRepository
+	emailSender	repository.EmailSender
+	roleRepo	repository.UserRoleRepository
+	walletRepo	repository.WalletRepository
+	settingsRepo	repository.SettingsRepository
 }
 
 func NewAuthUsecase(
@@ -39,13 +39,13 @@ func NewAuthUsecase(
 	settingsRepo repository.SettingsRepository,
 ) *AuthUsecase {
 	return &AuthUsecase{
-		otpRepo:     otpRepo,
-		userRepo:    userRepo,
-		sessionRepo: sessionRepo,
-		emailSender: emailSender,
-		roleRepo:    roleRepo,
-		walletRepo:  walletRepo,
-		settingsRepo: settingsRepo,
+		otpRepo:	otpRepo,
+		userRepo:	userRepo,
+		sessionRepo:	sessionRepo,
+		emailSender:	emailSender,
+		roleRepo:	roleRepo,
+		walletRepo:	walletRepo,
+		settingsRepo:	settingsRepo,
 	}
 }
 
@@ -107,11 +107,11 @@ func (u *AuthUsecase) RequestEmailOTP(email string) (bool, error) {
 	}
 
 	emailOTP := &domain.EmailOTP{
-		ID:        uuid.NewString(),
-		Email:     email,
-		OTPHash:   hash,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
-		Consumed:  false,
+		ID:		uuid.NewString(),
+		Email:		email,
+		OTPHash:	hash,
+		ExpiresAt:	time.Now().Add(5 * time.Minute),
+		Consumed:	false,
 	}
 
 	if err := u.otpRepo.Create(emailOTP); err != nil {
@@ -147,11 +147,11 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			user = &domain.User{
-				ID:            uuid.NewString(),
-				Email:         email,
-				Name:          name,
-				IsActive:      true,
-				EmailVerified: true,
+				ID:		uuid.NewString(),
+				Email:		email,
+				Name:		name,
+				IsActive:	true,
+				EmailVerified:	true,
 			}
 
 			if err := u.userRepo.Create(user); err != nil {
@@ -159,13 +159,13 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 			}
 
 			wallet := &domain.Wallet{
-				ID:               uuid.NewString(),
-				UserID:           user.ID,
-				AvailableBalance: 0,
-				PendingBalance:   0,
-				TotalCredited:    0,
-				TotalDebited:     0,
-				UpdatedAt:        time.Now(),
+				ID:			uuid.NewString(),
+				UserID:			user.ID,
+				AvailableBalance:	0,
+				PendingBalance:		0,
+				TotalCredited:		0,
+				TotalDebited:		0,
+				UpdatedAt:		time.Now(),
 			}
 			if err := u.walletRepo.CreateWallet(wallet); err != nil {
 				logger.Log.Error().Err(err).Msg("failed to create wallet for user during authentication/registration")
@@ -194,13 +194,13 @@ func (u *AuthUsecase) VerifyEmailOTP(email, rawOTP, name, userAgent, ip string) 
 	refreshHash := hash.HashToken(refreshToken)
 
 	session := &domain.UserSession{
-		ID:               uuid.NewString(),
-		UserID:           user.ID,
-		RefreshTokenHash: refreshHash,
-		UserAgent:        userAgent,
-		IPAddress:        ip,
-		ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-		Revoked:          false,
+		ID:			uuid.NewString(),
+		UserID:			user.ID,
+		RefreshTokenHash:	refreshHash,
+		UserAgent:		userAgent,
+		IPAddress:		ip,
+		ExpiresAt:		time.Now().Add(7 * 24 * time.Hour),
+		Revoked:		false,
 	}
 
 	if err := u.sessionRepo.Create(session); err != nil {
@@ -244,13 +244,13 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			user = &domain.User{
-				ID:            uuid.NewString(),
-				Email:         email,
-				Name:          name,
-				Dob:           dob,
-				Gender:        gender,
-				IsActive:      true,
-				EmailVerified: true,
+				ID:		uuid.NewString(),
+				Email:		email,
+				Name:		name,
+				Dob:		dob,
+				Gender:		gender,
+				IsActive:	true,
+				EmailVerified:	true,
 			}
 
 			if err := u.userRepo.Create(user); err != nil {
@@ -304,10 +304,10 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 			approvalStatus = "pending"
 		}
 		if err := u.userRepo.UpsertOrganizerDetails(&domain.OrganizerDetail{
-			UserID:           user.ID,
-			OrganizationName: organizationName,
-			Address:          "",
-			ApprovalStatus:   approvalStatus,
+			UserID:			user.ID,
+			OrganizationName:	organizationName,
+			Address:		"",
+			ApprovalStatus:		approvalStatus,
 		}); err != nil {
 			return nil, nil, "", "", err
 		}
@@ -330,13 +330,13 @@ func (u *AuthUsecase) Register(email, rawOTP, name, dob, gender, roleStr, organi
 	refreshHash := hash.HashToken(refreshToken)
 
 	session := &domain.UserSession{
-		ID:               uuid.NewString(),
-		UserID:           user.ID,
-		RefreshTokenHash: refreshHash,
-		UserAgent:        userAgent,
-		IPAddress:        ip,
-		ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-		Revoked:          false,
+		ID:			uuid.NewString(),
+		UserID:			user.ID,
+		RefreshTokenHash:	refreshHash,
+		UserAgent:		userAgent,
+		IPAddress:		ip,
+		ExpiresAt:		time.Now().Add(7 * 24 * time.Hour),
+		Revoked:		false,
 	}
 
 	if err := u.sessionRepo.Create(session); err != nil {
@@ -407,24 +407,24 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 		}
 
 		user = &domain.User{
-			ID:            uuid.NewString(),
-			Email:         googleUser.Email,
-			Name:          googleUser.Name,
-			IsActive:      true,
-			EmailVerified: true,
+			ID:		uuid.NewString(),
+			Email:		googleUser.Email,
+			Name:		googleUser.Name,
+			IsActive:	true,
+			EmailVerified:	true,
 		}
 		if err := u.userRepo.Create(user); err != nil {
 			return "", "", err
 		}
 
 		wallet := &domain.Wallet{
-			ID:               uuid.NewString(),
-			UserID:           user.ID,
-			AvailableBalance: 0,
-			PendingBalance:   0,
-			TotalCredited:    0,
-			TotalDebited:     0,
-			UpdatedAt:        time.Now(),
+			ID:			uuid.NewString(),
+			UserID:			user.ID,
+			AvailableBalance:	0,
+			PendingBalance:		0,
+			TotalCredited:		0,
+			TotalDebited:		0,
+			UpdatedAt:		time.Now(),
 		}
 		if err := u.walletRepo.CreateWallet(wallet); err != nil {
 			logger.Log.Error().Err(err).Msg("failed to create wallet for user during Google login")
@@ -450,13 +450,13 @@ func (u *AuthUsecase) GoogleLogin(idToken, userAgent, ip string) (string, string
 	refreshHash := hash.HashToken(refreshToken)
 
 	session := &domain.UserSession{
-		ID:               uuid.NewString(),
-		UserID:           user.ID,
-		RefreshTokenHash: refreshHash,
-		UserAgent:        userAgent,
-		IPAddress:        ip,
-		ExpiresAt:        time.Now().Add(7 * 24 * time.Hour),
-		Revoked:          false,
+		ID:			uuid.NewString(),
+		UserID:			user.ID,
+		RefreshTokenHash:	refreshHash,
+		UserAgent:		userAgent,
+		IPAddress:		ip,
+		ExpiresAt:		time.Now().Add(7 * 24 * time.Hour),
+		Revoked:		false,
 	}
 
 	if err := u.sessionRepo.Create(session); err != nil {

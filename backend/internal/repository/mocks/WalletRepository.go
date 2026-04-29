@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -9,11 +7,9 @@ import (
 	repository "github.com/aswinsreeraj/evntx/internal/repository"
 )
 
-
 type WalletRepository struct {
 	mock.Mock
 }
-
 
 func (_m *WalletRepository) CreateTransaction(txn *domain.WalletTransaction) error {
 	ret := _m.Called(txn)
@@ -32,7 +28,6 @@ func (_m *WalletRepository) CreateTransaction(txn *domain.WalletTransaction) err
 	return r0
 }
 
-
 func (_m *WalletRepository) CreateWallet(wallet *domain.Wallet) error {
 	ret := _m.Called(wallet)
 
@@ -49,7 +44,6 @@ func (_m *WalletRepository) CreateWallet(wallet *domain.Wallet) error {
 
 	return r0
 }
-
 
 func (_m *WalletRepository) GetTransactionsByWalletID(walletID string, filters domain.WalletTransactionFilter, page int, limit int) ([]domain.WalletTransaction, int64, error) {
 	ret := _m.Called(walletID, filters, page, limit)
@@ -87,7 +81,6 @@ func (_m *WalletRepository) GetTransactionsByWalletID(walletID string, filters d
 	return r0, r1, r2
 }
 
-
 func (_m *WalletRepository) GetWalletByID(walletID string) (*domain.Wallet, error) {
 	ret := _m.Called(walletID)
 
@@ -116,7 +109,6 @@ func (_m *WalletRepository) GetWalletByID(walletID string) (*domain.Wallet, erro
 
 	return r0, r1
 }
-
 
 func (_m *WalletRepository) GetWalletByUserID(userID string) (*domain.Wallet, error) {
 	ret := _m.Called(userID)
@@ -147,7 +139,6 @@ func (_m *WalletRepository) GetWalletByUserID(userID string) (*domain.Wallet, er
 	return r0, r1
 }
 
-
 func (_m *WalletRepository) UpdateTransactionStatusByReference(refType string, refID string, status string) error {
 	ret := _m.Called(refType, refID, status)
 
@@ -164,7 +155,6 @@ func (_m *WalletRepository) UpdateTransactionStatusByReference(refType string, r
 
 	return r0
 }
-
 
 func (_m *WalletRepository) UpdateWallet(wallet *domain.Wallet) error {
 	ret := _m.Called(wallet)
@@ -183,7 +173,6 @@ func (_m *WalletRepository) UpdateWallet(wallet *domain.Wallet) error {
 	return r0
 }
 
-
 func (_m *WalletRepository) WithTransaction(fn func(repository.WalletRepository) error) error {
 	ret := _m.Called(fn)
 
@@ -200,8 +189,6 @@ func (_m *WalletRepository) WithTransaction(fn func(repository.WalletRepository)
 
 	return r0
 }
-
-
 
 func NewWalletRepository(t interface {
 	mock.TestingT

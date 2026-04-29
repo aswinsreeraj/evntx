@@ -51,9 +51,9 @@ func (h *AuthHandler) RequestOTP(c *gin.Context) {
 }
 
 type otpVerifyRequest struct {
-	Email string  `json:"email" binding:"required,email"`
-	OTP   string  `json:"otp" binding:"required,len=6"`
-	Name  *string `json:"name"`
+	Email	string	`json:"email" binding:"required,email"`
+	OTP	string	`json:"otp" binding:"required,len=6"`
+	Name	*string	`json:"name"`
 }
 
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
@@ -88,12 +88,12 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 	}
 
 	response.Success(c, "Login successful", gin.H{
-		"access_token":  access,
-		"refresh_token": refresh,
+		"access_token":		access,
+		"refresh_token":	refresh,
 		"user": gin.H{
-			"id":    user.ID,
-			"name":  user.Name,
-			"roles": roleStrings,
+			"id":		user.ID,
+			"name":		user.Name,
+			"roles":	roleStrings,
 		},
 	})
 }
@@ -162,19 +162,19 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	}
 
 	response.Success(c, "Login successful", gin.H{
-		"access_token":  access,
-		"refresh_token": refresh,
+		"access_token":		access,
+		"refresh_token":	refresh,
 	})
 }
 
 type registerRequest struct {
-	Email            string `json:"email" binding:"required,email"`
-	OTP              string `json:"otp" binding:"required,len=6"`
-	Name             string `json:"name" binding:"required"`
-	Dob              string `json:"dob"`
-	Gender           string `json:"gender"`
-	Role             string `json:"role"`
-	OrganizationName string `json:"organization_name"`
+	Email			string	`json:"email" binding:"required,email"`
+	OTP			string	`json:"otp" binding:"required,len=6"`
+	Name			string	`json:"name" binding:"required"`
+	Dob			string	`json:"dob"`
+	Gender			string	`json:"gender"`
+	Role			string	`json:"role"`
+	OrganizationName	string	`json:"organization_name"`
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -214,14 +214,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	response.Success(c, "Registration successful", gin.H{
-		"access_token":  access,
-		"refresh_token": refresh,
+		"access_token":		access,
+		"refresh_token":	refresh,
 		"user": gin.H{
-			"id":     user.ID,
-			"name":   user.Name,
-			"dob":    user.Dob,
-			"gender": user.Gender,
-			"roles":  roleStrings,
+			"id":		user.ID,
+			"name":		user.Name,
+			"dob":		user.Dob,
+			"gender":	user.Gender,
+			"roles":	roleStrings,
 		},
 	})
 }

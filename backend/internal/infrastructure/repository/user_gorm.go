@@ -9,28 +9,28 @@ import (
 )
 
 type UserModel struct {
-	ID            string `gorm:"type:uuid;primaryKey"`
-	Name          string
-	Email         string `gorm:"uniqueIndex"`
-	Mobile        string
-	Dob           string
-	Gender        string
-	ProfileImage  string
-	Locations     []string `gorm:"serializer:json"`
-	IsActive      bool
-	EmailVerified bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID		string	`gorm:"type:uuid;primaryKey"`
+	Name		string
+	Email		string	`gorm:"uniqueIndex"`
+	Mobile		string
+	Dob		string
+	Gender		string
+	ProfileImage	string
+	Locations	[]string	`gorm:"serializer:json"`
+	IsActive	bool
+	EmailVerified	bool
+	CreatedAt	time.Time
+	UpdatedAt	time.Time
 }
 
 type OrganizerDetailModel struct {
-	UserID           string `gorm:"type:uuid;primaryKey"`
-	OrganizationName string
-	Address          string
-	ApprovalStatus   string `gorm:"size:20;default:'approved';not null"`
-	ReviewedAt       *time.Time
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	UserID			string	`gorm:"type:uuid;primaryKey"`
+	OrganizationName	string
+	Address			string
+	ApprovalStatus		string	`gorm:"size:20;default:'approved';not null"`
+	ReviewedAt		*time.Time
+	CreatedAt		time.Time
+	UpdatedAt		time.Time
 }
 
 type userGormRepository struct {
@@ -43,25 +43,25 @@ func NewUserGormRepository(db *gorm.DB) *userGormRepository {
 
 func (r *userGormRepository) Create(user *domain.User) error {
 	model := UserModel{
-		ID:            user.ID,
-		Name:          user.Name,
-		Email:         user.Email,
-		Mobile:        user.Mobile,
-		Dob:           user.Dob,
-		Gender:        user.Gender,
-		ProfileImage:  user.ProfileImage,
-		Locations:     user.Locations,
-		IsActive:      user.IsActive,
-		EmailVerified: user.EmailVerified,
+		ID:		user.ID,
+		Name:		user.Name,
+		Email:		user.Email,
+		Mobile:		user.Mobile,
+		Dob:		user.Dob,
+		Gender:		user.Gender,
+		ProfileImage:	user.ProfileImage,
+		Locations:	user.Locations,
+		IsActive:	user.IsActive,
+		EmailVerified:	user.EmailVerified,
 	}
 
 	walletModel := WalletModel{
-		ID:               uuid.NewString(),
-		UserID:           user.ID,
-		AvailableBalance: 0,
-		PendingBalance:   0,
-		TotalCredited:    0,
-		TotalDebited:     0,
+		ID:			uuid.NewString(),
+		UserID:			user.ID,
+		AvailableBalance:	0,
+		PendingBalance:		0,
+		TotalCredited:		0,
+		TotalDebited:		0,
 	}
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
@@ -82,18 +82,18 @@ func (r *userGormRepository) FindByEmail(email string) (*domain.User, error) {
 	}
 
 	return &domain.User{
-		ID:            model.ID,
-		Name:          model.Name,
-		Email:         model.Email,
-		Mobile:        model.Mobile,
-		Dob:           model.Dob,
-		Gender:        model.Gender,
-		ProfileImage:  model.ProfileImage,
-		Locations:     model.Locations,
-		IsActive:      model.IsActive,
-		EmailVerified: model.EmailVerified,
-		CreatedAt:     model.CreatedAt,
-		UpdatedAt:     model.UpdatedAt,
+		ID:		model.ID,
+		Name:		model.Name,
+		Email:		model.Email,
+		Mobile:		model.Mobile,
+		Dob:		model.Dob,
+		Gender:		model.Gender,
+		ProfileImage:	model.ProfileImage,
+		Locations:	model.Locations,
+		IsActive:	model.IsActive,
+		EmailVerified:	model.EmailVerified,
+		CreatedAt:	model.CreatedAt,
+		UpdatedAt:	model.UpdatedAt,
 	}, nil
 }
 
@@ -106,18 +106,18 @@ func (r *userGormRepository) FindByID(id string) (*domain.User, error) {
 	}
 
 	return &domain.User{
-		ID:            model.ID,
-		Name:          model.Name,
-		Email:         model.Email,
-		Mobile:        model.Mobile,
-		Dob:           model.Dob,
-		Gender:        model.Gender,
-		ProfileImage:  model.ProfileImage,
-		Locations:     model.Locations,
-		IsActive:      model.IsActive,
-		EmailVerified: model.EmailVerified,
-		CreatedAt:     model.CreatedAt,
-		UpdatedAt:     model.UpdatedAt,
+		ID:		model.ID,
+		Name:		model.Name,
+		Email:		model.Email,
+		Mobile:		model.Mobile,
+		Dob:		model.Dob,
+		Gender:		model.Gender,
+		ProfileImage:	model.ProfileImage,
+		Locations:	model.Locations,
+		IsActive:	model.IsActive,
+		EmailVerified:	model.EmailVerified,
+		CreatedAt:	model.CreatedAt,
+		UpdatedAt:	model.UpdatedAt,
 	}, nil
 }
 
@@ -126,16 +126,16 @@ func (r *userGormRepository) Update(user *domain.User) error {
 		Where("id = ?", user.ID).
 		Select("name", "email", "mobile", "dob", "gender", "profile_image", "locations", "is_active", "email_verified", "updated_at").
 		Updates(UserModel{
-			Name:          user.Name,
-			Email:         user.Email,
-			Mobile:        user.Mobile,
-			Dob:           user.Dob,
-			Gender:        user.Gender,
-			ProfileImage:  user.ProfileImage,
-			Locations:     user.Locations,
-			IsActive:      user.IsActive,
-			EmailVerified: user.EmailVerified,
-			UpdatedAt:     time.Now(),
+			Name:		user.Name,
+			Email:		user.Email,
+			Mobile:		user.Mobile,
+			Dob:		user.Dob,
+			Gender:		user.Gender,
+			ProfileImage:	user.ProfileImage,
+			Locations:	user.Locations,
+			IsActive:	user.IsActive,
+			EmailVerified:	user.EmailVerified,
+			UpdatedAt:	time.Now(),
 		}).Error
 }
 
@@ -147,11 +147,11 @@ func (r *userGormRepository) GetOrganizerDetails(userID string) (*domain.Organiz
 	}
 
 	return &domain.OrganizerDetail{
-		UserID:           model.UserID,
-		OrganizationName: model.OrganizationName,
-		Address:          model.Address,
-		ApprovalStatus:   model.ApprovalStatus,
-		ReviewedAt:       model.ReviewedAt,
+		UserID:			model.UserID,
+		OrganizationName:	model.OrganizationName,
+		Address:		model.Address,
+		ApprovalStatus:		model.ApprovalStatus,
+		ReviewedAt:		model.ReviewedAt,
 	}, nil
 }
 
@@ -161,12 +161,12 @@ func (r *userGormRepository) UpsertOrganizerDetails(detail *domain.OrganizerDeta
 		approvalStatus = "approved"
 	}
 	model := OrganizerDetailModel{
-		UserID:           detail.UserID,
-		OrganizationName: detail.OrganizationName,
-		Address:          detail.Address,
-		ApprovalStatus:   approvalStatus,
-		ReviewedAt:       detail.ReviewedAt,
-		UpdatedAt:        time.Now(),
+		UserID:			detail.UserID,
+		OrganizationName:	detail.OrganizationName,
+		Address:		detail.Address,
+		ApprovalStatus:		approvalStatus,
+		ReviewedAt:		detail.ReviewedAt,
+		UpdatedAt:		time.Now(),
 	}
 
 	return r.db.Where("user_id = ?", detail.UserID).Assign(model).FirstOrCreate(&model).Error
@@ -181,8 +181,8 @@ func (r *userGormRepository) Search(
 
 	var results []struct {
 		UserModel
-		TotalBookings int64
-		WalletBalance float64
+		TotalBookings	int64
+		WalletBalance	float64
 	}
 	var total int64
 
@@ -235,21 +235,21 @@ func (r *userGormRepository) Search(
 	for _, res := range results {
 		users = append(users, domain.AdminUserDetails{
 			User: domain.User{
-				ID:            res.ID,
-				Name:          res.Name,
-				Email:         res.Email,
-				Mobile:        res.Mobile,
-				Dob:           res.Dob,
-				Gender:        res.Gender,
-				ProfileImage:  res.ProfileImage,
-				Locations:     res.Locations,
-				IsActive:      res.IsActive,
-				EmailVerified: res.EmailVerified,
-				CreatedAt:     res.CreatedAt,
-				UpdatedAt:     res.UpdatedAt,
+				ID:		res.ID,
+				Name:		res.Name,
+				Email:		res.Email,
+				Mobile:		res.Mobile,
+				Dob:		res.Dob,
+				Gender:		res.Gender,
+				ProfileImage:	res.ProfileImage,
+				Locations:	res.Locations,
+				IsActive:	res.IsActive,
+				EmailVerified:	res.EmailVerified,
+				CreatedAt:	res.CreatedAt,
+				UpdatedAt:	res.UpdatedAt,
 			},
-			TotalBookings: res.TotalBookings,
-			WalletBalance: res.WalletBalance,
+			TotalBookings:	res.TotalBookings,
+			WalletBalance:	res.WalletBalance,
 		})
 	}
 
@@ -265,14 +265,14 @@ func (r *userGormRepository) SearchOrganizers(
 
 	var models []struct {
 		UserModel
-		OrganizationName string
-		Address          string
-		ApprovalStatus   string
-		ReviewedAt       *time.Time
-		TotalEvents      int64
-		TotalBookings    int64
-		TotalRevenue     float64
-		WalletBalance    float64
+		OrganizationName	string
+		Address			string
+		ApprovalStatus		string
+		ReviewedAt		*time.Time
+		TotalEvents		int64
+		TotalBookings		int64
+		TotalRevenue		float64
+		WalletBalance		float64
 	}
 	var total int64
 
@@ -343,22 +343,22 @@ func (r *userGormRepository) SearchOrganizers(
 	for _, m := range models {
 		orgs = append(orgs, domain.OrganizerDetails{
 			User: domain.User{
-				ID:        m.ID,
-				Name:      m.Name,
-				Email:     m.Email,
-				IsActive:  m.IsActive,
-				CreatedAt: m.CreatedAt,
+				ID:		m.ID,
+				Name:		m.Name,
+				Email:		m.Email,
+				IsActive:	m.IsActive,
+				CreatedAt:	m.CreatedAt,
 			},
 			OrganizerDetail: domain.OrganizerDetail{
-				OrganizationName: m.OrganizationName,
-				Address:          m.Address,
-				ApprovalStatus:   m.ApprovalStatus,
-				ReviewedAt:       m.ReviewedAt,
+				OrganizationName:	m.OrganizationName,
+				Address:		m.Address,
+				ApprovalStatus:		m.ApprovalStatus,
+				ReviewedAt:		m.ReviewedAt,
 			},
-			TotalBookings: m.TotalBookings,
-			TotalEvents:   m.TotalEvents,
-			WalletBalance: m.WalletBalance,
-			TotalRevenue:  m.TotalRevenue,
+			TotalBookings:	m.TotalBookings,
+			TotalEvents:	m.TotalEvents,
+			WalletBalance:	m.WalletBalance,
+			TotalRevenue:	m.TotalRevenue,
 		})
 	}
 
@@ -370,9 +370,9 @@ func (r *userGormRepository) UpdateOrganizerApprovalStatus(userID string, approv
 	return r.db.Model(&OrganizerDetailModel{}).
 		Where("user_id = ?", userID).
 		Updates(map[string]interface{}{
-			"approval_status": approvalStatus,
-			"reviewed_at":     &now,
-			"updated_at":      now,
+			"approval_status":	approvalStatus,
+			"reviewed_at":		&now,
+			"updated_at":		now,
 		}).Error
 }
 
@@ -394,14 +394,14 @@ func (r *userGormRepository) FindUsersByRole(role domain.UserRole) ([]domain.Use
 	users := make([]domain.User, 0, len(models))
 	for _, m := range models {
 		users = append(users, domain.User{
-			ID:            m.ID,
-			Name:          m.Name,
-			Email:         m.Email,
-			Mobile:        m.Mobile,
-			IsActive:      m.IsActive,
-			EmailVerified: m.EmailVerified,
-			CreatedAt:     m.CreatedAt,
-			UpdatedAt:     m.UpdatedAt,
+			ID:		m.ID,
+			Name:		m.Name,
+			Email:		m.Email,
+			Mobile:		m.Mobile,
+			IsActive:	m.IsActive,
+			EmailVerified:	m.EmailVerified,
+			CreatedAt:	m.CreatedAt,
+			UpdatedAt:	m.UpdatedAt,
 		})
 	}
 	return users, nil
@@ -428,4 +428,3 @@ func (r *userGormRepository) Delete(id string) error {
 		return tx.Delete(&UserModel{}, "id = ?", id).Error
 	})
 }
-

@@ -8,14 +8,14 @@ import (
 )
 
 type UserSessionModel struct {
-	ID               string `gorm:"type:uuid;primaryKey"`
-	UserID           string `gorm:"index"`
-	RefreshTokenHash string
-	UserAgent        string
-	IPAddress        string
-	ExpiresAt        time.Time
-	Revoked          bool
-	CreatedAt        time.Time
+	ID			string	`gorm:"type:uuid;primaryKey"`
+	UserID			string	`gorm:"index"`
+	RefreshTokenHash	string
+	UserAgent		string
+	IPAddress		string
+	ExpiresAt		time.Time
+	Revoked			bool
+	CreatedAt		time.Time
 }
 
 type userSessionGormRepository struct {
@@ -28,13 +28,13 @@ func NewUserSessionGormRepository(db *gorm.DB) *userSessionGormRepository {
 
 func (r *userSessionGormRepository) Create(session *domain.UserSession) error {
 	model := UserSessionModel{
-		ID:               session.ID,
-		UserID:           session.UserID,
-		RefreshTokenHash: session.RefreshTokenHash,
-		UserAgent:        session.UserAgent,
-		IPAddress:        session.IPAddress,
-		ExpiresAt:        session.ExpiresAt,
-		Revoked:          session.Revoked,
+		ID:			session.ID,
+		UserID:			session.UserID,
+		RefreshTokenHash:	session.RefreshTokenHash,
+		UserAgent:		session.UserAgent,
+		IPAddress:		session.IPAddress,
+		ExpiresAt:		session.ExpiresAt,
+		Revoked:		session.Revoked,
 	}
 
 	return r.db.Create(&model).Error
@@ -53,14 +53,14 @@ func (r *userSessionGormRepository) FindByUserID(userID string) (*domain.UserSes
 	}
 
 	return &domain.UserSession{
-		ID:               model.ID,
-		UserID:           model.UserID,
-		RefreshTokenHash: model.RefreshTokenHash,
-		UserAgent:        model.UserAgent,
-		IPAddress:        model.IPAddress,
-		ExpiresAt:        model.ExpiresAt,
-		Revoked:          model.Revoked,
-		CreatedAt:        model.CreatedAt,
+		ID:			model.ID,
+		UserID:			model.UserID,
+		RefreshTokenHash:	model.RefreshTokenHash,
+		UserAgent:		model.UserAgent,
+		IPAddress:		model.IPAddress,
+		ExpiresAt:		model.ExpiresAt,
+		Revoked:		model.Revoked,
+		CreatedAt:		model.CreatedAt,
 	}, nil
 }
 

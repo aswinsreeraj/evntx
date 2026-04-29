@@ -1,5 +1,3 @@
-
-
 package mocks
 
 import (
@@ -11,11 +9,9 @@ import (
 	time "time"
 )
 
-
 type EngagementRepository struct {
 	mock.Mock
 }
-
 
 func (_m *EngagementRepository) CreateSession(ctx context.Context, session *domain.VisitorSession) error {
 	ret := _m.Called(ctx, session)
@@ -33,7 +29,6 @@ func (_m *EngagementRepository) CreateSession(ctx context.Context, session *doma
 
 	return r0
 }
-
 
 func (_m *EngagementRepository) GetDailyAggregates(ctx context.Context, eventID string, startDate time.Time, endDate time.Time) ([]domain.EventEngagementDaily, error) {
 	ret := _m.Called(ctx, eventID, startDate, endDate)
@@ -64,7 +59,6 @@ func (_m *EngagementRepository) GetDailyAggregates(ctx context.Context, eventID 
 	return r0, r1
 }
 
-
 func (_m *EngagementRepository) GetEngagementReport(ctx context.Context, eventIDs []string, startDate time.Time, endDate time.Time) (*domain.EngagementReportStats, error) {
 	ret := _m.Called(ctx, eventIDs, startDate, endDate)
 
@@ -93,7 +87,6 @@ func (_m *EngagementRepository) GetEngagementReport(ctx context.Context, eventID
 
 	return r0, r1
 }
-
 
 func (_m *EngagementRepository) GetSessionByID(ctx context.Context, sessionID string) (*domain.VisitorSession, error) {
 	ret := _m.Called(ctx, sessionID)
@@ -124,7 +117,6 @@ func (_m *EngagementRepository) GetSessionByID(ctx context.Context, sessionID st
 	return r0, r1
 }
 
-
 func (_m *EngagementRepository) IncrementSuccessfulBookings(ctx context.Context, eventID string, userID string) error {
 	ret := _m.Called(ctx, eventID, userID)
 
@@ -141,7 +133,6 @@ func (_m *EngagementRepository) IncrementSuccessfulBookings(ctx context.Context,
 
 	return r0
 }
-
 
 func (_m *EngagementRepository) LogEvent(ctx context.Context, event *domain.EngagementEvent) error {
 	ret := _m.Called(ctx, event)
@@ -160,7 +151,6 @@ func (_m *EngagementRepository) LogEvent(ctx context.Context, event *domain.Enga
 	return r0
 }
 
-
 func (_m *EngagementRepository) UpdateSessionLastSeen(ctx context.Context, sessionID string, userID *string) error {
 	ret := _m.Called(ctx, sessionID, userID)
 
@@ -177,8 +167,6 @@ func (_m *EngagementRepository) UpdateSessionLastSeen(ctx context.Context, sessi
 
 	return r0
 }
-
-
 
 func NewEngagementRepository(t interface {
 	mock.TestingT
