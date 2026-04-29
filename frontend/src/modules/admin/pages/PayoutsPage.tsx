@@ -176,13 +176,15 @@ export default function PayoutsPage() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [approveTarget, setApproveTarget] = useState<AdminPayoutDetail | null>(null);
+  const [limit, setLimit] = useState(1);
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: payoutsQueryKey(statusFilter),
     queryFn: () => adminApi.getPayouts({ status: statusFilter || undefined }),
   });
 
-  const payouts = data?.payouts ?? [];
+  const fullpayouts = data?.payouts ?? [];
+  const payouts = fullpayouts.slice(0, limit);
   const total = data?.total ?? 0;
 
   const approveMutation = useMutation({
@@ -322,6 +324,8 @@ export default function PayoutsPage() {
             </div>
           )}
         </div>
+        <button onClick ={() => setLimit(limit+1)}>Increase</button>
+        <button onClick ={() => setLimit(limit-1)}>Decrease</button>
       </div>
 
       {/* Approve Confirmation Modal */}
