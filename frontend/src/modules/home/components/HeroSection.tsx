@@ -1,12 +1,23 @@
 import { useState, useRef } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { adminApi } from "../../admin/api";
 
 export default function HeroSection() {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState("");
   const [showError, setShowError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: categoryData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => adminApi.getCategories(),
+  });
+
+  const categoriesText = categoryData && categoryData.length > 0 
+    ? categoryData.map(c => c.name).slice(0, 3).join(", ") + " and more."
+    : "Concerts, tech conferences, workshops and more.";
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchText.trim()) {
@@ -27,8 +38,8 @@ export default function HeroSection() {
         <h1 className="text-white text-5xl md:text-6xl font-bold mb-4 tracking-tight drop-shadow-md">
           Discover Experiences <br /> That Matter
         </h1>
-        <p className="text-white text-lg md:text-xl font-medium mb-10 drop-shadow">
-          Concerts, tech conferences, workshops and more.
+        <p className="text-white text-lg md:text-xl font-medium mb-10 drop-shadow capitalize">
+          {categoriesText}
         </p>
 
         <div className={`bg-white rounded-full flex items-center p-2 w-full max-w-2xl shadow-lg transition-all border-2 ${showError ? "border-red-500 animate-pulse" : "border-transparent"}`}>

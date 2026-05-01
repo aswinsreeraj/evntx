@@ -267,7 +267,11 @@ export default function AdminReports() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-6">
-                      <div className="w-[180px] h-[180px] shrink-0">
+                      {(() => {
+                        const totalCategoryRevenue = report!.category_breakdown.reduce((sum, cat) => sum + cat.revenue, 0);
+                        return (
+                          <>
+                            <div className="w-[180px] h-[180px] shrink-0">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie
@@ -292,22 +296,33 @@ export default function AdminReports() {
                         </ResponsiveContainer>
                       </div>
 
-                      <div className="flex flex-col gap-2 flex-1 min-w-0">
-                        {report?.category_breakdown?.map((cat, i) => (
-                          <div key={cat.category} className="flex items-center justify-between gap-2 text-sm">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
-                              />
-                              <span className="text-[#111827] truncate">{cat.category}</span>
+                      <div className="flex flex-col gap-3 flex-1 min-w-0">
+                        {report?.category_breakdown?.map((cat, i) => {
+                          const percentage = totalCategoryRevenue > 0 ? ((cat.revenue / totalCategoryRevenue) * 100).toFixed(1) : "0.0";
+                          return (
+                            <div key={cat.category} className="flex items-center justify-between gap-2 text-sm">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }}
+                                />
+                                <span className="text-[#111827] truncate font-medium">{cat.category}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-[#8b9098] font-medium">
+                                  {formatCurrency(cat.revenue)}
+                                </span>
+                                <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                  {percentage}%
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-[#8b9098] font-medium shrink-0">
-                              {formatCurrency(cat.revenue)}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
