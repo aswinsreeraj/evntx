@@ -1,5 +1,7 @@
 import { ChevronDown, X, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { adminApi } from "../../admin/api";
 
 interface FilterSidebarProps {
   selectedCities: string[];
@@ -45,7 +47,12 @@ export default function FilterSidebar({
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [locationInput, setLocationInput] = useState("");
 
-  const categories = ["Comedy", "Music", "Workshop", "Conference"];
+  const { data: categoryData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => adminApi.getCategories(),
+  });
+
+  const categories = categoryData?.map(c => c.name) || ["Comedy", "Music", "Workshop", "Conference"];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

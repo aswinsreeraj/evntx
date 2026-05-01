@@ -66,6 +66,13 @@ export interface CreateAdminPayload {
   email: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuditLog {
   id: string;
   admin_id: string;
@@ -314,5 +321,24 @@ export const adminApi = {
   async getAuditLogs(page: number = 1, limit: number = 20): Promise<{ logs: AuditLog[], pagination: { total: number, page: number, limit: number } }> {
     const response = await api.get(`/admin/audit-logs?page=${page}&limit=${limit}`);
     return response.data.data;
+  },
+
+  async getCategories(): Promise<Category[]> {
+    const response = await api.get("/categories");
+    return response.data.data;
+  },
+
+  async createCategory(name: string): Promise<Category> {
+    const response = await api.post("/admin/categories", { name });
+    return response.data.data;
+  },
+
+  async updateCategory(id: string, name: string): Promise<Category> {
+    const response = await api.put(`/admin/categories/${id}`, { name });
+    return response.data.data;
+  },
+
+  async deleteCategory(id: string): Promise<void> {
+    await api.delete(`/admin/categories/${id}`);
   }
 };

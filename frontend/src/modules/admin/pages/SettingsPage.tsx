@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout";
-import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins, useAddAdmin, useDeleteAdmin } from "../hooks";
-import { Loader2, ShieldCheck, Trash2, Info, ChevronDown } from "lucide-react";
+import { useSettings, useUpdateSettings, usePaymentSettings, useUpdatePaymentProvider, useAdmins, useAddAdmin, useDeleteAdmin, useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "../hooks";
+import { Loader2, ShieldCheck, Trash2, Info, ChevronDown, Edit2, Plus } from "lucide-react";
 import { useAuthStore } from "../../auth/store/authStore";
 import Modal from "../../../shared/ui/Modal";
 
@@ -14,6 +14,11 @@ export default function SettingsPage() {
   const { mutate: updatePayment } = useUpdatePaymentProvider();
   const { mutate: addAdmin, isPending: isAddingAdmin } = useAddAdmin();
   const { mutate: deleteAdmin, isPending: isDeletingAdmin } = useDeleteAdmin();
+
+  const { data: categories } = useCategories();
+  const { mutate: createCategory, isPending: isCreatingCategory } = useCreateCategory();
+  const { mutate: updateCategory, isPending: isUpdatingCategory } = useUpdateCategory();
+  const { mutate: deleteCategory, isPending: isDeletingCategory } = useDeleteCategory();
 
   const currentUser = useAuthStore((state: any) => state.user);
 
@@ -29,6 +34,10 @@ export default function SettingsPage() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState<any>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<any>(null);
+
+  const [showCategoryModal, setShowCategoryModal] = useState<{isOpen: boolean; category: any | null}>({isOpen: false, category: null});
+  const [categoryName, setCategoryName] = useState("");
+  const [showDeleteCategoryConfirm, setShowDeleteCategoryConfirm] = useState<any>(null);
 
   useEffect(() => {
     if (settings) {
@@ -137,6 +146,32 @@ export default function SettingsPage() {
         },
       },
     );
+  };
+
+  const handleSaveCategory = () => {
+    if (!categoryName.trim()) {
+      setToastMessage({ type: "error", text: "Category name is required." });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    
+    const onSuccess = () => {
+      setShowCategoryModal({isOpen: false, category: null});
+      setCategoryName("");
+      setToastMessage({ type: "success", text: showCategoryModal.category ? "Category updated successfully!" : "Category created successfully!" });
+      setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    const onError = (err: any) => {
+      setToastMessage({ type: "error", text: err?.response?.data?.error?.message || err?.response?.data?.message || "Failed to save category" });
+      setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    if (showCategoryModal.category) {
+      updateCategory({ id: showCategoryModal.category.id, name: categoryName.trim() }, { onSuccess, onError });
+    } else {
+      createCategory(categoryName.trim(), { onSuccess, onError });
+    }
   };
 
   return (
@@ -320,6 +355,57 @@ export default function SettingsPage() {
                </table>
              </div>
           </div>
+
+           <div className="bg-white rounded-[20px] p-6 shadow-sm border border-gray-100 mt-6">
+             <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-[#111827] flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+                  </span>
+                  Event Categories
+                </h3>
+                <button
+                  onClick={() => {
+                    setCategoryName("");
+                    setShowCategoryModal({isOpen: true, category: null});
+                  }}
+                  className="text-orange-600 text-sm font-semibold border border-orange-200 rounded-lg px-4 py-2 hover:bg-orange-50 transition flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" /> Add Category
+                </button>
+             </div>
+             
+             <div className="flex flex-wrap gap-3">
+               {categories?.map((cat: any) => (
+                 <div key={cat.id} className="group relative flex items-center gap-2 bg-gray-50 border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-100 transition pr-10">
+                   <span className="text-sm font-medium text-gray-700">{cat.name}</span>
+                   <div className="absolute right-1 hidden group-hover:flex items-center gap-1">
+                     <button
+                       onClick={() => {
+                         setCategoryName(cat.name);
+                         setShowCategoryModal({isOpen: true, category: cat});
+                       }}
+                       className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full transition"
+                       title="Edit"
+                     >
+                       <Edit2 className="w-3.5 h-3.5" />
+                     </button>
+                     <button
+                       onClick={() => setShowDeleteCategoryConfirm(cat)}
+                       className="p-1.5 text-red-500 hover:bg-red-100 rounded-full transition"
+                       title="Delete"
+                     >
+                       <Trash2 className="w-3.5 h-3.5" />
+                     </button>
+                   </div>
+                 </div>
+               ))}
+               {!categories?.length && (
+                 <p className="text-sm text-gray-500 w-full text-center py-4">No categories found.</p>
+               )}
+             </div>
+           </div>
+
         </div>
 
         
@@ -480,6 +566,85 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showCategoryModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-[#111827]">{showCategoryModal.category ? "Edit Category" : "Add Category"}</h3>
+            <div className="mt-4 space-y-3">
+              <input
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                placeholder="e.g. Technology"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowCategoryModal({isOpen: false, category: null})}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCategory}
+                disabled={isCreatingCategory || isUpdatingCategory}
+                className="rounded-lg bg-[#5d779f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a6184] disabled:opacity-70"
+              >
+                {isCreatingCategory || isUpdatingCategory ? "Saving..." : "Save Category"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteCategoryConfirm && (
+        <Modal open={!!showDeleteCategoryConfirm} onClose={() => setShowDeleteCategoryConfirm(null)}>
+           <div className="space-y-6 pt-2">
+              <h3 className="text-lg font-bold text-[#111827]">Delete Category</h3>
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-2">
+                 <Trash2 className="w-8 h-8" />
+              </div>
+              
+              <div className="text-center space-y-2">
+                <h3 className="text-lg font-bold text-gray-900">Are you sure?</h3>
+                <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                  You are about to delete the category <span className="font-bold text-gray-900">{showDeleteCategoryConfirm.name}</span>.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                 <button 
+                   onClick={() => setShowDeleteCategoryConfirm(null)}
+                   disabled={isDeletingCategory}
+                   className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-bold transition disabled:opacity-50"
+                 >
+                   No, Cancel
+                 </button>
+                 <button 
+                   onClick={() => {
+                     deleteCategory(showDeleteCategoryConfirm.id, {
+                       onSuccess: () => {
+                         setShowDeleteCategoryConfirm(null);
+                         setToastMessage({ type: "success", text: "Category deleted successfully" });
+                         setTimeout(() => setToastMessage(null), 3000);
+                       },
+                       onError: (err: any) => {
+                         setToastMessage({ type: "error", text: err.response?.data?.message || "Failed to delete category" });
+                         setTimeout(() => setToastMessage(null), 3000);
+                       }
+                     });
+                   }}
+                   disabled={isDeletingCategory}
+                   className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-2"
+                 >
+                   {isDeletingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : "Yes, Delete"}
+                 </button>
+              </div>
+           </div>
+        </Modal>
       )}
 
     </AdminLayout>

@@ -49,11 +49,13 @@ func main() {
 		&infraRepo.EventDetailsModel{},
 		&infraRepo.EventPersonnelModel{},
 		&infraRepo.TicketTypeModel{},
+		&infraRepo.CategoryModel{},
 	); err != nil {
 		log.Fatal("Failed to run seeder migrations:", err)
 	}
 
 	now := time.Now()
+	seedCategories(db, now)
 	organizer := ensureOrganizer(db, now)
 	seedGoers(db, now)
 	seedEventsForOrganizer(db, organizer.ID, now)
@@ -397,4 +399,26 @@ func generateSlug(title string) string {
 	slug = strings.ReplaceAll(slug, " ", "-")
 	slug = strings.ReplaceAll(slug, "'", "")
 	return slug
+}
+
+func seedCategories(db *gorm.DB, now time.Time) {
+	categories := []string{"Comedy", "Music", "Workshop", "Conference", "Art", "Business"}
+	for _, name := range categories {
+		var cat infraRepo.CategoryModel
+		if err := db.Where("name = ?", name).First(&cat).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				cat = infraRepo.CategoryModel{
+					ID:        uuid.NewString(),
+					Name:      name,
+					CreatedAt: now,
+					UpdatedAt: now,
+				}
+				if err := db.Create(&cat).Error; err != nil {
+					log.Printf("Failed to create category %s: %v", name, err)
+				} else {
+					log.Printf("Seeded category: %s", name)
+				}
+			}
+		}
+	}
 }

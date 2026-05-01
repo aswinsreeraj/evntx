@@ -67,6 +67,7 @@ func main() {
 	db.AutoMigrate(&repoImpl.PaymentSettingsModel{})
 	db.AutoMigrate(&repoImpl.AuditLogModel{})
 	db.AutoMigrate(&repoImpl.JobLogModel{})
+	db.AutoMigrate(&repoImpl.CategoryModel{})
 
 	roleRepo := repoImpl.NewUserRoleGormRepository(db)
 	userRepo := repoImpl.NewUserGormRepository(db)
@@ -114,6 +115,10 @@ func main() {
 	apiCache := cache.NewCache()
 	eventHandler := httpDelivery.NewEventHandler(eventUsecase, userUsecase, bookingUsecase, apiCache)
 	adminHandler := httpDelivery.NewAdminHandler(eventUsecase, userUsecase, walletUsecase, platformWalletRepo, engagementUsecase, settingsRepo, roleRepo, auditUsecase)
+
+	categoryRepo := repoImpl.NewCategoryGormRepository(db)
+	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
+	categoryHandler := httpDelivery.NewCategoryHandler(categoryUsecase, auditUsecase)
 
 	bookingHandler := httpDelivery.NewBookingHandler(bookingUsecase, paymentUsecase)
 	paymentHandler := httpDelivery.NewPaymentHandler(paymentUsecase)
@@ -284,10 +289,18 @@ func main() {
 	adminGroup.DELETE("/admins/:id", adminHandler.DeleteAdmin)
 	adminGroup.GET("/audit-logs", adminHandler.GetAuditLogs)
 
+	// Category endpoints
+	adminGroup.POST("/categories", categoryHandler.CreateCategory)
+	adminGroup.PUT("/categories/:id", categoryHandler.UpdateCategory)
+	adminGroup.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+
 	// Event endpoints
 	router.GET("/events", eventHandler.ListEvents)
 	router.GET("/events/:slug", eventHandler.GetEvent)
 	router.POST("/events/:event_id/check-in", middleware.JWTAuthMiddleware(), eventHandler.CheckInTicket)
+
+	// Categories public endpoint
+	router.GET("/categories", categoryHandler.ListCategories)
 
 	// Settings endpoints
 	router.GET("/settings", adminHandler.GetPlatformSettings)

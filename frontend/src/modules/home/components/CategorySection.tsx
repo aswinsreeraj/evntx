@@ -1,10 +1,19 @@
+
+import { useQuery } from "@tanstack/react-query";
+import { adminApi } from "../../admin/api";
+
 interface CategorySectionProps {
   activeCategory: string;
   onCategoryChange: (cat: string) => void;
 }
 
 export default function CategorySection({ activeCategory, onCategoryChange }: CategorySectionProps) {
-  const categories = ["All", "Comedy", "Music", "Workshop", "Conference"];
+  const { data: categoryData } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => adminApi.getCategories(),
+  });
+
+  const categories = ["All", ...(categoryData?.map(c => c.name) || ["Comedy", "Music", "Workshop", "Conference"])];
 
   return (
     <section className="max-w-7xl mx-auto px-6 mt-16">

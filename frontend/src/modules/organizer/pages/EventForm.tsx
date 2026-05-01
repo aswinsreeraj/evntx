@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Upload, X, Trash2 } from "lucide-react";
 import { organizerApi } from "../api";
+import { adminApi } from "../../admin/api";
 import type { CreateEventPayload, TicketInput, PersonnelInput } from "../api";
 import OrganizerLayout from "../components/OrganizerLayout";
+import { useQuery } from "@tanstack/react-query";
 
 export default function EventForm() {
   const { eventId } = useParams();
@@ -11,7 +13,7 @@ export default function EventForm() {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Comedy");
+  const [category, setCategory] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [status, setStatus] = useState("draft");
@@ -41,6 +43,17 @@ export default function EventForm() {
   const [errorMsg, setErrorMsg] = useState("");
   const [loadingInitial, setLoadingInitial] = useState(isEditMode);
 
+  const { data: categories, isLoading: loadingCategories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => adminApi.getCategories(),
+  });
+
+  useEffect(() => {
+    if (!isEditMode && categories && categories.length > 0 && !category) {
+      setCategory(categories[0].name);
+    }
+  }, [categories, isEditMode, category]);
+
   useEffect(() => {
     if (isEditMode && eventId) {
       const fetchEvent = async () => {
@@ -50,7 +63,7 @@ export default function EventForm() {
             const { event, details, ticket_types, personnels } = data;
 
             setTitle(event.title || "");
-            setCategory(event.category || "Comedy");
+            setCategory(event.category || "");
 
             if (event.start_time) {
               const st = new Date(event.start_time);
@@ -251,7 +264,7 @@ export default function EventForm() {
     }
   };
 
-  if (loadingInitial) {
+  if (loadingInitial || loadingCategories) {
     return (
         <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -301,10 +314,10 @@ export default function EventForm() {
                     onChange={(e) => setCategory(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 bg-white outline-none focus:border-gray-400"
                   >
-                      <option value="Comedy">Comedy</option>
-                      <option value="Music">Music</option>
-                      <option value="Workshop">Workshop</option>
-                      <option value="Conference">Conference</option>
+                      {categories?.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                      {!categories?.length && <option value="Comedy">Comedy</option>}
                   </select>
               </div>
               <div className="flex gap-4 col-span-2">
