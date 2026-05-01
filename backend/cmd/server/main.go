@@ -127,9 +127,9 @@ func main() {
 	jobRepo := repoImpl.NewJobGormRepository(db)
 	scheduler := workers.NewCronScheduler(jobRepo)
 
-	scheduler.RegisterJob("BookingExpirationJob", "*/1 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
-	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "0 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
-	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "*/1 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
+	scheduler.RegisterJob("BookingExpirationJob", "*/10 * * * *", workers.ProcessExpiredBookingsJob(bookingUsecase), 3)
+	scheduler.RegisterJob("AutoProcessCompletedEventsJob", "*/45 * * * *", workers.AutoProcessCompletedEventsJob(eventUsecase), 3)
+	scheduler.RegisterJob("ProcessPayoutSettlementsJob", "*/30 * * * *", workers.ProcessPayoutSettlementsJob(walletUsecase), 3)
 
 	scheduler.Start()
 	defer scheduler.Stop()
