@@ -253,9 +253,9 @@ export default function AdminReports() {
               </div>
 
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827]">Revenue Breakdown</h3>
                   <p className="text-sm text-[#8b9098] mt-0.5 mb-6">
                     Category-wise breakdown of the revenue generated on the platform
@@ -328,7 +328,7 @@ export default function AdminReports() {
                 </div>
 
                 
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                   <h3 className="text-lg font-bold text-[#111827]">Refund Analytics</h3>
                   <p className="text-sm text-[#8b9098] mt-0.5 mb-4">Monthly refund rate</p>
 
