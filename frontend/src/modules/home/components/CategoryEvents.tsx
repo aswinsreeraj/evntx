@@ -8,7 +8,7 @@ interface CategoryEventsProps {
 export default function CategoryEvents({ activeCategory }: CategoryEventsProps) {
   const { data } = useEvents({
     category: activeCategory !== "All" ? activeCategory : undefined,
-    limit: 6,
+    limit: 10,
   });
   const events = data?.events || [];
 
