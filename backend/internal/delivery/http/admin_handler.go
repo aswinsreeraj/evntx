@@ -455,8 +455,20 @@ func (h *AdminHandler) GetPlatformTransactions(c *gin.Context) {
 
 func (h *AdminHandler) AdminGetPayouts(c *gin.Context) {
 	status := c.Query("status")
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
 
-	payouts, total, err := h.walletUsecase.AdminGetPayoutRequests(c.Request.Context(), status, 1, 50)
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+
+	payouts, total, err := h.walletUsecase.AdminGetPayoutRequests(c.Request.Context(), status, page, limit)
 	if err != nil {
 		response.AppError(c, pkgErrors.ErrInternalServerError)
 		return
@@ -464,7 +476,11 @@ func (h *AdminHandler) AdminGetPayouts(c *gin.Context) {
 
 	response.Success(c, "Payouts retrieved successfully", gin.H{
 		"payouts":	payouts,
-		"total":	total,
+		"pagination": gin.H{
+			"total": total,
+			"page":  page,
+			"limit": limit,
+		},
 	})
 }
 

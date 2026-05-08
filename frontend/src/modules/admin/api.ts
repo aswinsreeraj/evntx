@@ -8,7 +8,11 @@ export interface AdminPayoutDetail extends PayoutRequestData {
 
 export interface AdminPayoutsResponse {
   payouts: AdminPayoutDetail[];
-  total: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 export interface PlatformWalletStats {
@@ -263,7 +267,7 @@ export const adminApi = {
     return response.data.data;
   },
 
-  async getPayouts(params?: { status?: string }): Promise<AdminPayoutsResponse> {
+  async getPayouts(params?: { status?: string; page?: number; limit?: number }): Promise<AdminPayoutsResponse> {
     const response = await api.get("/admin/payouts", { params });
     return response.data.data;
   },

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminPayoutDetail } from "../api";
 import AdminLayout from "../components/AdminLayout";
@@ -14,12 +15,12 @@ const formatCurrency = (amount: number) =>
 const formatDate = (value?: string) =>
   value
     ? new Intl.DateTimeFormat("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(value))
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value))
     : "—";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -169,42 +170,87 @@ function PayoutRow({
   );
 }
 
-const payoutsQueryKey = (status: string) => ["admin-payouts", status];
+const payoutsQueryKey = (status: string, page: number, limit: number) => ["admin-payouts", status, page, limit];
 
 export default function PayoutsPage() {
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const statusFilter = searchParams.get("status") || "pending";
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [approveTarget, setApproveTarget] = useState<AdminPayoutDetail | null>(null);
-  const [limit, setLimit] = useState(1);
+
+  const updateParams = (updates: Record<string, string>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || (key === "page" && value === "1") || (key === "limit" && value === "10") || (key === "status" && value === "pending")) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, value);
+      }
+    });
+    setSearchParams(newParams);
+  };
+
+  const setPage = (p: number | ((prev: number) => number)) => {
+    const newPage = typeof p === "function" ? p(page) : p;
+    updateParams({ page: newPage.toString() });
+  };
+
+  const setStatusFilter = (s: string) => updateParams({ status: s, page: "1" });
+  const setLimit = (l: number) => updateParams({ limit: l.toString(), page: "1" });
 
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: payoutsQueryKey(statusFilter),
-    queryFn: () => adminApi.getPayouts({ status: statusFilter || undefined }),
+    queryKey: payoutsQueryKey(statusFilter, page, limit),
+    queryFn: () => adminApi.getPayouts({ status: statusFilter || undefined, page, limit }),
   });
 
-  const fullpayouts = data?.payouts ?? [];
-  const payouts = fullpayouts.slice(0, limit);
-  const total = data?.total ?? 0;
+  const payouts = data?.payouts ?? [];
+  const pagination = data?.pagination;
+  const total = pagination?.total ?? 0;
+  const totalPages = pagination ? Math.ceil(pagination.total / pagination.limit) : 1;
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setPage(i)}
+          className={`w-8 h-8 rounded shrink-0 flex items-center justify-center text-sm transition-colors ${
+            page === i
+              ? "bg-gray-900 text-white"
+              : "hover:bg-gray-100 text-gray-600"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+    return pages;
+  };
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => adminApi.approvePayout(id),
     onSuccess: () => {
       setApproveTarget(null);
-      queryClient.invalidateQueries({ queryKey: payoutsQueryKey(statusFilter) });
+      queryClient.invalidateQueries({ queryKey: ["admin-payouts"] });
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.rejectPayout(id, reason),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: payoutsQueryKey(statusFilter) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-payouts"] }),
   });
 
   const bulkApproveMutation = useMutation({
     mutationFn: (ids: string[]) => adminApi.bulkApprovePayouts(ids),
     onSuccess: () => {
       setSelectedIds(new Set());
-      queryClient.invalidateQueries({ queryKey: payoutsQueryKey(statusFilter) });
+      queryClient.invalidateQueries({ queryKey: ["admin-payouts"] });
     },
   });
 
@@ -268,11 +314,10 @@ export default function PayoutsPage() {
               key={s || "all"}
               type="button"
               onClick={() => { setStatusFilter(s); setSelectedIds(new Set()); }}
-              className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition border ${
-                statusFilter === s
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition border ${statusFilter === s
                   ? "bg-[#111827] text-white border-[#111827]"
                   : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-              }`}
+                }`}
             >
               {s || "All"}
             </button>
@@ -324,8 +369,41 @@ export default function PayoutsPage() {
             </div>
           )}
         </div>
-        <button onClick ={() => setLimit(limit+1)}>Increase</button>
-        <button onClick ={() => setLimit(limit-1)}>Decrease</button>
+
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white rounded-b-2xl">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">
+              Showing {payouts.length} of {total} payouts
+            </span>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="pl-3 pr-8 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-[#111827] cursor-pointer transition-all"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-1 text-sm font-medium">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              &lt; Prev
+            </button>
+            {renderPageNumbers()}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || totalPages === 0}
+              className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-50 transition-colors"
+            >
+              Next &gt;
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Approve Confirmation Modal */}
